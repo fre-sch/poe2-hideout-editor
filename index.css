@@ -1,0 +1,82 @@
+@import url("https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css");
+@import url("https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css");
+
+:root {
+  --bs-body-font-size: 0.8rem;
+  --bs-body-font-family: sans-serif;
+}
+p {
+  margin-bottom: 0.5rem;
+}
+ul {
+  margin-bottom: 0;
+}
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100vw;
+  height: 100vh;
+}
+body {
+  background-color: #000;
+  color: #DDC;
+  font-family: sans-serif;
+  overscroll-behavior: none;
+  overflow: hidden;
+}
+main {
+  width: 100vw;
+  height: 100vh;
+  max-width: 100vw;
+  max-height: 100vh;
+  display: flex;
+  justify-content: space-between;
+  align-items: stretch;
+}
+#sidebar {
+  display: block;
+  width: 300px;
+  min-width: 300px;
+  background-color: var(--bs-secondary-bg-subtle);
+  overflow: auto;
+  padding: 0.5rem;
+}
+#sidebar h1 {
+  font-size: 1.2rem;
+}
+.sidebar-item {
+  padding-bottom: 0.7rem;
+  margin-bottom: 0.7rem;
+  border-bottom: 1px solid #222;
+}
+.sidebar-item > summary{
+  font-weight: bold;
+  font-size: 0.9rem;
+  color: var(--bs-secondary);
+  margin-bottom: 0.2rem;
+}
+#viewport-container {
+  flex-grow: 1;
+  max-height: 100vh;
+  position: relative;
+}
+
+.selectBox {
+  border: 1px solid #55aaff;
+  background-color: rgba(75, 160, 255, 0.3);
+  position: fixed;
+}
+
+.shortcut {
+  display: inline-block;
+  font-weight: bold;
+  color: var(--bs-info);
+  border-radius: 3px;
+  text-transform: uppercase;
+}
+
+.grid-2 {
+  display: grid;
+  grid-template: auto / min-content max-content;
+  gap: 0.2rem;
+}
