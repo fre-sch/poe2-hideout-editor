@@ -27,11 +27,12 @@ export class Hideout {
 
   createBoundsVisual (hideoutData) {
     const obj = bounds.fromHideoutHash("" + hideoutData.hideout_hash)
-    this.sceneObj.add(obj)
+    if (obj !== undefined) {
+      this.sceneObj.add(obj)
+    }
   }
 
   load (hideoutData) {
-    console.info("Hideout.load", hideoutData)
     this.sceneObj.userData = hideoutData
     this.bbox.makeEmpty()
     this.sceneObj.clear()
@@ -44,12 +45,12 @@ export class Hideout {
       this.makeDoodadVisual(doodadObj, doodadName)
       doodadObj.setSelected = (selected) => {
         if (selected) {
-          doodadObj.children[0].material.color.setHex(this.objectColors.selected)
-          doodadObj.children[1].material.color.setHex(this.lineColors.selected)
+          doodadObj?.children[0]?.material.color.setHex(this.objectColors.selected)
+          doodadObj?.children[1]?.material.color.setHex(this.lineColors.selected)
         }
         else {
-          doodadObj.children[0].material.color.setHex(this.objectColors.normal)
-          doodadObj.children[1].material.color.setHex(this.lineColors.normal)
+          doodadObj?.children[0]?.material.color.setHex(this.objectColors.normal)
+          doodadObj?.children[1]?.material.color.setHex(this.lineColors.normal)
         }
       }
       doodadObj.name = doodadName

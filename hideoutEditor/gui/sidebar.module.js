@@ -4,6 +4,7 @@ import { html } from 'htm/preact'
 import File from "hideoutEditor/gui/file.module.js"
 import ViewportMode from "hideoutEditor/gui/viewportMode.module.js"
 import HideoutData from "hideoutEditor/gui/hideoutData.module.js"
+import Selection from "hideoutEditor/gui/selection.module.js"
 
 export default (root) => {
   render(
@@ -13,6 +14,7 @@ export default (root) => {
       <${File}/>
       <${ViewportMode}/>
       <${HideoutData}/>
+      <${Selection}/>
       <details class="sidebar-item" open>
         <summary>Help</summary>
         <ul class="ms-0 ps-3">

@@ -41,20 +41,22 @@
       import { hideoutFile, viewportMode } from "hideoutEditor/gui/state.module.js"
       import { effect } from "@preact/signals"
       import { serializeHideout } from "hideoutEditor/file.module.js"
+      import { loadBounds } from "hideoutEditor/bounds.module.js"
 
-      window.onload = () => {
-        let scene = new THREE.Scene()
+      window.onload = async () => {
+        const scene = new THREE.Scene()
         scene.background = new THREE.Color(constants.SCENE_BACKGROUND_COLOR)
-        let hideout = new Hideout()
+        const hideout = new Hideout()
         hideout.attach(scene)
-        let viewport = new Viewport(
+        const viewport = new Viewport(
           document.getElementById("viewport-container"),
           document.getElementById("viewport"),
           scene)
-        let stlLoader = new STLLoader()
+        const stlLoader = new STLLoader()
         stlLoader.load("obj/obj.stl", (geometry) => {
           hideout.geometry = geometry
         })
+        loadBounds()
         Sidebar(
           document.getElementById("sidebar")
         )

@@ -5,7 +5,7 @@ import * as constants from "hideoutEditor/constants.module.js"
 import * as util from "hideoutEditor/util.module.js"
 import { TransformControl } from "hideoutEditor/transformControl.module.js"
 import { Selection } from "hideoutEditor/selection.module.js"
-import { viewportMode } from "hideoutEditor/gui/state.module.js"
+import { viewportMode, selection } from "hideoutEditor/gui/state.module.js"
 
 const GRID_AXIS_PRIMARY_COLOR = 0x407090
 const GRID_AXIS_SECONDARY_COLOR = 0x204070
@@ -107,6 +107,7 @@ export class Viewport extends EventTarget {
       [constants.LAYER_PICKABLE]
     )
     this.selection.addEventListener("changed", () => {
+      selection.value = this.selection.box.collection
       this.render()
     })
   }
