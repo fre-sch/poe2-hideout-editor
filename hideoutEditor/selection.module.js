@@ -10,7 +10,8 @@ export class Selection extends EventTarget {
     this.viewport = viewport
     this.isEnabled = true
     this.button = 0
-    this.box = new SelectionBox(viewport.camera, viewport.scene, layers)
+    this.primary = new SelectionBox(viewport.camera, viewport.scene, layers)
+    this.secondary = new SelectionBox(viewport.camera, viewport.scene, layers)
     this.helper = new SelectionHelper(viewport.renderer, cssClassName, this.button)
 
     this.bbox = new THREE.Box3()
@@ -25,7 +26,7 @@ export class Selection extends EventTarget {
   }
 
   getSelected () {
-    return this.box.collection
+    return this.primary.collection
   }
 
   setEnabled (value) {
@@ -34,14 +35,22 @@ export class Selection extends EventTarget {
 
     if (value) {
       this.bbox.makeEmpty()
-      for (let i = 0; i < this.box.collection.length; i++) {
-        this.bbox.expandByObject(this.box.collection[i])
+      for (let i = 0; i < this.primary.collection.length; i++) {
+        this.bbox.expandByObject(this.primary.collection[i])
       }
-      this.showBBox(this.box.collection.length)
+      this.showBBox(this.primary.collection.length)
     }
     else {
       this.showBBox(0)
     }
+  }
+
+  updateBBox () {
+    this.bbox.makeEmpty()
+    for (const item of this.primary.collection) {
+      this.bbox.expandByObject(item)
+    }
+    this.showBBox(this.primary.collection.length)
   }
 
   showBBox (selectedCount) {
@@ -63,39 +72,72 @@ export class Selection extends EventTarget {
     )
   }
 
-  onSelectStart = (event) => {
-    for (const item of this.box.collection) {
-      item.setSelected(false)
+  modifyPrimaryCollection (add, objects) {
+    for (const item of objects) {
+      const index = this.primary.collection.indexOf(item)
+      if (add === true && index < 0) {
+        item.setSelected(true)
+        this.primary.collection.push(item)
+      }
+      else if (add === false && index >= 0) {
+        item.setSelected(false)
+        this.primary.collection.splice(index, 1)
+      }
     }
-    this.setBoxPoint(this.box.startPoint, event.detail)
+  }
+
+  onSelectStart = (event) => {
+    const sourceEvent = event.detail
+    if (sourceEvent.ctrlKey || sourceEvent.shiftKey) {
+      this.setBoxPoint(this.secondary.startPoint, sourceEvent)
+    }
+    else {
+      for (const item of this.primary.collection) {
+        item.setSelected(false)
+      }
+      this.setBoxPoint(this.primary.startPoint, sourceEvent)
+    }
     this.dispatchEvent(new CustomEvent("changed"))
   }
 
   onSelectMove = (event) => {
+    const sourceEvent = event.detail
     if (!this.helper.isDown) return
-    for (let i = 0; i < this.box.collection.length; i++) {
-      this.box.collection[i].setSelected(false)
+    if (sourceEvent.ctrlKey || sourceEvent.shiftKey) {
+      this.setBoxPoint(this.secondary.endPoint, sourceEvent)
     }
-    this.setBoxPoint(this.box.endPoint, event.detail)
-    this.bbox.makeEmpty()
-    const allSelected = this.box.select()
-    for (let i = 0; i < allSelected.length; i++) {
-      allSelected[i].setSelected(true)
-      this.bbox.expandByObject(allSelected[i])
+    else {
+      for (const item of this.primary.collection) {
+        item.setSelected(false)
+      }
+      this.setBoxPoint(this.primary.endPoint, sourceEvent)
+      const allSelected = this.primary.select()
+      for (const item of allSelected) {
+        item.setSelected(true)
+      }
     }
-    this.showBBox(allSelected.length)
+    this.updateBBox()
     this.dispatchEvent(new CustomEvent("changed"))
   }
 
   onSelectOver = (event) => {
-    this.setBoxPoint(this.box.endPoint, event.detail)
-    this.bbox.makeEmpty()
-    const allSelected = this.box.select()
-    for (let i = 0; i < allSelected.length; i++) {
-      allSelected[i].setSelected(true)
-      this.bbox.expandByObject(allSelected[i])
+    const sourceEvent = event.detail
+    if (sourceEvent.ctrlKey) {
+      this.setBoxPoint(this.secondary.endPoint, sourceEvent)
+      this.modifyPrimaryCollection(false, this.secondary.select())
     }
-    this.showBBox(allSelected.length)
+    else if (sourceEvent.shiftKey) {
+      this.setBoxPoint(this.secondary.endPoint, sourceEvent)
+      this.modifyPrimaryCollection(true, this.secondary.select())
+    }
+    else {
+      this.setBoxPoint(this.primary.endPoint, sourceEvent)
+      const allSelected = this.primary.select()
+      for (const item of allSelected) {
+        item.setSelected(true)
+      }
+    }
+    this.updateBBox()
     this.dispatchEvent(new CustomEvent("changed"))
   }
 }

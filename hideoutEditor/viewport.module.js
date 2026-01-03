@@ -83,7 +83,7 @@ export class Viewport extends EventTarget {
   initCameras () {
     const aspect = window.innerWidth / window.innerHeight
     const frustumSize = 5
-    this.cameraPersp = new THREE.PerspectiveCamera(50, aspect, 0.1, 1000)
+    this.cameraPersp = new THREE.PerspectiveCamera(20, aspect, 0.1, 2000)
     this.cameraPersp.layers.enable(constants.LAYER_DEFAULT)
     this.cameraPersp.layers.enable(constants.LAYER_GIZMOS)
     this.cameraPersp.layers.enable(constants.LAYER_PICKABLE)
@@ -107,7 +107,7 @@ export class Viewport extends EventTarget {
       [constants.LAYER_PICKABLE]
     )
     this.selection.addEventListener("changed", () => {
-      selection.value = this.selection.box.collection
+      selection.value = [...this.selection.primary.collection]
       this.render()
     })
   }
@@ -158,8 +158,6 @@ export class Viewport extends EventTarget {
     this.viewControl.target.copy(position)
     this.viewControl.object.position.copy(cameraPosition)
     this.viewControl.update()
-
-    // this.gridHelper.position.copy(position)
   }
 
   deleteSelection () {

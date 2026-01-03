@@ -7,6 +7,8 @@ const material = new THREE.LineBasicMaterial({ color: 0xFF8888 })
 const visualByHash = {
   "13526": "obj/felled_13526.svg",
   "26805": "obj/shrine_26805.svg",
+  "60415": "obj/canal_60415.svg",
+  "12394": "obj/limestone_12394.svg",
 }
 
 const makeObjectSvg = (svg) => {
@@ -16,7 +18,7 @@ const makeObjectSvg = (svg) => {
     const path = paths[i]
     const shapes = SVGLoader.createShapes(path)
     for (let j = 0; j < shapes.length; j++) {
-      const geometry = new THREE.ShapeGeometry(shapes[i])
+      const geometry = new THREE.ShapeGeometry(shapes[j])
       // rotate onto xz plane
       geometry.rotateX(Math.PI / 2)
       const edges = new THREE.EdgesGeometry(geometry)
