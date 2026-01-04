@@ -29,6 +29,12 @@ export default (root) => {
         <li>Press key <span class="shortcut">f</span> to focus on selected.</li>
         </ul>
       </details>
+      <div class="text-center">
+        <a href="https://github.com/fre-sch/poe2-hideout-editor/issues">
+        Report problem or add suggestion
+        </a><br/>
+        <a href="https://github.com/fre-sch/poe2-hideout-editor">Code on github</a>
+      </div>
     `,
     root
   )

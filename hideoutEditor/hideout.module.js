@@ -25,6 +25,11 @@ export class Hideout {
     this.numDoodads = 0
   }
 
+  setGeometry (geometry) {
+    this.geometry = geometry
+    this.geometry.computeBoundingSphere()
+  }
+
   createBoundsVisual (hideoutData) {
     const obj = bounds.fromHideoutHash("" + hideoutData.hideout_hash)
     if (obj !== undefined) {
@@ -56,7 +61,8 @@ export class Hideout {
       doodadObj.name = doodadName
       doodadObj.position.set(doodadData.y, 0, doodadData.x)
       doodadObj.rotation.y = doodadData.r * POE_TO_RADIAN
-      doodadObj.layers.set(constants.LAYER_PICKABLE)
+      doodadObj.layers.enable(constants.LAYER_LABELED)
+      doodadObj.layers.enable(constants.LAYER_PICKABLE)
       this.sceneObj.add(doodadObj)
     }
     this.bbox.setFromObject(this.sceneObj)
@@ -65,26 +71,7 @@ export class Hideout {
     return bboxCenter
   }
 
-  makeLabel (doodadName) {
-    const canvas = util.makeLabelCanvas(48, doodadName)
-    const texture = new THREE.CanvasTexture(canvas)
-    const label = new THREE.Sprite(new THREE.SpriteMaterial({
-      map: texture,
-      side: THREE.DoubleSide,
-      transparent: false,
-      depthTest: false
-    }))
-    label.renderOrder = 999
-    const labelScale = 0.005
-    label.scale.x = canvas.width * labelScale
-    label.scale.y = canvas.height * labelScale
-    label.position.y = -0.2
-    label.layers.set(constants.LAYER_GIZMOS)
-    return label
-  }
-
-  makeDoodadVisual (parent, name) {
-    const label = this.makeLabel(name)
+  makeDoodadVisual (parent) {
     const mesh = new THREE.Mesh(this.geometry,
       new THREE.MeshBasicMaterial({ color: this.objectColors.normal })
     )
@@ -96,7 +83,6 @@ export class Hideout {
     lines.renderOrder = 99
     parent.add(mesh)
     parent.add(lines)
-    parent.add(label)
   }
 
   attach (scene) {

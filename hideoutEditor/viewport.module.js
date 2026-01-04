@@ -5,7 +5,7 @@ import * as constants from "hideoutEditor/constants.module.js"
 import * as util from "hideoutEditor/util.module.js"
 import { TransformControl } from "hideoutEditor/transformControl.module.js"
 import { Selection } from "hideoutEditor/selection.module.js"
-import { viewportMode, selection } from "hideoutEditor/gui/state.module.js"
+import * as guiState from "hideoutEditor/gui/state.module.js"
 
 const GRID_AXIS_PRIMARY_COLOR = 0x407090
 const GRID_AXIS_SECONDARY_COLOR = 0x204070
@@ -20,6 +20,7 @@ export class Viewport extends EventTarget {
     this.canvasElem = canvasElem
     this.viewportRect = this.canvasElem.getBoundingClientRect()
     this.scene = scene
+    this.frustum = new THREE.Frustum()
 
     this.initRenderer()
     this.initCameras()
@@ -39,13 +40,13 @@ export class Viewport extends EventTarget {
         break
       case "Escape":
       case "1":
-        viewportMode.value = "select"
+        guiState.viewportMode.value = "select"
         break
       case "2":
-        viewportMode.value = "translate"
+        guiState.viewportMode.value = "translate"
         break
       case "3":
-        viewportMode.value = "rotate"
+        guiState.viewportMode.value = "rotate"
         break
       case "f":
         const target = new THREE.Vector3()
@@ -82,7 +83,6 @@ export class Viewport extends EventTarget {
 
   initCameras () {
     const aspect = window.innerWidth / window.innerHeight
-    const frustumSize = 5
     this.cameraPersp = new THREE.PerspectiveCamera(20, aspect, 0.1, 2000)
     this.cameraPersp.layers.enable(constants.LAYER_DEFAULT)
     this.cameraPersp.layers.enable(constants.LAYER_GIZMOS)
@@ -107,7 +107,7 @@ export class Viewport extends EventTarget {
       [constants.LAYER_PICKABLE]
     )
     this.selection.addEventListener("changed", () => {
-      selection.value = [...this.selection.primary.collection]
+      guiState.selection.value = [...this.selection.primary.collection]
       this.render()
     })
   }
@@ -172,6 +172,17 @@ export class Viewport extends EventTarget {
 
   render () {
     this.renderer.render(this.scene, this.camera)
+    this.cameraPersp.updateProjectionMatrix()
+    this.cameraPersp.updateMatrixWorld()
+    this.frustum.setFromProjectionMatrix(
+      new THREE.Matrix4().multiplyMatrices(
+        this.cameraPersp.projectionMatrix,
+        this.cameraPersp.matrixWorldInverse
+      )
+    )
+    const labels = []
+    this.findLabeled(this.scene, labels)
+    guiState.labels.value = labels
   }
 
   onWindowResize = () => {
@@ -182,6 +193,36 @@ export class Viewport extends EventTarget {
     this.cameraPersp.updateProjectionMatrix()
     this.renderer.setSize(clientRect.width, clientRect.height)
     this.render()
+  }
+
+  findLabeled (object, result) {
+    if (object.visible === false) {
+      return
+    }
+
+    const isLabeled = object.layers.isEnabled(constants.LAYER_LABELED)
+    if (isLabeled) {
+      const objectWorldPosition = new THREE.Vector3()
+      object.getWorldPosition(objectWorldPosition)
+      const inFrustum = this.frustum.containsPoint(objectWorldPosition)
+      if (inFrustum) {
+        objectWorldPosition.project(this.cameraPersp)
+        // Convert NDC (-1 to 1) to screen coordinates (pixels)
+        const x = (objectWorldPosition.x * 0.5 + 0.5) * this.canvasElem.clientWidth
+        const y = (-objectWorldPosition.y * 0.5 + 0.5) * this.canvasElem.clientHeight
+        result.push({
+          x,
+          y,
+          key: object.id,
+          label: object.name,
+        })
+      }
+    }
+
+    const children = object.children
+    for (let i = 0, l = children.length; i < l; i++) {
+      this.findLabeled(children[i], result)
+    }
   }
 
 }

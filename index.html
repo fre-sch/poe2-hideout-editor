@@ -11,6 +11,7 @@
       <div id="sidebar"></div>
       <div id="viewport-container">
         <canvas id="viewport"></canvas>
+        <div id="label-overlay"></div>
       </div>
     </main>
 
@@ -38,6 +39,7 @@
       import { Hideout } from "hideoutEditor/hideout.module.js"
       import { Viewport } from "hideoutEditor/viewport.module.js"
       import Sidebar from "hideoutEditor/gui/sidebar.module.js"
+      import LabelOverlay from "hideoutEditor/gui/labelOverlay.module.js"
       import { hideoutFile, viewportMode } from "hideoutEditor/gui/state.module.js"
       import { effect } from "@preact/signals"
       import { serializeHideout } from "hideoutEditor/file.module.js"
@@ -45,6 +47,7 @@
 
       window.onload = async () => {
         const scene = new THREE.Scene()
+        scene.name = "MainScene"
         scene.background = new THREE.Color(constants.SCENE_BACKGROUND_COLOR)
         const hideout = new Hideout()
         hideout.attach(scene)
@@ -54,11 +57,14 @@
           scene)
         const stlLoader = new STLLoader()
         stlLoader.load("obj/obj.stl", (geometry) => {
-          hideout.geometry = geometry
+          hideout.setGeometry(geometry)
         })
         loadBounds()
         Sidebar(
           document.getElementById("sidebar")
+        )
+        LabelOverlay(
+          document.getElementById("label-overlay")
         )
         viewport.render()
 
