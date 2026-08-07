@@ -40,10 +40,10 @@
       import { Viewport } from "hideoutEditor/viewport.module.js"
       import Sidebar from "hideoutEditor/gui/sidebar.module.js"
       import LabelOverlay from "hideoutEditor/gui/labelOverlay.module.js"
-      import { hideoutFile, viewportMode } from "hideoutEditor/gui/state.module.js"
+      import { hideoutFile, hideoutType, viewportMode } from "hideoutEditor/gui/state.module.js"
       import { effect } from "@preact/signals"
       import { serializeHideout } from "hideoutEditor/file.module.js"
-      import { loadBounds } from "hideoutEditor/bounds.module.js"
+      import { loadBounds, showBounds } from "hideoutEditor/bounds.module.js"
 
       window.onload = async () => {
         const scene = new THREE.Scene()
@@ -59,7 +59,7 @@
         stlLoader.load("obj/obj.stl", (geometry) => {
           hideout.setGeometry(geometry)
         })
-        loadBounds()
+        loadBounds(scene)
         Sidebar(
           document.getElementById("sidebar")
         )
@@ -85,10 +85,16 @@
           viewport.setMode(viewportMode.value)
         })
 
-        // handle save file
+        // handle hideout type change
+        effect(() => {
+          if (hideoutType.value === null) return
+          showBounds(hideoutType.value)
+          viewport.render()
+        })
+
         window.addEventListener("saveHideoutFile", (event) => {
           viewport.setMode("select")
-          const data = hideout.serializeHideoutData()
+          const data = util.getHideoutData(hideout, hideoutFile.value)
           const text = serializeHideout(data)
           const blob = new Blob([text], {type: "text/plain"})
           const url = URL.createObjectURL(blob)

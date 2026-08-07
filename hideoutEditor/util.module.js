@@ -1,5 +1,8 @@
 import * as THREE from "three"
 import * as constants from "hideoutEditor/constants.module.js"
+import { hideoutFile, hideoutType } from "hideoutEditor/gui/state.module.js"
+import { getBoundsDefinition } from "hideoutEditor/bounds.module.js"
+
 
 export const axisHelper = (length) => {
   const origin = new THREE.Vector3(0, 0.001, 0)
@@ -41,9 +44,16 @@ export const makeLabelCanvas = (size, text) => {
   return ctx.canvas
 }
 
-export const reparent = (object, newParent) => {
-  object.getWorldPosition(object.position)
-  object.removeFromParent()
-  newParent.add(object)
-  newParent.worldToLocal(object.position)
+export const stringSortCmp = (a, b) => {
+  return a.localeCompare(b, "en", { sensitivity: "base" })
+}
+
+export const getHideoutData = (hideoutSceneObj) => {
+  const { data } = hideoutFile.value
+  const bounds = getBoundsDefinition(hideoutType.value)
+  const newData = JSON.parse(JSON.stringify(data))
+  newData.doodads = hideoutSceneObj.serializeDoodads()
+  newData.hideout_name = bounds.name
+  newData.hideout_hash = bounds.hash
+  return newData
 }

@@ -1,15 +1,18 @@
 import { html } from 'htm/preact'
-import { hideoutFile } from "hideoutEditor/gui/state.module.js"
+import { hideoutFile, hideoutType } from "hideoutEditor/gui/state.module.js"
 import { parseHideout } from "hideoutEditor/file.module.js"
+
 
 const loadFile = async (event) => {
   event.preventDefault()
   const [file] = event.target.files
   if (file) {
+    const data = parseHideout(await file.text())
     hideoutFile.value = {
       name: file.name,
-      data: parseHideout(await file.text()),
+      data,
     }
+    hideoutType.value = data.hideout_hash
   }
   event.target.blur()
 }

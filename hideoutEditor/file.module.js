@@ -161,7 +161,7 @@ export const parseHideout = (text) => {
 
 export const serializeHideout = (data) => {
   const doodadTextItems = data.doodads.map(([name, doodad]) => {
-    const doodadJSON = JSON.stringify(doodad, null, 6)
+    const doodadJSON = JSON.stringify(doodad, null, 2)
     return `"${name}": ${doodadJSON}`
   })
   return `{
@@ -170,7 +170,7 @@ export const serializeHideout = (data) => {
   "hideout_name": "${data.hideout_name}",
   "hideout_hash": ${data.hideout_hash},
   "doodads": {
-    ${doodadTextItems.join(",\n    ")}
+${doodadTextItems.join(",\n").replaceAll(/^/gm, "    ")}
   }
 }`
 }

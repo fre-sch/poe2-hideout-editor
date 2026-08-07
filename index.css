@@ -38,7 +38,8 @@ main {
   width: 300px;
   min-width: 300px;
   background-color: var(--bs-secondary-bg-subtle);
-  overflow: auto;
+  overflow-y: auto;
+  overflow-x: hidden;
   padding: 0.5rem;
 }
 #sidebar h1 {
@@ -78,7 +79,7 @@ main {
 
 .grid-2 {
   display: grid;
-  grid-template: auto / min-content max-content;
+  grid-template: auto / min-content auto;
   gap: 0.2rem;
 }
 
@@ -89,6 +90,7 @@ main {
   left: 0;
   width: 100%;
   height: 100%;
+  overflow: hidden;
 }
 
 #label-overlay .label {

@@ -1,7 +1,5 @@
 import * as THREE from "three"
 import * as constants from "hideoutEditor/constants.module.js"
-import * as util from "hideoutEditor/util.module.js"
-import * as bounds from "hideoutEditor/bounds.module.js"
 
 const POE_TO_RADIAN = (2 * Math.PI) / 65536
 const RADIAN_TO_POE = 65536 / (2 * Math.PI)
@@ -30,18 +28,10 @@ export class Hideout {
     this.geometry.computeBoundingSphere()
   }
 
-  createBoundsVisual (hideoutData) {
-    const obj = bounds.fromHideoutHash("" + hideoutData.hideout_hash)
-    if (obj !== undefined) {
-      this.sceneObj.add(obj)
-    }
-  }
-
   load (hideoutData) {
     this.sceneObj.userData = hideoutData
     this.bbox.makeEmpty()
     this.sceneObj.clear()
-    this.createBoundsVisual(hideoutData)
     for (const doodadItem of hideoutData.doodads) {
       const [doodadName, doodadData] = doodadItem
 
@@ -89,21 +79,20 @@ export class Hideout {
     scene.add(this.sceneObj)
   }
 
-  serializeHideoutData () {
-    const hideoutData = JSON.parse(JSON.stringify(this.sceneObj.userData))
-    hideoutData.doodads = []
+  serializeDoodads () {
+    const doodads = []
     let euler = new THREE.Euler()
     let child
     for (let i = 0; i < this.sceneObj.children.length; i++) {
       child = this.sceneObj.children[i]
-      if (!child.userData.isDoodad) continue
-      euler.setFromQuaternion(child.quaternion, "YXZ")
       const { isDoodad, ...doodad } = child.userData
+      if (!isDoodad) continue
+      euler.setFromQuaternion(child.quaternion, "YXZ")
       doodad.x = Math.round(child.position.z)
       doodad.y = Math.round(child.position.x)
       doodad.r = (Math.round(euler.y * RADIAN_TO_POE) + 65536) % 65536
-      hideoutData.doodads.push([child.name, doodad])
+      doodads.push([child.name, doodad])
     }
-    return hideoutData
+    return doodads
   }
 }
