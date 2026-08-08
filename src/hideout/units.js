@@ -43,9 +43,23 @@ export function fromDegrees(degrees) {
  * half turn again on the bounds group -- because it was orienting a camera.
  * There is no camera here.
  *
- * The swap is a reflection, so it reverses the sense of a rotation on screen.
- * Whether `toDegrees` therefore needs negating is a question about what the
- * player sees, and it is settled against the game in wiki issue 0018.
+ * ### Why `toDegrees` is not negated
+ *
+ * The swap on its own is a reflection -- the matrix taking `(x, y)` to `(y, x)`
+ * has determinant -1 -- and a reflection reverses the sense of a rotation. But
+ * the stage is not the plane the swap lands in: canvas y points *down*, which
+ * is a second reflection. Writing the screen frame as (right, up), a doodad at
+ * `(x, y)` draws at `(y, -x)`, whose determinant is +1.
+ *
+ * The two reflections cancel. A turn that increases `r` therefore appears on
+ * the stage in the same sense it has in the file, and `toDegrees` maps straight
+ * onto Konva's clockwise-positive degrees with no sign to apply.
+ *
+ * What this does *not* settle is which way that looks in the game, because the
+ * game's own convention -- whether `r` counts clockwise or anticlockwise seen
+ * from above -- is not derivable from a file. It is one bit, it costs a minus
+ * sign here if it is wrong, and it is checked the only way it can be: rotate a
+ * recognisable doodad in the game, export, and compare against the editor.
  */
 export function toStage({ x, y }) {
   return { x: y, y: x };
