@@ -77,10 +77,35 @@ export const labels = signal([]);
 export const showLabels = signal(true);
 
 /**
- * Whether the help modal is up. Open on the first load, because the mouse
- * gestures are the editor and nothing on screen spells them out.
+ * Whether the help modal is up, and whether it comes up by itself.
  *
- * It lives here rather than in `gui/help.jsx` so that the viewport can raise it
- * from the `H` shortcut without the viewport importing the sidebar.
+ * They live here rather than in `gui/help.jsx` so that the viewport can raise
+ * the modal from the `H` shortcut without importing the sidebar.
+ *
+ * The stored preference has three states, one more than the checkbox: absent is
+ * a first visit, which is greeted. So a player who reads the modal once and
+ * closes it is not greeted again, and a player who wants the reminder ticks the
+ * box for it.
  */
-export const showHelp = signal(true);
+const HELP_KEY = "poe2-hideout-editor.show-help-on-load";
+const storedHelp = readHelpPreference();
+
+export const showHelp = signal(storedHelp !== "false");
+export const showHelpOnLoad = signal(storedHelp === "true");
+
+export function rememberHelpPreference() {
+  try {
+    localStorage.setItem(HELP_KEY, String(showHelpOnLoad.value));
+  } catch (error) {
+    // Explicitly silenced: storage is blocked, and a preference that cannot be
+    // kept is worth less than the editor it would otherwise take down.
+  }
+}
+
+function readHelpPreference() {
+  try {
+    return localStorage.getItem(HELP_KEY);
+  } catch (error) {
+    return null;
+  }
+}

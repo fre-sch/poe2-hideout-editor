@@ -3,7 +3,9 @@
  *
  * It opens by itself the first time, because the editor is its mouse gestures
  * and nothing on screen spells them out. Everything after that is one keypress
- * away, which is worth more than the sidebar height a permanent list costs.
+ * away, which is worth more than the sidebar height a permanent list costs --
+ * and the checkbox decides whether "after that" includes the next load. The
+ * preference is `state.showHelpOnLoad`, written when the modal closes.
  *
  * A native `<dialog>`: Bootstrap's modal needs Bootstrap's JavaScript, which
  * index.html deliberately does not load, and the element already does the
@@ -50,9 +52,11 @@ export function HelpModal() {
       class="help-modal"
       ref={dialog}
       // Escape and the backdrop close the element without asking, so the signal
-      // follows the element rather than the other way round.
+      // follows the element rather than the other way round -- and the
+      // preference is written on the way out, however the player left.
       onClose={() => {
         state.showHelp.value = false;
+        state.rememberHelpPreference();
       }}
     >
       <h2>Help</h2>
@@ -61,12 +65,40 @@ export function HelpModal() {
         once if a key does nothing.
       </p>
       <Shortcuts />
-      <form method="dialog" class="text-end">
+      <form
+        method="dialog"
+        class="d-flex justify-content-between align-items-center"
+      >
+        <ShowAgain />
         <button type="submit" class="btn btn-primary btn-sm">
           Close
         </button>
       </form>
     </dialog>
+  );
+}
+
+/**
+ * Unticked, the modal has said its piece and stays out of the way until it is
+ * asked for. It is worded as what happens next, not as what to switch off,
+ * because a player meets it before they know what it would be switching off.
+ */
+function ShowAgain() {
+  return (
+    <div class="form-check mb-0">
+      <input
+        id="show-help-on-load"
+        class="form-check-input"
+        type="checkbox"
+        checked={state.showHelpOnLoad.value}
+        onChange={(event) => {
+          state.showHelpOnLoad.value = event.currentTarget.checked;
+        }}
+      />
+      <label class="form-check-label" for="show-help-on-load">
+        Show this again on every load
+      </label>
+    </div>
   );
 }
 
