@@ -4,8 +4,9 @@
  * The two are the cost of having a format of the editor's own: a project keeps
  * layers and, later, generators, and a `.hideout` is what the game reads and
  * can carry neither. Which file to hand the game is the one thing a player must
- * not get wrong, so the two buttons are not a pair of equals -- they are
- * labelled by what they are for, they sit apart, and each says what it writes.
+ * not get wrong, so the two buttons are told apart by their labels and their
+ * colours, and each says what it writes. They no longer sit apart: the sidebar
+ * is short and its height belongs to the layer list.
  *
  * Loading takes both, told apart by their content rather than their name. One
  * button, because a player who has picked the file has already said which one
@@ -25,36 +26,34 @@ export default function File() {
   return (
     <details class="sidebar-item" open>
       <summary>File</summary>
-      <label class="btn btn-primary btn-sm" role="button">
-        Load
-        <input type="file" accept=".hideout,.json" hidden onChange={load} />
-      </label>
-      <p class="text-secondary mt-1 mb-2">A `.hideout` or a saved project.</p>
-
-      <div class="d-grid gap-1">
-        <button
-          type="button"
-          class="btn btn-secondary btn-sm"
-          disabled={!loaded}
-          onClick={saveProject}
-        >
-          <i class="bi bi-hdd"></i> Save project
-        </button>
-        <p class="text-secondary mb-2">
-          Your work, layers and all. The game cannot read it.
-        </p>
+      <div class="d-flex gap-1 mb-1">
+        <label class="btn btn-primary btn-sm" role="button">
+          <i class="bi bi-folder2-open"></i> Load
+          <input type="file" accept=".hideout,.json" hidden onChange={load} />
+        </label>
         <button
           type="button"
           class="btn btn-success btn-sm"
           disabled={!loaded}
           onClick={exportHideout}
+          title="The file for the game. Layers are baked away."
         >
           <i class="bi bi-box-arrow-down"></i> Export .hideout
         </button>
-        <p class="text-secondary mb-0">
-          The file for the game. Layers are baked away.
-        </p>
       </div>
+      <button
+        type="button"
+        class="btn btn-secondary btn-sm"
+        disabled={!loaded}
+        onClick={saveProject}
+        title="Your work, layers and all. The game cannot read it."
+      >
+        <i class="bi bi-hdd"></i> Save project
+      </button>
+      <p class="text-secondary mt-1 mb-0">
+        Load takes a `.hideout` or a saved project. Export writes the game's
+        file, Save project writes the editor's.
+      </p>
       <LoadError />
     </details>
   );

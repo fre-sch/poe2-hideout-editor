@@ -1,10 +1,16 @@
-/** The sidebar: everything the viewport is not. */
+/**
+ * The sidebar: everything the viewport is not.
+ *
+ * A column, so that the layer list can take whatever height the fixed sections
+ * leave it. It is the one section whose length is the player's own doing.
+ */
 
 import File from "./file.jsx";
 import Hideout from "./hideout.jsx";
 import Layers from "./layers.jsx";
 import Mode from "./mode.jsx";
 import Selection from "./selection.jsx";
+import { HelpButton } from "./help.jsx";
 
 export default function Sidebar() {
   return (
@@ -16,7 +22,7 @@ export default function Sidebar() {
       <Hideout />
       <Layers />
       <Selection />
-      <Help />
+      <HelpButton />
       <div class="text-center">
         <a href="https://github.com/fre-sch/poe2-hideout-editor/issues">
           Report problem or add suggestion
@@ -27,50 +33,5 @@ export default function Sidebar() {
         </a>
       </div>
     </div>
-  );
-}
-
-/**
- * The shortcuts work while the viewport has focus, so clicking it comes first.
- * They are bound to the viewport rather than the window on purpose -- wiki
- * issue 0010 -- and this is where a player finds that out.
- */
-function Help() {
-  return (
-    <details class="sidebar-item" open>
-      <summary>Help</summary>
-      <ul class="ms-0 ps-3">
-        <li>
-          Drag <span class="shortcut">left mouse button</span> to select.
-          <br />
-          Hold <span class="shortcut">Shift</span> to add,{" "}
-          <span class="shortcut">Ctrl</span> to remove.
-        </li>
-        <li>
-          Drag <span class="shortcut">middle mouse button</span> to pan.
-        </li>
-        <li>
-          Drag <span class="shortcut">right mouse button</span> to turn the
-          view. Turn it to line the selection box up with a row of doodads that
-          runs diagonally.
-        </li>
-        <li>
-          <span class="shortcut">Mouse wheel</span> zooms about the pointer.
-        </li>
-        <li>
-          <span class="shortcut">Del</span> deletes the selection.
-        </li>
-        <li>
-          <span class="shortcut">1</span> select,{" "}
-          <span class="shortcut">2</span> move, <span class="shortcut">3</span>{" "}
-          rotate.
-        </li>
-        <li>
-          <span class="shortcut">f</span> frames the selection,{" "}
-          <span class="shortcut">g</span> turns the view back to the game's
-          perspective.
-        </li>
-      </ul>
-    </details>
   );
 }

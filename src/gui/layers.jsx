@@ -21,8 +21,9 @@ export default function Layers() {
   // Reading the count subscribes the panel to doodad deletion, which is the one
   // thing that changes a layer's tally without changing the layer list.
   const total = state.doodadCount.value;
+  const selected = state.selection.value.length;
   return (
-    <details class="sidebar-item" open>
+    <details class="sidebar-item sidebar-item-grow" open>
       <summary>
         Layers ({layers.length}), {total} doodads
       </summary>
@@ -30,26 +31,14 @@ export default function Layers() {
         Exported in this order, first at the top. Hiding and locking stay in the
         editor; everything exports.
       </p>
-      <ul class="list-unstyled mb-2">
+      <ul class="list-unstyled mb-2 layer-list">
         {layers.map((layer, index) => (
           <LayerRow layer={layer} index={index} count={layers.length} />
         ))}
       </ul>
-      <button
-        type="button"
-        class="btn btn-secondary btn-sm me-1"
-        onClick={addLayer}
-      >
+      <button type="button" class="btn btn-secondary btn-sm" onClick={addLayer}>
         <i class="bi bi-plus-lg"></i> Add layer
-      </button>
-      <button
-        type="button"
-        class="btn btn-secondary btn-sm"
-        disabled={state.selection.value.length === 0}
-        onClick={moveSelection}
-        title="Move the selected doodads into the active layer"
-      >
-        <i class="bi bi-box-arrow-in-right"></i> Move selection here
+        {selected > 0 && ` with ${selected} selected`}
       </button>
     </details>
   );
@@ -75,6 +64,15 @@ function LayerRow({ layer, index, count }) {
         onInput={(event) => rename(layer, event.currentTarget.value)}
       />
       <span class="text-secondary layer-count">{doodadsIn(layer).length}</span>
+      <button
+        type="button"
+        class="btn btn-sm btn-link p-0"
+        title="Select this layer's doodads"
+        disabled={!selectable(layer) || doodadsIn(layer).length === 0}
+        onClick={() => selectContents(layer)}
+      >
+        <i class="bi bi-cursor"></i>
+      </button>
       <Toggle
         layer={layer}
         flag="visible"
@@ -155,10 +153,30 @@ function move(layer, offset) {
   state.layersChanged();
 }
 
+/**
+ * A new layer, holding whatever is selected. A layer is made to hold something,
+ * and an empty selection still gives the empty layer -- so the one button
+ * covers both, and the selection needs no button of its own.
+ */
 function addLayer() {
   const layer = document_().addLayer(`Layer ${state.layers.value.length + 1}`);
+  document_().assign(state.selection.value, layer.id);
   state.activeLayer.value = layer.id;
   state.layersChanged();
+}
+
+function selectContents(layer) {
+  state.requestSelection(doodadsIn(layer));
+}
+
+/**
+ * The viewport refuses to select what is hidden or locked, so the button that
+ * would ask for it is off rather than quietly doing nothing. Stated here in
+ * plain terms instead of imported from `viewport/groups.js`, which would bring
+ * Konva into the sidebar to answer a question about two booleans.
+ */
+function selectable(layer) {
+  return layer.visible && !layer.locked;
 }
 
 /**
@@ -191,9 +209,4 @@ function neighbourOf(layer) {
   const layers = state.layers.value;
   const index = layers.indexOf(layer);
   return layers[index === 0 ? 1 : index - 1];
-}
-
-function moveSelection() {
-  document_().assign(state.selection.value, state.activeLayer.value);
-  state.layersChanged();
 }
