@@ -41,7 +41,7 @@ export function fromDegrees(degrees) {
  * Position, file to stage: the axes swap, and nothing else happens.
  *
  * Derived rather than carried over. The game's `x` and `y` index a floor grid
- * seen from above, and `scripts/converter.py` -- which draws the bounds SVGs
+ * seen from above, and `scripts/probe_grid.py` -- which draws the bounds SVGs
  * the editor loads underneath a hideout -- writes SVG `x` from doodad `y` and
  * SVG `y` from doodad `x`. SVG and Konva share the same y-down pixel space, so
  * agreeing with the SVG is what puts a bounds trace on top of its own outline.
