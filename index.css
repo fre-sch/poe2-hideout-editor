@@ -38,8 +38,10 @@ main {
 #sidebar {
   display: flex;
   flex-direction: column;
-  width: 300px;
-  min-width: 300px;
+  width: 400px;
+  min-width: 400px;
+  height: 100vh;
+  max-height: 100vh;
   background-color: var(--bs-secondary-bg-subtle);
   overflow-y: auto;
   overflow-x: hidden;
@@ -47,6 +49,11 @@ main {
 }
 #sidebar h1 {
   font-size: 1.2rem;
+  padding: 0;
+  margin: 0;
+}
+#sidebar hr {
+  margin: 0.5rem 0;
 }
 .sidebar-item {
   padding-bottom: 0.7rem;
