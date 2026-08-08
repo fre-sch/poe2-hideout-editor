@@ -26,6 +26,7 @@ export default function Viewport() {
   const hideoutType = state.hideoutType.value;
   const viewportMode = state.viewportMode.value;
   const showLabels = state.showLabels.value;
+  const selectionRequest = state.selectionRequest.value;
 
   useEffect(() => {
     scene.current = new Scene(container.current);
@@ -58,6 +59,12 @@ export default function Viewport() {
   useEffect(() => {
     scene.current.showLabels(showLabels);
   }, [showLabels]);
+  // Each request is a fresh array, so asking twice for the same doodads runs
+  // twice -- which is what a player pressing the button twice means.
+  useEffect(() => {
+    if (selectionRequest === null) return;
+    scene.current.selectDoodads(selectionRequest);
+  }, [selectionRequest]);
 
   // Konva appends its canvases to the inner element, so nothing Preact renders
   // may live there -- the two would diff against each other's children.

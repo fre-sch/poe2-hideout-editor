@@ -33,8 +33,11 @@ main {
   justify-content: space-between;
   align-items: stretch;
 }
+/* A column so that the layer list can take the height the other sections
+   leave. It still scrolls, for the window too short to hold even those. */
 #sidebar {
-  display: block;
+  display: flex;
+  flex-direction: column;
   width: 300px;
   min-width: 300px;
   background-color: var(--bs-secondary-bg-subtle);
@@ -55,6 +58,22 @@ main {
   font-size: 0.9rem;
   color: var(--bs-secondary);
   margin-bottom: 0.2rem;
+}
+
+/* Takes the leftover height. `min-height: 0` because a flex item refuses to
+   shrink past its content without it, and the list inside must be the part
+   that scrolls. Closed, the <details> shows only its summary and has no
+   leftover height to take. */
+.sidebar-item-grow[open] {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 8rem;
+}
+.layer-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
 }
 #viewport-container {
   flex-grow: 1;
@@ -107,6 +126,23 @@ main {
   display: grid;
   grid-template: auto / min-content auto;
   gap: 0.2rem;
+}
+
+/* Bootstrap styles its own modal, which needs its JavaScript; this is a native
+   <dialog>, so its box is drawn here. */
+.help-modal {
+  max-width: 32rem;
+  border: 1px solid var(--bs-border-color);
+  border-radius: 0.5rem;
+  background-color: var(--bs-body-bg);
+  color: var(--bs-body-color);
+  padding: 1rem;
+}
+.help-modal h2 {
+  font-size: 1.1rem;
+}
+.help-modal::backdrop {
+  background-color: rgba(0, 0, 0, 0.6);
 }
 
 #label-overlay {

@@ -131,6 +131,20 @@ export class Scene {
     if (outline) this.stage.static.add(outline);
   }
 
+  /**
+   * Selects the nodes of the given doodads, as the sidebar asked.
+   *
+   * Hidden and locked layers are skipped, for the same reason the band skips
+   * them: a selection the player cannot see or move is a selection that only
+   * surprises them later.
+   */
+  selectDoodads(doodads) {
+    const wanted = new Set(doodads);
+    this.selection.set(
+      this.selectableNodes().filter((node) => wanted.has(node.doodad)),
+    );
+  }
+
   setMode(mode) {
     this.mode = mode;
     this.transform.setMode(mode);
@@ -233,6 +247,9 @@ export class Scene {
         break;
       case "g":
         this.stage.alignToGame();
+        break;
+      case "h":
+        state.showHelp.value = true;
         break;
       default:
         return;

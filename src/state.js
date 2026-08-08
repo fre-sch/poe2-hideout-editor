@@ -51,6 +51,20 @@ export const viewportMode = signal("select");
 export const selection = signal([]);
 
 /**
+ * A selection the sidebar asks for, as `Doodad` objects, or `null`.
+ *
+ * The other direction of `selection`: what is selected is the viewport's to
+ * decide -- it owns the `Selection` and the nodes -- so the sidebar asks rather
+ * than writes. The viewport answers by publishing `selection`, which is what
+ * makes the request a request and not a second copy of the truth.
+ */
+export const selectionRequest = signal(null);
+
+export function requestSelection(doodads) {
+  selectionRequest.value = doodads;
+}
+
+/**
  * The rubber band while it is down, in pixels inside the viewport, or `null`.
  *
  * It is a DOM element rather than a `Konva.Rect` because the view is turned --
@@ -61,3 +75,12 @@ export const band = signal(null);
 
 export const labels = signal([]);
 export const showLabels = signal(true);
+
+/**
+ * Whether the help modal is up. Open on the first load, because the mouse
+ * gestures are the editor and nothing on screen spells them out.
+ *
+ * It lives here rather than in `gui/help.jsx` so that the viewport can raise it
+ * from the `H` shortcut without the viewport importing the sidebar.
+ */
+export const showHelp = signal(true);
