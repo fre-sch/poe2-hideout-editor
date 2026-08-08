@@ -1,10 +1,10 @@
 /**
  * Rubber-band selection: the rectangle maths, and the set semantics on top.
  *
- * The semantics are the three.js editor's and survive unchanged -- a committed
+ * The semantics are the 3D editor's and survive unchanged -- a committed
  * primary set, a transient set while the band is down, Shift adds, Ctrl
  * removes, merged when the drag ends. The plumbing underneath does not: in 3D
- * this needed a six-plane frustum and two modified copies of three.js addons,
+ * this needed a six-plane frustum and two modified copies of library addons,
  * 393 lines that also carried wiki issue 0004. In 2D it is
  * `intersects(one, other)`.
  *

@@ -1,5 +1,5 @@
 /**
- * Selection semantics, which the three.js editor could not test at all: they
+ * Selection semantics, which the 3D editor could not test at all: they
  * were entangled with a camera, a frustum and two vendored addons.
  */
 
