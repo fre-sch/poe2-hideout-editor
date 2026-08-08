@@ -22,6 +22,7 @@ export default function Viewport() {
   const scene = useRef(null);
 
   const hideout = state.hideoutDocument.value;
+  const layers = state.layers.value;
   const hideoutType = state.hideoutType.value;
   const viewportMode = state.viewportMode.value;
   const showLabels = state.showLabels.value;
@@ -44,6 +45,10 @@ export default function Viewport() {
   useEffect(() => {
     scene.current.load(hideout);
   }, [hideout]);
+  // After the load effect, which builds the nodes this one places into groups.
+  useEffect(() => {
+    scene.current.showLayers(layers);
+  }, [layers]);
   useEffect(() => {
     scene.current.showBounds(hideoutType);
   }, [hideoutType]);

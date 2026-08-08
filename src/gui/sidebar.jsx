@@ -2,6 +2,7 @@
 
 import File from "./file.jsx";
 import Hideout from "./hideout.jsx";
+import Layers from "./layers.jsx";
 import Mode from "./mode.jsx";
 import Selection from "./selection.jsx";
 
@@ -13,6 +14,7 @@ export default function Sidebar() {
       <File />
       <Mode />
       <Hideout />
+      <Layers />
       <Selection />
       <Help />
       <div class="text-center">

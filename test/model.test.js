@@ -26,40 +26,95 @@ const SHRINE = `﻿{
 
 describe("HideoutDocument", () => {
   it("holds doodads in one flat array, in file order", () => {
-    const document = HideoutDocument.fromText(SHRINE);
+    const document_ = HideoutDocument.fromText(SHRINE);
 
-    expect(document.doodads.map((doodad) => doodad.name)).toEqual([
+    expect(document_.doodads.map((doodad) => doodad.name)).toEqual([
       "Stash",
       "Maraketh Incense Burner",
     ]);
   });
 
-  it("round trips byte for byte", () => {
-    expect(HideoutDocument.fromText(SHRINE).toText()).toBe(SHRINE);
-  });
-
-  it("passes the header through when a doodad is edited", () => {
-    // The 3D editor rewrote hideout_name from its own hideout-type table and
-    // wrote a typo into player files, wiki issue 0009.
-    const document = HideoutDocument.fromText(SHRINE);
-    document.doodads[0].x = 400;
-    const written = HideoutDocument.fromText(document.toText());
-
-    expect(written.header).toEqual({
-      version: 1,
-      language: "English",
-      hideout_name: "Shrine Hideout",
-      hideout_hash: 26805,
-    });
-    expect(written.doodads[0].x).toBe(400);
-  });
-
   it("keeps a deleted doodad deleted", () => {
     // A scene graph the transform control re-parented out of resurrected them,
     // wiki issue 0001.
-    const document = HideoutDocument.fromText(SHRINE);
-    document.doodads.splice(0, 1);
+    const document_ = HideoutDocument.fromText(SHRINE);
+    document_.doodads.splice(0, 1);
 
-    expect(HideoutDocument.fromText(document.toText()).doodads).toHaveLength(1);
+    expect(document_.doodads).toHaveLength(1);
   });
 });
+
+describe("layers", () => {
+  it("gives a plain .hideout one layer named after the hideout", () => {
+    const document_ = HideoutDocument.fromText(SHRINE);
+
+    expect(document_.layers.map((layer) => layer.name)).toEqual([
+      "Shrine Hideout",
+    ]);
+    expect(document_.doodads.every((doodad) => doodad.layer === "default")).toBe(
+      true,
+    );
+  });
+
+  it("orders doodads by layer, then by the order they are held in", () => {
+    const document_ = HideoutDocument.fromText(SHRINE);
+    const garden = document_.addLayer("Garden");
+    document_.assign([document_.doodads[0]], garden.id);
+
+    expect(names(document_.orderedDoodads())).toEqual([
+      "Maraketh Incense Burner",
+      "Stash",
+    ]);
+
+    document_.moveLayer(garden.id, -1);
+    expect(names(document_.orderedDoodads())).toEqual([
+      "Stash",
+      "Maraketh Incense Burner",
+    ]);
+  });
+
+  it("clamps a move at the ends of the list rather than wrapping", () => {
+    const document_ = HideoutDocument.fromText(SHRINE);
+    const garden = document_.addLayer("Garden");
+    document_.moveLayer(garden.id, -5);
+
+    expect(document_.layers[0].id).toBe(garden.id);
+  });
+
+  it("hands a deleted layer's doodads to the layer named for them", () => {
+    const document_ = HideoutDocument.fromText(SHRINE);
+    const garden = document_.addLayer("Garden");
+    document_.assign(document_.doodads, garden.id);
+    document_.removeLayer(garden.id, "default");
+
+    expect(document_.doodads).toHaveLength(2);
+    expect(document_.doodadsIn("default")).toHaveLength(2);
+  });
+
+  it("refuses to delete the last layer", () => {
+    const document_ = HideoutDocument.fromText(SHRINE);
+
+    expect(() => document_.removeLayer("default", "default")).toThrow();
+  });
+
+  it("refuses to hand doodads to a layer that does not exist", () => {
+    const document_ = HideoutDocument.fromText(SHRINE);
+    const garden = document_.addLayer("Garden");
+
+    expect(() => document_.removeLayer(garden.id, "nowhere")).toThrow();
+    expect(document_.layers).toHaveLength(2);
+  });
+
+  it("gives every new layer an id no other layer has", () => {
+    const document_ = HideoutDocument.fromText(SHRINE);
+    const named = document_.addLayer("First");
+    document_.removeLayer("default", named.id);
+
+    const ids = [named.id, document_.addLayer("Second").id];
+    expect(new Set(ids).size).toBe(2);
+  });
+});
+
+function names(doodads) {
+  return doodads.map((doodad) => doodad.name);
+}

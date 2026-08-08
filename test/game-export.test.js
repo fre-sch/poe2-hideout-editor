@@ -5,6 +5,7 @@
 
 import { describe, expect, it } from "vitest";
 import * as file from "../src/hideout/file.js";
+import * as project from "../src/hideout/project.js";
 import { HideoutDocument } from "../src/hideout/model.js";
 import * as gameExport from "./game-export.js";
 
@@ -39,7 +40,14 @@ describe.skipIf(files.length === 0)(
         });
 
         it("round trips through the document model", () => {
-          expect(HideoutDocument.fromText(text).toText()).toBe(text);
+          expect(project.bake(HideoutDocument.fromText(text))).toBe(text);
+        });
+
+        it("exports the same file after a project save and load", () => {
+          const document_ = HideoutDocument.fromText(text);
+          const saved = project.parse(project.serialize(document_));
+
+          expect(project.bake(saved)).toBe(text);
         });
       });
     }
