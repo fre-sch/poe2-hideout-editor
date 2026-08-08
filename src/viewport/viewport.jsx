@@ -59,8 +59,29 @@ export default function Viewport() {
   return (
     <div id="viewport-container">
       <div class="viewport-stage" ref={container} tabIndex={0} />
+      <Band />
       <Overlay />
     </div>
+  );
+}
+
+/**
+ * The rubber band, as an element over the canvas rather than a shape inside it.
+ * The view is turned, and a band drawn inside the stage would turn with it.
+ */
+function Band() {
+  const area = state.band.value;
+  if (area === null) return null;
+  return (
+    <div
+      class="select-band"
+      style={{
+        left: area.x,
+        top: area.y,
+        width: area.width,
+        height: area.height,
+      }}
+    />
   );
 }
 

@@ -8,6 +8,11 @@
  * 393 lines that also carried wiki issue 0004. In 2D it is
  * `intersects(one, other)`.
  *
+ * The rectangles are screen pixels. That is not an implementation detail: the
+ * view is turned -- see `stage.js` -- so an upright band and an upright node
+ * box only exist on screen, and it is on screen that they may be compared as
+ * plain overlapping rectangles.
+ *
  * Nothing here imports Konva or touches the DOM, which is what makes it
  * testable. A node is anything `boundsOf` can measure.
  */

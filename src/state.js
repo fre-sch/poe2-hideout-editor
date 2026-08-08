@@ -32,5 +32,14 @@ export const viewportMode = signal("select");
 /** The selected `Doodad` objects, for the sidebar to list. */
 export const selection = signal([]);
 
+/**
+ * The rubber band while it is down, in pixels inside the viewport, or `null`.
+ *
+ * It is a DOM element rather than a `Konva.Rect` because the view is turned --
+ * see `viewport/stage.js` -- and a band drawn inside the stage would be turned
+ * with it, arriving on screen as a diamond.
+ */
+export const band = signal(null);
+
 export const labels = signal([]);
 export const showLabels = signal(true);

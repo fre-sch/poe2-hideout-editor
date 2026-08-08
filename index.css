@@ -77,6 +77,15 @@ main {
   pointer-events: none;
 }
 
+/* Positioned inside #viewport-container, which the stage fills exactly, so the
+   band's pixels are the stage's pixels. */
+.select-band {
+  border: 1px solid #55aaff;
+  background-color: rgba(75, 160, 255, 0.3);
+  position: absolute;
+  pointer-events: none;
+}
+
 .shortcut {
   display: inline-block;
   font-weight: bold;

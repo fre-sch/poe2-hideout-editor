@@ -12,6 +12,22 @@
 
 import Konva from "konva";
 
+/**
+ * The whole view is turned so that it reads the way the game's camera shows a
+ * hideout. The game looks along a diagonal of the floor grid, so a hideout
+ * drawn straight onto its own axes arrives at 225 degrees to what a player
+ * recognises.
+ *
+ * It sits on the stage, which is the one place it can sit without meaning
+ * anything: the doodads, the outline and the grid are all under it and rotate
+ * together, so the coordinate mapping in `units.toStage` stays what it says it
+ * is and a hideout still lands on its own outline. Nothing below this line
+ * knows the view is turned -- the rubber band and the labels work in screen
+ * coordinates, and the zoom and fit maths below go through the stage's own
+ * transform rather than assuming it is a scale and an offset.
+ */
+const VIEW_ROTATION = 225;
+
 // Doodad units. The observed coordinate range is 116..867 across every sample,
 // so a fixed square covers every hideout and needs no data to be drawn.
 const GRID_EXTENT = 1000;
@@ -38,6 +54,7 @@ export class Stage extends EventTarget {
       container,
       width: container.clientWidth,
       height: container.clientHeight,
+      rotation: VIEW_ROTATION,
     });
     this.static = new Konva.Layer({ listening: false });
     this.doodads = new Konva.Layer();
@@ -70,33 +87,44 @@ export class Stage extends EventTarget {
     this.dispatchEvent(new CustomEvent("viewchanged"));
   }
 
-  /** The rectangle the stage currently shows, in doodad units. */
-  visibleRectangle() {
-    const scale = this.konva.scaleX();
-    return {
-      x: -this.konva.x() / scale,
-      y: -this.konva.y() / scale,
-      width: this.konva.width() / scale,
-      height: this.konva.height() / scale,
-    };
-  }
-
-  /** Zoom and centre so that a rectangle of doodad units fills the view. */
+  /**
+   * Zoom and centre so that a rectangle of doodad units fills the view.
+   *
+   * The rectangle is axis aligned in doodad units, and the view is turned, so
+   * what has to fit on screen is its turned extent -- wider and shorter than
+   * the rectangle itself, by the usual pair of projections.
+   */
   fit(rectangle) {
     if (!rectangle || rectangle.width <= 0 || rectangle.height <= 0) return;
 
-    const width = this.konva.width() - FIT_PADDING * 2;
-    const height = this.konva.height() - FIT_PADDING * 2;
+    const turn = (VIEW_ROTATION * Math.PI) / 180;
+    const across = Math.abs(Math.cos(turn));
+    const down = Math.abs(Math.sin(turn));
     const scale = clamp(
-      Math.min(width / rectangle.width, height / rectangle.height),
+      Math.min(
+        (this.konva.width() - FIT_PADDING * 2) /
+          (rectangle.width * across + rectangle.height * down),
+        (this.konva.height() - FIT_PADDING * 2) /
+          (rectangle.width * down + rectangle.height * across),
+      ),
       ZOOM_MIN,
       ZOOM_MAX,
     );
 
     this.konva.scale({ x: scale, y: scale });
+    this.centreOn({
+      x: rectangle.x + rectangle.width / 2,
+      y: rectangle.y + rectangle.height / 2,
+    });
+  }
+
+  /** Pans so that a point in doodad units sits in the middle of the view. */
+  centreOn(point) {
+    this.konva.position({ x: 0, y: 0 });
+    const landed = this.konva.getAbsoluteTransform().point(point);
     this.konva.position({
-      x: this.konva.width() / 2 - (rectangle.x + rectangle.width / 2) * scale,
-      y: this.konva.height() / 2 - (rectangle.y + rectangle.height / 2) * scale,
+      x: this.konva.width() / 2 - landed.x,
+      y: this.konva.height() / 2 - landed.y,
     });
     this.viewChanged();
   }
@@ -106,22 +134,23 @@ export class Stage extends EventTarget {
     const pointer = this.konva.getPointerPosition();
     if (!pointer) return;
 
-    const scale = this.konva.scaleX();
+    // The point under the pointer is the one that must not move. Where it ends
+    // up is asked of the stage rather than worked out, so the rotation costs
+    // nothing here.
+    const anchor = this.konva.getRelativePointerPosition();
     const zoomed = clamp(
-      event.evt.deltaY < 0 ? scale * ZOOM_STEP : scale / ZOOM_STEP,
+      event.evt.deltaY < 0
+        ? this.konva.scaleX() * ZOOM_STEP
+        : this.konva.scaleX() / ZOOM_STEP,
       ZOOM_MIN,
       ZOOM_MAX,
     );
-    // The point under the pointer is the one that must not move.
-    const anchor = {
-      x: (pointer.x - this.konva.x()) / scale,
-      y: (pointer.y - this.konva.y()) / scale,
-    };
 
     this.konva.scale({ x: zoomed, y: zoomed });
+    const landed = this.konva.getAbsoluteTransform().point(anchor);
     this.konva.position({
-      x: pointer.x - anchor.x * zoomed,
-      y: pointer.y - anchor.y * zoomed,
+      x: this.konva.x() + pointer.x - landed.x,
+      y: this.konva.y() + pointer.y - landed.y,
     });
     this.viewChanged();
   };

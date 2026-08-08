@@ -8,8 +8,6 @@
  * and hands it what the signals say.
  */
 
-import Konva from "konva";
-
 import * as state from "../state.js";
 import * as bounds from "./bounds.js";
 import * as doodads from "./doodads.js";
@@ -18,8 +16,6 @@ import * as transform from "./transform.js";
 import { Labels } from "./labels.js";
 import { Stage } from "./stage.js";
 
-const BAND_FILL = "rgba(75, 160, 255, 0.3)";
-const BAND_STROKE = "#55AAFF";
 const SELECT_BUTTON = 0;
 
 export class Scene {
@@ -31,21 +27,11 @@ export class Scene {
     this.outlineRequest = 0;
     this.mode = transform.SELECT;
 
-    this.band = new Konva.Rect({
-      fill: BAND_FILL,
-      stroke: BAND_STROKE,
-      strokeWidth: 1,
-      strokeScaleEnabled: false,
-      visible: false,
-      listening: false,
-    });
-    this.stage.overlay.add(this.band);
-
-    // The band and the nodes are both measured in the stage's own coordinates,
-    // which is what makes the hit test a plain rectangle overlap at any zoom.
-    this.selection = new select.Selection((node) =>
-      node.getClientRect({ relativeTo: this.stage.konva }),
-    );
+    // Selecting happens in screen pixels: the band is a screen gesture, and
+    // `getClientRect` measures a node where the player sees it, however the
+    // view is zoomed or turned. A turned doodad therefore answers with the
+    // upright box around it, which is the generous side to err on.
+    this.selection = new select.Selection((node) => node.getClientRect());
     this.selection.addEventListener("changed", this.onSelectionChanged);
 
     this.transform = new transform.Transform(this.stage.overlay);
@@ -62,6 +48,7 @@ export class Scene {
 
   destroy() {
     this.endBand();
+    state.band.value = null;
     this.container.removeEventListener("keydown", this.onKeyDown);
     this.labels.destroy();
     this.stage.destroy();
@@ -123,12 +110,9 @@ export class Scene {
     // Keyboard shortcuts are bound to the container, not to the window, so the
     // container has to take focus for them to arrive -- wiki issue 0010.
     this.container.focus();
-    this.bandOrigin = this.stage.konva.getRelativePointerPosition();
+    this.bandOrigin = this.stage.konva.getPointerPosition();
     this.selection.begin(event.evt);
-    this.band.setAttrs({
-      ...select.rectangle(this.bandOrigin, this.bandOrigin),
-    });
-    this.band.visible(true);
+    state.band.value = select.rectangle(this.bandOrigin, this.bandOrigin);
 
     // On the window, so that a drag leaving the canvas still tracks and, above
     // all, still ends.
@@ -138,22 +122,26 @@ export class Scene {
 
   onBandMove = (event) => {
     const area = this.bandArea(event);
-    this.band.setAttrs(area);
+    state.band.value = area;
     this.selection.drag(area, this.nodes);
   };
 
   onBandEnd = (event) => {
     this.selection.drag(this.bandArea(event), this.nodes);
     this.selection.end();
-    this.band.visible(false);
+    state.band.value = null;
     this.endBand();
   };
 
+  /**
+   * The band in viewport pixels. `setPointersPositions` is what lets a drag
+   * that has left the canvas keep reporting where it is.
+   */
   bandArea(event) {
     this.stage.konva.setPointersPositions(event);
     return select.rectangle(
       this.bandOrigin,
-      this.stage.konva.getRelativePointerPosition(),
+      this.stage.konva.getPointerPosition(),
     );
   }
 
