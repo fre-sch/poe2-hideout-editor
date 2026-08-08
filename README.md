@@ -12,9 +12,8 @@ Very much only a *scratch-your-own-itch*-project at this time.
     npm test         # vitest
     npm run format   # prettier over src/
 
-Being rewritten from a three.js application to a Preact application on a 2D
-canvas. The application under `src/` is a shell for now; the previous version
-is still in `hideoutEditor/` and is still what the deployed page serves.
+A Preact application on a 2D canvas, rewritten from an earlier 3D one. The
+application under `src/` is the whole of it; the 3D predecessor is gone.
 
 ## Wishful thinking
 

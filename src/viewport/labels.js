@@ -1,7 +1,7 @@
 /**
  * Doodad names, as DOM elements over the canvas.
  *
- * The projection is the three.js editor's, minus the camera: a node's absolute
+ * The projection is the 3D editor's, minus the camera: a node's absolute
  * position already is a pixel offset into the stage, so there is no normalized
  * device coordinate step left to do.
  *

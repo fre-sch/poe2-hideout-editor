@@ -5,7 +5,7 @@
  *
  * Reading a signal in the component body subscribes the component to it, so the
  * effects below run exactly when their value changes. That is the whole bridge
- * between state and canvas -- the three.js viewport needed a standing
+ * between state and canvas -- the 3D viewport needed a standing
  * `effect()` in `index.html` and a `saveHideoutFile` `CustomEvent` hop besides.
  *
  * The container is focusable because the shortcuts are bound to it and not to

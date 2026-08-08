@@ -7,8 +7,8 @@
  * untranslated, and a hideout that lands on its own outline is the proof that
  * the coordinate mapping is right.
  *
- * The three.js editor took the same files through `SVGLoader`, `ShapeGeometry`,
- * `EdgesGeometry` and `LineSegments` and then rotated the result onto the XZ
+ * The 3D editor took the same files through an SVG loader, a shape geometry, an
+ * edge geometry and line segments, and then rotated the result onto the XZ
  * plane, to draw an outline that started life as a 2D path. `Konva.Path` eats
  * the path data directly.
  */

@@ -1,7 +1,7 @@
 /**
  * The Konva stage, its three layers, and the view controls.
  *
- * Replaces `MapControls`. The three.js editor remapped the mouse buttons so
+ * Replaces the 3D editor's map controls, which remapped the mouse buttons so
  * that the left one was free for box selection; the same shape holds here --
  * left drags a selection, middle pans, right turns the view, and the wheel
  * zooms about the pointer.
@@ -250,7 +250,7 @@ export class Stage extends EventTarget {
    * Turning is driven sideways, about the point the drag started on, so that
    * the doodad a player is looking at stays where they are looking.
    *
-   * The three.js editor had this on the same button, where it orbited a camera.
+   * The 3D editor had this on the same button, where it orbited a camera.
    * There is no camera, and there is only one axis left to turn about, so what
    * survives is the gesture rather than the mechanism -- and it earns its place:
    * an upright rubber band cannot pick out a row of doodads that runs diagonally
