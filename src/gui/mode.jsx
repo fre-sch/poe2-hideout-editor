@@ -18,23 +18,27 @@ export default function Mode() {
   return (
     <details class="sidebar-item" open>
       <summary>Edit mode</summary>
-      <div class="btn-group">
-        {MODES.map((entry) => (
-          <button
-            type="button"
-            class={`btn btn-primary ${active(entry.mode)}`}
-            title={`${entry.title} (${entry.key})`}
-            onClick={() => {
-              state.viewportMode.value = entry.mode;
-            }}
-          >
-            <i class={`bi ${entry.icon}`}></i>
-          </button>
-        ))}
-      </div>
-      <div class="mt-2">
-        <Flag id="show-labels" flag={state.showLabels} label="Show labels" />
-        <Flag id="show-grid" flag={state.showGrid} label="Show grid" />
+      {/* Side by side: three icon buttons and two short labels fit the
+          sidebar's width, and the height belongs to the layer list. */}
+      <div class="d-flex gap-2 align-items-start">
+        <div class="btn-group">
+          {MODES.map((entry) => (
+            <button
+              type="button"
+              class={`btn btn-primary ${active(entry.mode)}`}
+              title={`${entry.title} (${entry.key})`}
+              onClick={() => {
+                state.viewportMode.value = entry.mode;
+              }}
+            >
+              <i class={`bi ${entry.icon}`}></i>
+            </button>
+          ))}
+        </div>
+        <div>
+          <Flag id="show-labels" flag={state.showLabels} label="Show labels" />
+          <Flag id="show-grid" flag={state.showGrid} label="Show grid" />
+        </div>
       </div>
     </details>
   );
