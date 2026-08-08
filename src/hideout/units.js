@@ -11,8 +11,17 @@
 // wiki/specifications/hideout-file-format.md.
 export const TURN = 65536;
 
+/**
+ * The game counts `r` the other way round from the stage, so the sign is part
+ * of the conversion. See "Which way a turn goes" below for how that was
+ * measured; both directions carry it, which is what keeps the round trip exact.
+ */
+const SENSE = -1;
+
 export function toDegrees(rotation) {
-  return (rotation * 360) / TURN;
+  // The `+ 0` is not idle: negating zero gives -0, which equals zero under
+  // every comparison but `Object.is` and prints as "-0" wherever it surfaces.
+  return (SENSE * rotation * 360) / TURN + 0;
 }
 
 /**
@@ -24,7 +33,7 @@ export function toDegrees(rotation) {
  * wrapping into it.
  */
 export function fromDegrees(degrees) {
-  const rotation = Math.round((degrees * TURN) / 360);
+  const rotation = Math.round((SENSE * degrees * TURN) / 360);
   return ((rotation % TURN) + TURN) % TURN;
 }
 
@@ -43,9 +52,29 @@ export function fromDegrees(degrees) {
  * half turn again on the bounds group -- because it was orienting a camera.
  * There is no camera here.
  *
- * The swap is a reflection, so it reverses the sense of a rotation on screen.
- * Whether `toDegrees` therefore needs negating is a question about what the
- * player sees, and it is settled against the game in wiki issue 0018.
+ * ### Which way a turn goes
+ *
+ * Two things decide this, and only one of them can be reasoned about.
+ *
+ * The swap on its own is a reflection -- the matrix taking `(x, y)` to `(y, x)`
+ * has determinant -1 -- and a reflection reverses the sense of a rotation. But
+ * the stage is not the plane the swap lands in: canvas y points *down*, which
+ * is a second reflection. Writing the screen frame as (right, up), a doodad at
+ * `(x, y)` draws at `(y, -x)`, whose determinant is +1. The two cancel, so the
+ * swap contributes no sign.
+ *
+ * What no file can say is the game's own convention -- whether `r` counts
+ * clockwise or anticlockwise seen from above. That is one bit, and it is worth
+ * one minus sign. It was measured the only way it can be: turn doodads in the
+ * game, export, and compare against the editor. They came back mirrored, so
+ * `SENSE` is -1.
+ *
+ * The measurement took two passes, and the first one is the instructive part.
+ * A single doodad compared at a single angle showed a quarter-turn offset and
+ * nothing else, because at that angle a reversed sense and an offset look
+ * exactly alike. Only doodads at other angles separate them. An offset does
+ * remain, but it belongs to the drawing rather than to these units, and it is
+ * `GIZMO_ROTATION` in `src/viewport/doodads.js`.
  */
 export function toStage({ x, y }) {
   return { x: y, y: x };

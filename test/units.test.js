@@ -2,11 +2,13 @@ import { describe, expect, it } from "vitest";
 import * as units from "../src/hideout/units.js";
 
 describe("rotation", () => {
+  // Negative because the game counts `r` the other way round from the stage,
+  // which was measured against the game rather than derived -- see units.js.
   const quarters = [
     [0, 0],
-    [16384, 90],
-    [32768, 180],
-    [49152, 270],
+    [16384, -90],
+    [32768, -180],
+    [49152, -270],
   ];
 
   for (const [rotation, degrees] of quarters) {
@@ -22,12 +24,12 @@ describe("rotation", () => {
 
   it("wraps a full turn back to zero rather than out of range", () => {
     expect(units.fromDegrees(360)).toBe(0);
+    expect(units.fromDegrees(-360)).toBe(0);
   });
 
-  it("wraps a negative angle into range", () => {
-    expect(units.fromDegrees(-90)).toBe(49152);
-    expect(units.fromDegrees(-360)).toBe(0);
-    expect(units.fromDegrees(-450)).toBe(49152);
+  it("wraps an angle past a full turn into range", () => {
+    expect(units.fromDegrees(90)).toBe(49152);
+    expect(units.fromDegrees(450)).toBe(49152);
   });
 
   it("round trips every value in the file's range", () => {
