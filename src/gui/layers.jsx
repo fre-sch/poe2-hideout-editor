@@ -26,8 +26,9 @@ export default function Layers() {
     <details class="sidebar-item sidebar-item-grow" open>
       <summary>Layers</summary>
       <p class="text-secondary mb-1">
-        Exported in this order, first at the top. Hiding and locking stay in the
-        editor; everything exports.
+        Exported in this order, first at the top. A hidden layer is left out of
+        the export; a locked one exports like any other. The project file keeps
+        them all.
       </p>
       <ul class="list-unstyled mb-2 layer-list">
         {layers.map((layer, index) => (

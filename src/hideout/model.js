@@ -49,10 +49,10 @@ export class Doodad {
 /**
  * A user layer: a name to organise by, and two flags the viewport obeys.
  *
- * Neither flag reaches the export. `visible` hides doodads from the player,
- * `locked` protects them from the player's own mouse, and a player who loses
- * doodads to a checkbox they forgot about loses more than one who exports too
- * many.
+ * `visible` reaches the export: a hidden layer is left out of the `.hideout`,
+ * which is how a player tries a layout two ways without deleting half of it.
+ * `locked` reaches nothing but the mouse. Neither reaches the project file,
+ * which keeps every layer whatever its flags say.
  */
 export class Layer {
   constructor({ id, name, visible = true, locked = false }) {
@@ -116,6 +116,19 @@ export class HideoutDocument {
    */
   orderedDoodads() {
     return this.layers.flatMap((layer) => this.doodadsIn(layer.id));
+  }
+
+  /**
+   * The doodads an export writes: the same walk, over the visible layers only.
+   *
+   * Hiding is how a player tries a layout two ways, so it reaches the export
+   * and `locked` does not -- see wiki issue 0026. The document keeps the hidden
+   * layers and so does the project file; one export leaves them out.
+   */
+  exportedDoodads() {
+    return this.layers
+      .filter((layer) => layer.visible)
+      .flatMap((layer) => this.doodadsIn(layer.id));
   }
 
   /** A new empty layer, on top of the list, with an id no other layer has. */

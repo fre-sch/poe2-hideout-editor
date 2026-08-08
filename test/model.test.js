@@ -73,6 +73,22 @@ describe("layers", () => {
     ]);
   });
 
+  it("leaves hidden layers out of the export order, and keeps them elsewhere", () => {
+    const document_ = HideoutDocument.fromText(SHRINE);
+    const garden = document_.addLayer("Garden");
+    document_.assign([document_.doodads[0]], garden.id);
+    garden.visible = false;
+    garden.locked = true;
+
+    expect(names(document_.exportedDoodads())).toEqual([
+      "Maraketh Incense Burner",
+    ]);
+    expect(names(document_.orderedDoodads())).toHaveLength(2);
+
+    garden.visible = true;
+    expect(names(document_.exportedDoodads())).toHaveLength(2);
+  });
+
   it("clamps a move at the ends of the list rather than wrapping", () => {
     const document_ = HideoutDocument.fromText(SHRINE);
     const garden = document_.addLayer("Garden");
