@@ -154,6 +154,10 @@ export class Scene {
     this.labels.setEnabled(enabled);
   }
 
+  showGrid(enabled) {
+    this.stage.showGrid(enabled);
+  }
+
   // -- rubber band ----------------------------------------------------------
 
   /**

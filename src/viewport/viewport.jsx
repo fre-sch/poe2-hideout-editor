@@ -26,6 +26,7 @@ export default function Viewport() {
   const hideoutType = state.hideoutType.value;
   const viewportMode = state.viewportMode.value;
   const showLabels = state.showLabels.value;
+  const showGrid = state.showGrid.value;
   const selectionRequest = state.selectionRequest.value;
 
   useEffect(() => {
@@ -59,6 +60,9 @@ export default function Viewport() {
   useEffect(() => {
     scene.current.showLabels(showLabels);
   }, [showLabels]);
+  useEffect(() => {
+    scene.current.showGrid(showGrid);
+  }, [showGrid]);
   // Each request is a fresh array, so asking twice for the same doodads runs
   // twice -- which is what a player pressing the button twice means.
   useEffect(() => {

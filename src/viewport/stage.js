@@ -73,7 +73,9 @@ export class Stage extends EventTarget {
     // Not cached, though the decision page allows for it: a Konva cache is a
     // bitmap taken at the current scale, so zooming in would blur the grid. Two
     // hundred lines with `strokeScaleEnabled` off cost less than that trade.
-    this.static.add(grid());
+    // Kept as a field so it can be hidden; built once either way.
+    this.grid = grid();
+    this.static.add(this.grid);
 
     this.konva.on("wheel", this.onWheel);
     container.addEventListener("mousedown", this.onViewDragStart);
@@ -92,6 +94,10 @@ export class Stage extends EventTarget {
   resize(width, height) {
     this.konva.size({ width, height });
     this.viewChanged();
+  }
+
+  showGrid(enabled) {
+    this.grid.visible(enabled);
   }
 
   viewChanged() {
