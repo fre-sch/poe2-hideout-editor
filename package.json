@@ -1,0 +1,27 @@
+{
+  "name": "poe2-hideout-editor",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Edit Path of Exile 2 .hideout files visually in the browser.",
+  "license": "CC0-1.0",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest run --passWithNoTests",
+    "format": "prettier --write src"
+  },
+  "dependencies": {
+    "@preact/signals": "^2.11.0",
+    "bootstrap": "^5.3.8",
+    "bootstrap-icons": "^1.13.1",
+    "konva": "^10.3.0",
+    "preact": "^10.29.8"
+  },
+  "devDependencies": {
+    "prettier": "^3.9.6",
+    "vite": "^7.3.6",
+    "vitest": "^3.2.7"
+  }
+}

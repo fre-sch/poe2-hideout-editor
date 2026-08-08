@@ -4,106 +4,10 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Hideout Editor</title>
-    <link rel="stylesheet" href="index.css">
+    <link rel="stylesheet" href="/index.css" />
   </head>
   <body data-bs-theme="dark">
-    <main>
-      <div id="sidebar"></div>
-      <div id="viewport-container">
-        <canvas id="viewport"></canvas>
-        <div id="label-overlay"></div>
-      </div>
-    </main>
-
-    <script type="importmap">
-      {
-        "imports": {
-          "preact": "https://esm.sh/preact@10.23.1",
-					"htm/preact": "https://esm.sh/htm@3.1.1/preact?external=preact",
-          "preact/": "https://esm.sh/preact@10.23.1/",
-			    "@preact/signals": "https://esm.sh/@preact/signals@1.3.0?external=preact",
-
-          "three": "https://cdn.jsdelivr.net/npm/three@0.182.0/build/three.module.js",
-          "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.182.0/examples/jsm/",
-          "hideoutEditor/": "./hideoutEditor/"
-        }
-      }
-    </script>
-
-    <script type="module">
-      import * as THREE from "three"
-
-      import { STLLoader } from 'three/addons/loaders/STLLoader.js'
-      import * as constants from "hideoutEditor/constants.module.js"
-      import * as util from "hideoutEditor/util.module.js"
-      import { Hideout } from "hideoutEditor/hideout.module.js"
-      import { Viewport } from "hideoutEditor/viewport.module.js"
-      import Sidebar from "hideoutEditor/gui/sidebar.module.js"
-      import LabelOverlay from "hideoutEditor/gui/labelOverlay.module.js"
-      import { hideoutFile, hideoutType, viewportMode } from "hideoutEditor/gui/state.module.js"
-      import { effect } from "@preact/signals"
-      import { serializeHideout } from "hideoutEditor/file.module.js"
-      import { loadBounds, showBounds } from "hideoutEditor/bounds.module.js"
-
-      window.onload = async () => {
-        const scene = new THREE.Scene()
-        scene.name = "MainScene"
-        scene.background = new THREE.Color(constants.SCENE_BACKGROUND_COLOR)
-        const hideout = new Hideout()
-        hideout.attach(scene)
-        const viewport = new Viewport(
-          document.getElementById("viewport-container"),
-          document.getElementById("viewport"),
-          scene)
-        const stlLoader = new STLLoader()
-        stlLoader.load("obj/obj.stl", (geometry) => {
-          hideout.setGeometry(geometry)
-        })
-        loadBounds(scene)
-        Sidebar(
-          document.getElementById("sidebar")
-        )
-        LabelOverlay(
-          document.getElementById("label-overlay")
-        )
-        viewport.render()
-
-        // handle file uploaded
-        effect(() => {
-          if (hideoutFile.value === null) {
-            return
-          }
-          const hideoutData = hideoutFile.value.data
-          const position = hideout.load(hideoutData)
-          viewport.setCameraTarget(position)
-          viewport.gridHelper.position.copy(position)
-          viewport.render()
-        })
-
-        // handle viewport mode change
-        effect(() => {
-          viewport.setMode(viewportMode.value)
-        })
-
-        // handle hideout type change
-        effect(() => {
-          if (hideoutType.value === null) return
-          showBounds(hideoutType.value)
-          viewport.render()
-        })
-
-        window.addEventListener("saveHideoutFile", (event) => {
-          viewport.setMode("select")
-          const data = util.getHideoutData(hideout, hideoutFile.value)
-          const text = serializeHideout(data)
-          const blob = new Blob([text], {type: "text/plain"})
-          const url = URL.createObjectURL(blob)
-          const a = document.createElement("a")
-          a.setAttribute("href", url)
-          a.setAttribute("download", hideoutFile.value.name)
-          a.click()
-        })
-      }
-    </script>
+    <main></main>
+    <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
