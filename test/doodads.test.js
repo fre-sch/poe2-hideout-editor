@@ -10,9 +10,9 @@ import { describe, expect, it } from "vitest";
 
 import { Doodad } from "../src/hideout/model.js";
 import * as doodads from "../src/viewport/doodads.js";
-import { TURN } from "../src/hideout/units.js";
+import * as units from "../src/hideout/units.js";
 
-const QUARTER_TURN = TURN / 4;
+const QUARTER_TURN = units.TURN / 4;
 
 function doodad(fields) {
   return new Doodad("Stash", { hash: 3230065491, r: 0, fv: 0, ...fields });
@@ -25,14 +25,18 @@ describe("create", () => {
   });
 
   /**
-   * Relative, because the drawing decides where a doodad at `r = 0` points and
-   * `GIZMO_ROTATION` decides how far that is from the game. Neither is a fact
-   * about the conversion, and both are free to change.
+   * Relative, and against the units rather than a number: the drawing decides
+   * where a doodad at `r = 0` points and `GIZMO_ROTATION` decides how far that
+   * is from the game, so neither belongs in an assertion about turning. Which
+   * way a turn goes is `units.js`'s fact, and this asks it.
    */
   it("turns the node as far as the doodad turned", () => {
     const straight = doodads.create(doodad({ x: 0, y: 0, r: 0 }));
     const turned = doodads.create(doodad({ x: 0, y: 0, r: QUARTER_TURN }));
-    expect(turned.rotation() - straight.rotation()).toBe(90);
+
+    expect(turned.rotation() - straight.rotation()).toBe(
+      units.toDegrees(QUARTER_TURN),
+    );
   });
 
   // The gizmo is drawn in its own units on its own page, so this is what says
@@ -80,8 +84,11 @@ describe("apply", () => {
   });
 
   /**
-   * The acceptance criterion from wiki issue 0018: a quarter turn is exactly
-   * `r + 16384`, and turning back lands on exactly the original.
+   * The acceptance criterion from wiki issue 0018: a quarter turn on screen is
+   * exactly a quarter turn in the file, and turning back lands on exactly the
+   * original. The criterion was written as `r + 16384`; it is `r - 16384`,
+   * because the game counts `r` the other way round -- the size of the step is
+   * what it was about.
    */
   it("round trips a quarter turn exactly", () => {
     const turned = doodad({ x: 0, y: 0, r: 58301 });
@@ -89,7 +96,7 @@ describe("apply", () => {
 
     node.rotation(node.rotation() + 90);
     doodads.apply(node);
-    expect(turned.r).toBe((58301 + QUARTER_TURN) % TURN);
+    expect(turned.r).toBe(58301 - QUARTER_TURN);
 
     node.rotation(node.rotation() - 90);
     doodads.apply(node);
