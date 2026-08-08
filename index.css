@@ -1,5 +1,7 @@
-@import "bootstrap/dist/css/bootstrap.min.css";
-@import "bootstrap-icons/font/bootstrap-icons.min.css";
+/* CSS only, from the CDN. Bundling bootstrap costs a build for a stylesheet
+   that never changes, and pulls its webfonts through the asset pipeline. */
+@import url("https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css");
+@import url("https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css");
 
 :root {
   --bs-body-font-size: 0.8rem;

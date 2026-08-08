@@ -14,8 +14,6 @@
   },
   "dependencies": {
     "@preact/signals": "^2.11.0",
-    "bootstrap": "^5.3.8",
-    "bootstrap-icons": "^1.13.1",
     "konva": "^10.3.0",
     "preact": "^10.29.8"
   },
