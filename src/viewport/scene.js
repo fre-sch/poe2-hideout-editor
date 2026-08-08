@@ -11,6 +11,7 @@
 import * as state from "../state.js";
 import * as bounds from "./bounds.js";
 import * as doodads from "./doodads.js";
+import * as groups from "./groups.js";
 import * as select from "./select.js";
 import * as transform from "./transform.js";
 import { Labels } from "./labels.js";
@@ -23,6 +24,8 @@ export class Scene {
     this.container = container;
     this.stage = new Stage(container);
     this.nodes = [];
+    this.groups = new Map();
+    this.layers = [];
     this.outline = null;
     this.outlineRequest = 0;
     this.mode = transform.SELECT;
@@ -67,11 +70,50 @@ export class Scene {
     for (const node of this.nodes) {
       node.destroy();
     }
+    for (const group of this.groups.values()) {
+      group.destroy();
+    }
+    this.groups = new Map();
 
     this.nodes = (hideout?.doodads ?? []).map(doodads.create);
-    if (this.nodes.length > 0) this.stage.doodads.add(...this.nodes);
+    this.showLayers(hideout?.layers ?? []);
     this.stage.fit(doodads.boundingRectangle(this.nodes));
+  }
+
+  /**
+   * Draws the layers as they now stand: their groups, their flags, their order,
+   * and which group each node belongs in.
+   *
+   * One method for all of it because a layer edit can be several of those at
+   * once -- deleting a layer moves its doodads and drops a group -- and because
+   * the sidebar publishes one signal for every kind of change.
+   */
+  showLayers(layers) {
+    this.layers = layers;
+    this.groups = groups.sync(
+      this.stage.doodads,
+      this.groups,
+      layers,
+      this.nodes,
+    );
+    this.selection.discard(this.unselectableNodes());
     this.refreshLabels();
+  }
+
+  layerOf(node) {
+    return this.layers.find((layer) => layer.id === node.doodad.layer);
+  }
+
+  selectableNodes() {
+    return this.nodes.filter((node) => groups.selectable(this.layerOf(node)));
+  }
+
+  unselectableNodes() {
+    return this.nodes.filter((node) => !groups.selectable(this.layerOf(node)));
+  }
+
+  visibleNodes() {
+    return this.nodes.filter((node) => this.layerOf(node)?.visible);
   }
 
   /**
@@ -112,6 +154,9 @@ export class Scene {
     // container has to take focus for them to arrive -- wiki issue 0010.
     this.container.focus();
     this.bandOrigin = this.stage.konva.getPointerPosition();
+    // Settled once for the gesture: a layer cannot be locked or hidden while
+    // the button is down, and a hideout runs to hundreds of nodes per move.
+    this.candidates = this.selectableNodes();
     this.selection.begin(event.evt);
     state.band.value = select.rectangle(this.bandOrigin, this.bandOrigin);
 
@@ -124,11 +169,11 @@ export class Scene {
   onBandMove = (event) => {
     const area = this.bandArea(event);
     state.band.value = area;
-    this.selection.drag(area, this.nodes);
+    this.selection.drag(area, this.candidates);
   };
 
   onBandEnd = (event) => {
-    this.selection.drag(this.bandArea(event), this.nodes);
+    this.selection.drag(this.bandArea(event), this.candidates);
     this.selection.end();
     state.band.value = null;
     this.endBand();
@@ -218,6 +263,6 @@ export class Scene {
   }
 
   refreshLabels = () => {
-    this.labels.refresh(this.nodes, this.stage.konva);
+    this.labels.refresh(this.visibleNodes(), this.stage.konva);
   };
 }

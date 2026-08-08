@@ -1,5 +1,15 @@
 /**
- * Loading and saving a `.hideout` file.
+ * Loading a file, and the two ways of saving one.
+ *
+ * The two are the cost of having a format of the editor's own: a project keeps
+ * layers and, later, generators, and a `.hideout` is what the game reads and
+ * can carry neither. Which file to hand the game is the one thing a player must
+ * not get wrong, so the two buttons are not a pair of equals -- they are
+ * labelled by what they are for, they sit apart, and each says what it writes.
+ *
+ * Loading takes both, told apart by their content rather than their name. One
+ * button, because a player who has picked the file has already said which one
+ * it is.
  *
  * Saving serializes the document, so it neither forces a mode change nor goes
  * through a `CustomEvent` to reach the viewport -- the two halves of wiki issue
@@ -7,24 +17,44 @@
  */
 
 import * as state from "../state.js";
+import * as project from "../hideout/project.js";
 import { HideoutDocument } from "../hideout/model.js";
 
 export default function File() {
+  const loaded = state.hideoutDocument.value !== null;
   return (
     <details class="sidebar-item" open>
       <summary>File</summary>
-      <label class="btn btn-primary btn-sm me-2" role="button">
+      <label class="btn btn-primary btn-sm" role="button">
         Load
-        <input type="file" accept=".hideout" hidden onChange={load} />
+        <input type="file" accept=".hideout,.json" hidden onChange={load} />
       </label>
-      <button
-        type="button"
-        class="btn btn-primary btn-sm"
-        disabled={state.hideoutDocument.value === null}
-        onClick={save}
-      >
-        Save
-      </button>
+      <p class="text-secondary mt-1 mb-2">A `.hideout` or a saved project.</p>
+
+      <div class="d-grid gap-1">
+        <button
+          type="button"
+          class="btn btn-secondary btn-sm"
+          disabled={!loaded}
+          onClick={saveProject}
+        >
+          <i class="bi bi-hdd"></i> Save project
+        </button>
+        <p class="text-secondary mb-2">
+          Your work, layers and all. The game cannot read it.
+        </p>
+        <button
+          type="button"
+          class="btn btn-success btn-sm"
+          disabled={!loaded}
+          onClick={exportHideout}
+        >
+          <i class="bi bi-box-arrow-down"></i> Export .hideout
+        </button>
+        <p class="text-secondary mb-0">
+          The file for the game. Layers are baked away.
+        </p>
+      </div>
       <LoadError />
     </details>
   );
@@ -50,8 +80,14 @@ async function load(event) {
   if (!file) return;
 
   try {
-    const hideout = HideoutDocument.fromText(await file.text());
+    const text = await file.text();
+    const hideout = project.looksLikeProject(text)
+      ? project.parse(text)
+      : HideoutDocument.fromText(text);
+
     state.hideoutDocument.value = hideout;
+    state.layers.value = [...hideout.layers];
+    state.activeLayer.value = hideout.layers[0].id;
     state.fileName.value = file.name;
     state.hideoutType.value = hideout.header.hideout_hash;
     state.doodadCount.value = hideout.doodads.length;
@@ -61,14 +97,51 @@ async function load(event) {
   }
 }
 
-function save() {
-  const hideout = state.hideoutDocument.value;
-  const blob = new Blob([hideout.toText()], { type: "application/json" });
+function saveProject() {
+  const document_ = state.hideoutDocument.value;
+  download(project.serialize(document_), `${baseName()}.project.json`);
+}
+
+/**
+ * The limit is checked here because here is the last moment it can be. The game
+ * truncates an oversized import silently, in file order, so a player who is not
+ * told now finds out by missing doodads later.
+ *
+ * It warns rather than refuses: the count is the editor's best reading of a
+ * rule measured in game, and a player who knows better must still be able to
+ * write the file.
+ */
+function exportHideout() {
+  const document_ = state.hideoutDocument.value;
+  const counted = project.count(document_);
+  if (counted.exceeded && !confirm(limitWarning(counted))) return;
+
+  download(project.bake(document_), `${baseName()}.hideout`);
+}
+
+function limitWarning(counted) {
+  return (
+    `This exports ${counted.placed} placed doodads, over the game's limit ` +
+    `of ${counted.limit}. (${counted.essential} more are placed by the game ` +
+    `itself and do not count.)\n\n` +
+    `The game will import the first ${counted.limit} in file order and ` +
+    `discard the rest without saying so.\n\nExport anyway?`
+  );
+}
+
+/** The loaded file's name, with whichever extension it arrived under taken off. */
+function baseName() {
+  const name = state.fileName.value || "hideout";
+  return name.replace(/(\.project)?\.(hideout|json)$/i, "");
+}
+
+function download(text, name) {
+  const blob = new Blob([text], { type: "application/json" });
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
 
   anchor.href = url;
-  anchor.download = state.fileName.value || "export.hideout";
+  anchor.download = name;
   anchor.click();
   URL.revokeObjectURL(url);
 }

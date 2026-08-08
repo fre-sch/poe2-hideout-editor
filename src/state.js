@@ -26,6 +26,24 @@ export const hideoutType = signal(null);
 
 export const doodadCount = signal(0);
 
+/**
+ * The document's layers, republished for whoever draws them.
+ *
+ * `doodadCount`'s reasoning, applied to a list: the layers live in the
+ * document, editing them mutates that document in place, and nothing can
+ * subscribe to a mutation. Every layer edit therefore goes through
+ * `layersChanged`, which is also the one place the array is copied -- signals
+ * compare by reference, so a mutated layer needs a new array to be noticed.
+ */
+export const layers = signal([]);
+
+/** Which layer a new doodad, or a moved selection, lands in. */
+export const activeLayer = signal(null);
+
+export function layersChanged() {
+  layers.value = [...hideoutDocument.value.layers];
+}
+
 /** `"select"`, `"translate"` or `"rotate"` -- see `viewport/transform.js`. */
 export const viewportMode = signal("select");
 

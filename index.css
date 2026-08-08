@@ -87,6 +87,22 @@ main {
   text-transform: uppercase;
 }
 
+/* One row per layer: the name takes what the controls leave, so a long layer
+   name shortens rather than pushing the buttons off the sidebar. */
+.layer-row {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-bottom: 0.15rem;
+}
+.layer-row input[type="text"] {
+  min-width: 3rem;
+}
+.layer-count {
+  min-width: 2.2rem;
+  text-align: right;
+}
+
 .grid-2 {
   display: grid;
   grid-template: auto / min-content auto;
