@@ -48,6 +48,11 @@ function Help() {
           Drag <span class="shortcut">middle mouse button</span> to pan.
         </li>
         <li>
+          Drag <span class="shortcut">right mouse button</span> to turn the
+          view. Turn it to line the selection box up with a row of doodads that
+          runs diagonally.
+        </li>
+        <li>
           <span class="shortcut">Mouse wheel</span> zooms about the pointer.
         </li>
         <li>
@@ -59,7 +64,9 @@ function Help() {
           rotate.
         </li>
         <li>
-          <span class="shortcut">f</span> frames the selection.
+          <span class="shortcut">f</span> frames the selection,{" "}
+          <span class="shortcut">g</span> turns the view back to the game's
+          perspective.
         </li>
       </ul>
     </details>

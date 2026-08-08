@@ -3,7 +3,8 @@
  *
  * Replaces `MapControls`. The three.js editor remapped the mouse buttons so
  * that the left one was free for box selection; the same shape holds here --
- * left drags a selection, middle pans, the wheel zooms about the pointer.
+ * left drags a selection, middle pans, right turns the view, and the wheel
+ * zooms about the pointer.
  *
  * There are exactly three layers because each one is a real `<canvas>`, see
  * wiki/decisions/2d-rendering-with-konva.md. User layers, when they arrive,
@@ -25,6 +26,10 @@ import Konva from "konva";
  * knows the view is turned -- the rubber band and the labels work in screen
  * coordinates, and the zoom and fit maths below go through the stage's own
  * transform rather than assuming it is a scale and an offset.
+ *
+ * This is where the view starts and what `alignToGame` returns it to, not a
+ * constant: the right mouse button turns it freely, which is how a player lines
+ * an upright rubber band up with a row of doodads that runs diagonally.
  */
 const VIEW_ROTATION = 225;
 
@@ -39,8 +44,12 @@ const GRID_MAJOR_COLOR = "#407090";
 const ZOOM_STEP = 1.1;
 const ZOOM_MIN = 0.05;
 const ZOOM_MAX = 40;
-const PAN_BUTTON = 1;
 const FIT_PADDING = 40;
+
+const PAN_BUTTON = 1;
+const ROTATE_BUTTON = 2;
+// Half a turn across a thousand pixels of drag.
+const ROTATION_PER_PIXEL = 0.18;
 
 /**
  * Dispatches `viewchanged` whenever zoom or pan moved the world under the
@@ -67,14 +76,16 @@ export class Stage extends EventTarget {
     this.static.add(grid());
 
     this.konva.on("wheel", this.onWheel);
-    container.addEventListener("mousedown", this.onPanStart);
+    container.addEventListener("mousedown", this.onViewDragStart);
+    // Without this the right button opens a menu instead of turning the view.
     container.addEventListener("contextmenu", preventDefault);
   }
 
   destroy() {
-    this.endPan();
-    this.konva.container().removeEventListener("mousedown", this.onPanStart);
-    this.konva.container().removeEventListener("contextmenu", preventDefault);
+    this.endViewDrag();
+    const container = this.konva.container();
+    container.removeEventListener("mousedown", this.onViewDragStart);
+    container.removeEventListener("contextmenu", preventDefault);
     this.konva.destroy();
   }
 
@@ -97,7 +108,7 @@ export class Stage extends EventTarget {
   fit(rectangle) {
     if (!rectangle || rectangle.width <= 0 || rectangle.height <= 0) return;
 
-    const turn = (VIEW_ROTATION * Math.PI) / 180;
+    const turn = (this.konva.rotation() * Math.PI) / 180;
     const across = Math.abs(Math.cos(turn));
     const down = Math.abs(Math.sin(turn));
     const scale = clamp(
@@ -121,12 +132,45 @@ export class Stage extends EventTarget {
   /** Pans so that a point in doodad units sits in the middle of the view. */
   centreOn(point) {
     this.konva.position({ x: 0, y: 0 });
-    const landed = this.konva.getAbsoluteTransform().point(point);
-    this.konva.position({
-      x: this.konva.width() / 2 - landed.x,
-      y: this.konva.height() / 2 - landed.y,
+    this.keepUnder(point, {
+      x: this.konva.width() / 2,
+      y: this.konva.height() / 2,
     });
     this.viewChanged();
+  }
+
+  /**
+   * Turns the view back to the game's perspective, about the middle of the
+   * view, so that a player who has turned it to line up a selection has one way
+   * back rather than a steady hand.
+   */
+  alignToGame() {
+    const middle = { x: this.konva.width() / 2, y: this.konva.height() / 2 };
+    const anchor = this.contentAt(middle);
+    this.konva.rotation(VIEW_ROTATION);
+    this.keepUnder(anchor, middle);
+    this.viewChanged();
+  }
+
+  /** The doodad-unit point drawn at a point on screen. */
+  contentAt(point) {
+    return this.konva.getAbsoluteTransform().copy().invert().point(point);
+  }
+
+  /**
+   * Pans so that a point in doodad units lands back under a point on screen.
+   *
+   * This is what makes zooming and turning feel anchored, and it is written
+   * once because the stage's transform answers "where did it go" for both. Only
+   * the panning is worked out by hand, and panning is the one part a rotation
+   * cannot disturb: position is applied outside it.
+   */
+  keepUnder(anchor, pointer) {
+    const landed = this.konva.getAbsoluteTransform().point(anchor);
+    this.konva.position({
+      x: this.konva.x() + pointer.x - landed.x,
+      y: this.konva.y() + pointer.y - landed.y,
+    });
   }
 
   onWheel = (event) => {
@@ -147,44 +191,82 @@ export class Stage extends EventTarget {
     );
 
     this.konva.scale({ x: zoomed, y: zoomed });
-    const landed = this.konva.getAbsoluteTransform().point(anchor);
-    this.konva.position({
-      x: this.konva.x() + pointer.x - landed.x,
-      y: this.konva.y() + pointer.y - landed.y,
-    });
+    this.keepUnder(anchor, pointer);
     this.viewChanged();
   };
 
   /**
-   * Panning listens on the window rather than the canvas, so that a drag that
-   * leaves the viewport keeps panning and, more importantly, still ends.
+   * Middle drags the view about, right turns it. Which of the two it is gets
+   * decided once, here, and the gesture then runs as the function it left in
+   * `moveView`.
+   *
+   * Both listen on the window rather than the canvas, so that a drag leaving
+   * the viewport keeps working and, more importantly, still ends.
    */
-  onPanStart = (event) => {
-    if (event.button !== PAN_BUTTON) return;
+  onViewDragStart = (event) => {
+    const gesture = this.gestureFor(event);
+    if (!gesture) return;
+
+    this.moveView = gesture;
     event.preventDefault();
-    this.panOrigin = {
-      x: event.clientX - this.konva.x(),
-      y: event.clientY - this.konva.y(),
-    };
-    window.addEventListener("mousemove", this.onPanMove);
-    window.addEventListener("mouseup", this.onPanEnd);
+    window.addEventListener("mousemove", this.onViewDragMove);
+    window.addEventListener("mouseup", this.onViewDragEnd);
   };
 
-  onPanMove = (event) => {
-    this.konva.position({
-      x: event.clientX - this.panOrigin.x,
-      y: event.clientY - this.panOrigin.y,
-    });
+  gestureFor(event) {
+    if (event.button === PAN_BUTTON) return this.panning(event);
+    if (event.button === ROTATE_BUTTON) return this.turning(event);
+    return null;
+  }
+
+  onViewDragMove = (event) => {
+    this.moveView(event);
     this.viewChanged();
   };
 
-  onPanEnd = () => {
-    this.endPan();
+  onViewDragEnd = () => {
+    this.endViewDrag();
   };
 
-  endPan() {
-    window.removeEventListener("mousemove", this.onPanMove);
-    window.removeEventListener("mouseup", this.onPanEnd);
+  endViewDrag() {
+    window.removeEventListener("mousemove", this.onViewDragMove);
+    window.removeEventListener("mouseup", this.onViewDragEnd);
+  }
+
+  panning(event) {
+    const origin = {
+      x: event.clientX - this.konva.x(),
+      y: event.clientY - this.konva.y(),
+    };
+    return (moved) => {
+      this.konva.position({
+        x: moved.clientX - origin.x,
+        y: moved.clientY - origin.y,
+      });
+    };
+  }
+
+  /**
+   * Turning is driven sideways, about the point the drag started on, so that
+   * the doodad a player is looking at stays where they are looking.
+   *
+   * The three.js editor had this on the same button, where it orbited a camera.
+   * There is no camera, and there is only one axis left to turn about, so what
+   * survives is the gesture rather than the mechanism -- and it earns its place:
+   * an upright rubber band cannot pick out a row of doodads that runs diagonally
+   * until the view is turned to meet it.
+   */
+  turning(event) {
+    this.konva.setPointersPositions(event);
+    const pointer = this.konva.getPointerPosition();
+    const anchor = this.contentAt(pointer);
+    const origin = { x: event.clientX, rotation: this.konva.rotation() };
+
+    return (moved) => {
+      const turned = (moved.clientX - origin.x) * ROTATION_PER_PIXEL;
+      this.konva.rotation(origin.rotation + turned);
+      this.keepUnder(anchor, pointer);
+    };
   }
 }
 

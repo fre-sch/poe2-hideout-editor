@@ -185,6 +185,9 @@ export class Scene {
       case "f":
         this.stage.fit(doodads.boundingRectangle(this.selection.nodes));
         break;
+      case "g":
+        this.stage.alignToGame();
+        break;
       default:
         return;
     }
