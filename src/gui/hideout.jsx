@@ -7,7 +7,16 @@
  */
 
 import * as bounds from "../hideout/bounds.js";
+import * as project from "../hideout/project.js";
 import * as state from "../state.js";
+
+/**
+ * Where the count stops being green and stops being yellow, as fractions of the
+ * Doodad Limit -- 525 and 675 of 750. Fractions rather than the numbers
+ * themselves, so that a limit corrected in one place stays corrected here.
+ */
+const CAUTION = 0.7;
+const DANGER = 0.9;
 
 export default function Hideout() {
   if (state.hideoutDocument.value === null) return null;
@@ -30,10 +39,33 @@ export default function Hideout() {
           <TypeSelect />
         </div>
         <div class="text-secondary">Doodads:</div>
-        <div>{state.doodadCount.value}</div>
+        <div>
+          <DoodadCount />
+        </div>
       </div>
     </details>
   );
+}
+
+/**
+ * The count, coloured by how much room is left under the Doodad Limit. The game
+ * truncates an oversized import silently, and a number that only speaks up at
+ * the export speaks up after the work is done.
+ *
+ * It is the document's total, so it counts the essential doodads the game
+ * places itself and the limit ignores. The colour therefore turns early rather
+ * than late, which is the right way round for a warning; `project.count` does
+ * the exact arithmetic at the bake, where exactness is what is wanted.
+ */
+function DoodadCount() {
+  const count = state.doodadCount.value;
+  return <span class={warningOf(count)}>{count}</span>;
+}
+
+function warningOf(count) {
+  if (count > project.DOODAD_LIMIT * DANGER) return "text-danger";
+  if (count >= project.DOODAD_LIMIT * CAUTION) return "text-warning";
+  return "text-success";
 }
 
 /**
