@@ -60,6 +60,13 @@ export function fromDegrees(degrees) {
  * from above -- is not derivable from a file. It is one bit, it costs a minus
  * sign here if it is wrong, and it is checked the only way it can be: rotate a
  * recognisable doodad in the game, export, and compare against the editor.
+ *
+ * That check has been run once, and it found the editor a quarter turn out --
+ * an offset, not a mirror. A reversed sense shows up as a doodad turning the
+ * wrong way rather than as a constant, so this is evidence the sense agrees,
+ * and it is conclusive if the same quarter turn held at more than one angle.
+ * The offset itself is a fact about the drawing rather than about the units,
+ * and it is corrected by `GIZMO_ROTATION` in `src/viewport/doodads.js`.
  */
 export function toStage({ x, y }) {
   return { x: y, y: x };

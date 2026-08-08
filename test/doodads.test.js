@@ -24,9 +24,15 @@ describe("create", () => {
     expect(node.position()).toEqual({ x: 20, y: 10 });
   });
 
-  it("turns the node to face the way the doodad does", () => {
-    const node = doodads.create(doodad({ x: 0, y: 0, r: QUARTER_TURN }));
-    expect(node.rotation()).toBe(90);
+  /**
+   * Relative, because the drawing decides where a doodad at `r = 0` points and
+   * `GIZMO_ROTATION` decides how far that is from the game. Neither is a fact
+   * about the conversion, and both are free to change.
+   */
+  it("turns the node as far as the doodad turned", () => {
+    const straight = doodads.create(doodad({ x: 0, y: 0, r: 0 }));
+    const turned = doodads.create(doodad({ x: 0, y: 0, r: QUARTER_TURN }));
+    expect(turned.rotation() - straight.rotation()).toBe(90);
   });
 
   // The gizmo is drawn in its own units on its own page, so this is what says
@@ -49,6 +55,18 @@ describe("create", () => {
 });
 
 describe("apply", () => {
+  /**
+   * The gizmo is drawn turned away from `r = 0` by a constant, and this is the
+   * guard that the constant never reaches a file: a doodad nobody touched must
+   * save exactly as it was read.
+   */
+  it("leaves a doodad alone when nothing moved", () => {
+    const untouched = doodad({ x: 116, y: 867, r: 58301 });
+    doodads.apply(doodads.create(untouched));
+
+    expect([untouched.x, untouched.y, untouched.r]).toEqual([116, 867, 58301]);
+  });
+
   it("writes a dragged node back to its doodad, on the file's grid", () => {
     const moved = doodad({ x: 10, y: 20 });
     const node = doodads.create(moved);

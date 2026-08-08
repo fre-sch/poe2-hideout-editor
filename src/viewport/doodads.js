@@ -20,7 +20,8 @@
  * page is where the doodad is** -- the art is placed against its own viewBox,
  * not against its bounding box, so moving the art around the page is how the
  * anchor is chosen and the tip of a pointer may hang off one side. And the way
- * the art points is the way a doodad at `r = 0` points.
+ * the art points, turned by `GIZMO_ROTATION`, is the way a doodad at `r = 0`
+ * points.
  */
 
 import Konva from "konva";
@@ -31,6 +32,20 @@ import * as units from "../hideout/units.js";
 // Doodad units. Large enough to hit with a mouse at a zoom that shows a whole
 // hideout, small enough that adjacent placements stay distinguishable.
 const SIZE = 6;
+
+/**
+ * How far the drawing has to be turned to face the way the game faces a doodad
+ * at `r = 0`. Measured against the game, which is the only place the answer
+ * exists -- the gizmo read a quarter turn clockwise of where the game showed
+ * the same doodad.
+ *
+ * It is a fact about the drawing, so it lives beside the drawing and not in
+ * `units.js`: the file's units are unaffected, and `apply` takes it back off
+ * again so that a rotation the player never touched is saved exactly as it was
+ * read. Redrawing the art pointing another way changes this number and nothing
+ * else.
+ */
+const GIZMO_ROTATION = -90;
 
 /**
  * The gizmo's own fill and stroke are ignored: a doodad has to change colour
@@ -82,13 +97,13 @@ export function apply(node) {
   const position = units.fromStage(node.position());
   node.doodad.x = position.x;
   node.doodad.y = position.y;
-  node.doodad.r = units.fromDegrees(node.rotation());
+  node.doodad.r = units.fromDegrees(node.rotation() - GIZMO_ROTATION);
   place(node);
 }
 
 export function place(node) {
   node.position(units.toStage(node.doodad));
-  node.rotation(units.toDegrees(node.doodad.r));
+  node.rotation(units.toDegrees(node.doodad.r) + GIZMO_ROTATION);
 }
 
 export function setSelected(node, selected) {
@@ -126,14 +141,21 @@ export function boundingRectangle(nodes) {
  * data concatenates -- an `M` starts a new subpath -- and one node per doodad
  * is one node to colour, to hit test and to hand the transformer.
  *
- * Which way the gizmo points at `r = 0` is decided by the drawing. Whether that
- * is the way the game points a doodad at `r = 0` is the question
- * `src/hideout/units.js` leaves open, and it is settled the same way: rotate a
- * recognisable doodad in the game and compare.
+ * Only path data and the page are read. A `transform` on a path or on the group
+ * around it would be quietly left out, and the drawing would arrive somewhere
+ * other than where it was drawn -- which is worth refusing to do, since a
+ * drawing program will happily write one when the art is moved or turned. The
+ * fix is to flatten the transform into the path, which every such program can
+ * do.
  */
 function readGizmo(source) {
   const viewBox = source.match(/\bviewBox="([^"]+)"/);
   if (!viewBox) throw new Error("gizmo has no viewBox");
+  if (/\btransform="/.test(source)) {
+    throw new Error(
+      "gizmo has a transform, which is not applied; flatten it into the path",
+    );
+  }
 
   const [left, top, width, height] = viewBox[1].trim().split(/\s+/).map(Number);
   const paths = [...source.matchAll(/\bd="([^"]+)"/g)].map((match) => match[1]);
