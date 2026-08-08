@@ -9,7 +9,6 @@ import File from "./file.jsx";
 import Hideout from "./hideout.jsx";
 import Layers from "./layers.jsx";
 import Mode from "./mode.jsx";
-import Selection from "./selection.jsx";
 import { HelpButton } from "./help.jsx";
 
 export default function Sidebar() {
@@ -21,7 +20,6 @@ export default function Sidebar() {
       <Mode />
       <Hideout />
       <Layers />
-      <Selection />
       <HelpButton />
       <div class="text-center">
         <a href="https://github.com/fre-sch/poe2-hideout-editor/issues">

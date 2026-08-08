@@ -10,23 +10,21 @@
  * A layer's doodad count is read from the document, which the count signal is
  * the proxy for: deleting doodads publishes it, and reading it here is what
  * brings the panel back after a delete.
+ *
+ * The panel shows before a file is loaded, holding an empty list. It is the
+ * section the sidebar's height goes to, and a section that appears halfway
+ * down on load moves everything under it.
  */
 
 import * as state from "../state.js";
 
 export default function Layers() {
-  if (state.hideoutDocument.value === null) return null;
-
+  const loaded = state.hideoutDocument.value !== null;
   const layers = state.layers.value;
-  // Reading the count subscribes the panel to doodad deletion, which is the one
-  // thing that changes a layer's tally without changing the layer list.
-  const total = state.doodadCount.value;
   const selected = state.selection.value.length;
   return (
     <details class="sidebar-item sidebar-item-grow" open>
-      <summary>
-        Layers ({layers.length}), {total} doodads
-      </summary>
+      <summary>Layers</summary>
       <p class="text-secondary mb-1">
         Exported in this order, first at the top. Hiding and locking stay in the
         editor; everything exports.
@@ -36,7 +34,12 @@ export default function Layers() {
           <LayerRow layer={layer} index={index} count={layers.length} />
         ))}
       </ul>
-      <button type="button" class="btn btn-secondary btn-sm" onClick={addLayer}>
+      <button
+        type="button"
+        class="btn btn-secondary btn-sm"
+        disabled={!loaded}
+        onClick={addLayer}
+      >
         <i class="bi bi-plus-lg"></i> Add layer
         {selected > 0 && ` with ${selected} selected`}
       </button>
@@ -139,7 +142,14 @@ function document_() {
   return state.hideoutDocument.value;
 }
 
+/**
+ * The doodads in a layer, and -- for a caller that renders -- a subscription to
+ * their being deleted. Deletion is the one thing that changes a layer's tally
+ * without changing the layer list, and `doodadCount` is how it is published:
+ * the document itself cannot be subscribed to. See `state.js`.
+ */
 function doodadsIn(layer) {
+  state.doodadCount.value;
   return document_().doodadsIn(layer.id);
 }
 
