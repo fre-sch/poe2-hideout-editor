@@ -12,7 +12,7 @@
  * whoever changed the array.
  */
 
-import { signal } from "@preact/signals";
+import { effect, signal } from "@preact/signals";
 
 /** The loaded document, or `null`. Changes when a file is loaded, not edited. */
 export const hideoutDocument = signal(null);
@@ -74,7 +74,49 @@ export function requestSelection(doodads) {
 export const band = signal(null);
 
 export const labels = signal([]);
-export const showLabels = signal(true);
+
+// -- stored preferences -----------------------------------------------------
+//
+// Declared before what uses them: a `const` cannot be read above its own line,
+// however freely a function may be called there.
+
+/**
+ * Preferences outlive a refresh, and reaching storage is the whole of it.
+ *
+ * Both directions are explicitly silenced. A browser with site data blocked
+ * throws on the very first read, and a preference is worth less than the editor
+ * it would otherwise take down; what a player loses instead is the memory of a
+ * checkbox.
+ */
+const PREFIX = "poe2-hideout-editor.";
+
+function readStored(key) {
+  try {
+    return localStorage.getItem(PREFIX + key);
+  } catch (error) {
+    return null;
+  }
+}
+
+function writeStored(key, value) {
+  try {
+    localStorage.setItem(PREFIX + key, value);
+  } catch (error) {
+    // See above.
+  }
+}
+
+/** A boolean signal that writes itself back whenever it is set. */
+function storedFlag(key, fallback) {
+  const stored = readStored(key);
+  const flag = signal(stored === null ? fallback : stored === "true");
+  effect(() => writeStored(key, String(flag.value)));
+  return flag;
+}
+
+/** What the viewport draws besides the doodads. Both are remembered. */
+export const showLabels = storedFlag("show-labels", true);
+export const showGrid = storedFlag("show-grid", true);
 
 /**
  * Whether the help modal is up, and whether it comes up by itself.
@@ -82,30 +124,18 @@ export const showLabels = signal(true);
  * They live here rather than in `gui/help.jsx` so that the viewport can raise
  * the modal from the `H` shortcut without importing the sidebar.
  *
- * The stored preference has three states, one more than the checkbox: absent is
- * a first visit, which is greeted. So a player who reads the modal once and
- * closes it is not greeted again, and a player who wants the reminder ticks the
- * box for it.
+ * Not a `storedFlag`, because the stored value has three states where a flag
+ * has two: absent is a first visit, which is greeted. So a player who reads the
+ * modal once and closes it is not greeted again, and a player who wants the
+ * reminder ticks the box for it. A flag that wrote itself back on load would
+ * spend that third state before the player had answered.
  */
-const HELP_KEY = "poe2-hideout-editor.show-help-on-load";
-const storedHelp = readHelpPreference();
+const HELP_KEY = "show-help-on-load";
+const storedHelp = readStored(HELP_KEY);
 
 export const showHelp = signal(storedHelp !== "false");
 export const showHelpOnLoad = signal(storedHelp === "true");
 
 export function rememberHelpPreference() {
-  try {
-    localStorage.setItem(HELP_KEY, String(showHelpOnLoad.value));
-  } catch (error) {
-    // Explicitly silenced: storage is blocked, and a preference that cannot be
-    // kept is worth less than the editor it would otherwise take down.
-  }
-}
-
-function readHelpPreference() {
-  try {
-    return localStorage.getItem(HELP_KEY);
-  } catch (error) {
-    return null;
-  }
+  writeStored(HELP_KEY, String(showHelpOnLoad.value));
 }

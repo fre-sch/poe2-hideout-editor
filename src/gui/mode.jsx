@@ -1,5 +1,5 @@
 /**
- * Edit mode, and whether labels show.
+ * Edit mode, and what the viewport draws besides the doodads.
  *
  * The mode signal is the only thing that decides the mode. The 3D editor also
  * set it from the save path, which is how saving could leave the sidebar
@@ -32,21 +32,34 @@ export default function Mode() {
           </button>
         ))}
       </div>
-      <div class="form-check mt-2">
-        <input
-          id="show-labels"
-          class="form-check-input"
-          type="checkbox"
-          checked={state.showLabels.value}
-          onChange={(event) => {
-            state.showLabels.value = event.currentTarget.checked;
-          }}
-        />
-        <label class="form-check-label" for="show-labels">
-          Show labels
-        </label>
+      <div class="mt-2">
+        <Flag id="show-labels" flag={state.showLabels} label="Show labels" />
+        <Flag id="show-grid" flag={state.showGrid} label="Show grid" />
       </div>
     </details>
+  );
+}
+
+/**
+ * A checkbox over a signal. The signals here remember themselves, so a toggle
+ * is the whole of it -- see `state.js`.
+ */
+function Flag({ id, flag, label }) {
+  return (
+    <div class="form-check">
+      <input
+        id={id}
+        class="form-check-input"
+        type="checkbox"
+        checked={flag.value}
+        onChange={(event) => {
+          flag.value = event.currentTarget.checked;
+        }}
+      />
+      <label class="form-check-label" for={id}>
+        {label}
+      </label>
+    </div>
   );
 }
 
