@@ -77,6 +77,21 @@ main {
   flex: 1 1 auto;
   min-height: 8rem;
 }
+
+/* A <details> element's content is wrapped in a ::details-content box, so that
+   box is the flex item and everything the panel holds is inside it. The height
+   has to be passed down through it, or the list below is laid out in a block of
+   its own content's height and has nothing to scroll within.
+
+   Browsers that do not wrap -- the pseudo-element is recent -- put the list
+   straight into the flex column above and ignore this rule, which is why the
+   list carries its own `flex` and `min-height` besides. */
+.sidebar-item-grow[open]::details-content {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+}
 .layer-list {
   flex: 1 1 auto;
   min-height: 0;
