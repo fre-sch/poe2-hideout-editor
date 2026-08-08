@@ -35,6 +35,7 @@ export class Scene {
     this.selection.addEventListener("changed", this.onSelectionChanged);
 
     this.transform = new transform.Transform(this.stage.overlay);
+    this.transform.addEventListener("moving", this.refreshLabels);
     this.transform.addEventListener("changed", this.refreshLabels);
 
     this.labels = new Labels((published) => {

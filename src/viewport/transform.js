@@ -20,8 +20,9 @@ const ROTATION_SNAPS = [0, 45, 90, 135, 180, 225, 270, 315];
 const ROTATION_SNAP_TOLERANCE = 6;
 
 /**
- * Dispatches `changed` once a move or a rotation has been written back to the
- * domain doodads.
+ * Dispatches `moving` while a move or a rotation is under way, and `changed`
+ * once it has been written back to the domain doodads. Both matter: the labels
+ * have to follow the doodads across the drag, not catch up when it ends.
  */
 export class Transform extends EventTarget {
   constructor(layer) {
@@ -39,6 +40,8 @@ export class Transform extends EventTarget {
     });
     layer.add(this.konva);
 
+    this.konva.on("dragmove", this.moving);
+    this.konva.on("transform", this.moving);
     this.konva.on("dragend", this.commit);
     this.konva.on("transformend", this.commit);
     this.setMode(SELECT);
@@ -70,6 +73,10 @@ export class Transform extends EventTarget {
     }
     this.konva.nodes(this.mode === SELECT ? [] : nodes);
   }
+
+  moving = () => {
+    this.dispatchEvent(new CustomEvent("moving"));
+  };
 
   commit = () => {
     for (const node of this.konva.nodes()) {
