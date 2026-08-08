@@ -49,7 +49,7 @@ describe("position", () => {
   });
 
   it("swaps the axes, agreeing with the bounds SVGs", () => {
-    // `scripts/probe_grid.py` writes SVG x from doodad y and SVG y from doodad
+    // The bounds SVGs are drawn with SVG x from doodad y and SVG y from doodad
     // x. A bounds trace has to land on its own outline.
     expect(units.toStage({ x: 392, y: 389 })).toEqual({ x: 389, y: 392 });
   });

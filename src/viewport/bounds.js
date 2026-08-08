@@ -1,11 +1,15 @@
 /**
  * The placeable-area outline, drawn under a hideout.
  *
- * `scripts/probe_grid.py` writes these outlines as SVG in doodad coordinates --
- * SVG x from doodad y, SVG y from doodad x, which is exactly what
- * `units.toStage` does. So the path data goes onto the stage unscaled and
- * untranslated, and a hideout that lands on its own outline is the proof that
- * the coordinate mapping is right.
+ * The outlines are SVG in doodad coordinates -- SVG x from doodad y, SVG y from
+ * doodad x, which is exactly what `units.toStage` does. So the path data goes
+ * onto the stage unscaled and untranslated, and a hideout that lands on its own
+ * outline is the proof that the coordinate mapping is right.
+ *
+ * The four in `public/bounds/` were traced by hand, walking each perimeter in
+ * game placing one doodad at a time. `scripts/probe_grid.py` derives them from
+ * the game instead and writes the same convention; its outlines agree with the
+ * hand traces to within a few units, but have not replaced them.
  *
  * The 3D editor took the same files through an SVG loader, a shape geometry, an
  * edge geometry and line segments, and then rotated the result onto the XZ
@@ -25,7 +29,7 @@ const CACHE = new Map();
  * type with no outline file -- three of the game's seven, wiki issue 0007.
  *
  * Asynchronous because the outlines are static assets rather than source: they
- * are regenerated from the game, not written by hand.
+ * come from the game by way of `scripts/`, and no edit to them belongs here.
  */
 export async function load(hash) {
   const definition = bounds.find(hash);

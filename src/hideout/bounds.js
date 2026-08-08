@@ -2,9 +2,9 @@
  * The hideout types the editor knows, and the outline file for each.
  *
  * A hideout type is identified by the `hideout_hash` a `.hideout` file carries.
- * The outline is the placeable area, derived from the game by
- * `scripts/probe_grid.py` and written as an SVG in doodad coordinates -- see
- * `units.toStage` for why that is the same space the stage draws in.
+ * The outline is the placeable area, measured in game and written as an SVG in
+ * doodad coordinates -- see `units.toStage` for why that is the same space the
+ * stage draws in, and `src/viewport/bounds.js` for where the files come from.
  *
  * This table decides what the editor *draws*, and nothing else. It used to
  * decide what the editor *saved* as well, which is how the typo below reached
