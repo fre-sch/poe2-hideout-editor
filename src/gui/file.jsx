@@ -92,6 +92,11 @@ async function load(event) {
     state.hideoutType.value = hideout.header.hideout_hash;
     state.doodadCount.value = hideout.doodads.length;
     state.loadError.value = null;
+    // A loaded file resets the GUI. The palette in particular describes one
+    // document -- its table is the document's language, and its names have been
+    // checked against the document's own -- so a palette that survived a load
+    // would be describing the previous file.
+    state.showPalette.value = false;
   } catch (error) {
     state.loadError.value = error;
   }

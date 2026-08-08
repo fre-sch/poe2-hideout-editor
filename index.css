@@ -167,6 +167,102 @@ main {
   background-color: rgba(0, 0, 0, 0.6);
 }
 
+/* The doodad palette. A panel rather than a <dialog>: it must not block the
+   viewport it places into, and it is dragged by its title bar.
+
+   `left` and `top` are the panel's own starting place, which a drag overrides
+   with an inline style. Sized in rem so that a list of 1730 gets room without
+   any part of the markup carrying a pixel. */
+.palette-panel {
+  position: fixed;
+  left: 26rem;
+  top: 4rem;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  width: min(48rem, 90vw);
+  height: min(38rem, 85vh);
+  border: 1px solid var(--bs-border-color);
+  border-radius: 0.5rem;
+  background-color: var(--bs-body-bg);
+  color: var(--bs-body-color);
+}
+.palette-title {
+  cursor: move;
+  user-select: none;
+  font-weight: bold;
+  text-align: center;
+  padding: 0.3rem;
+  border-bottom: 1px solid var(--bs-border-color);
+}
+
+/* The body takes the height the title and the footer leave, and the list is
+   the part inside it that scrolls. `min-height: 0` for the same reason the
+   layer list carries it. */
+.palette-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 0.5rem;
+}
+.palette-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/* Columns rather than one long list: the rows are short and the panel is wide,
+   and 98 category headers read as headers only when they are near what they
+   head. The column box grows with its content and the box around it scrolls, so
+   the columns are as tall as the list and the scrolling stays vertical. */
+.palette-list {
+  column-width: 11rem;
+  column-gap: 1rem;
+}
+.palette-heading {
+  font-size: 0.85rem;
+  font-weight: bold;
+  color: var(--bs-secondary);
+  margin: 0;
+  break-inside: avoid;
+  break-after: avoid;
+}
+.palette-row {
+  cursor: pointer;
+  break-inside: avoid;
+}
+.palette-row:hover {
+  background-color: var(--bs-secondary-bg);
+}
+
+/* Nothing can be placed, and the message above the list says why. The rows stay
+   where they are: a list that emptied itself would leave the player wondering
+   what else had gone. */
+.palette-refused .palette-row {
+  cursor: default;
+  color: var(--bs-secondary);
+}
+.palette-refused .palette-row:hover {
+  background-color: transparent;
+}
+.palette-mark {
+  color: var(--bs-secondary);
+}
+.palette-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem;
+}
+.palette-footer {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem;
+  border-top: 1px solid var(--bs-border-color);
+}
+
 #label-overlay {
   pointer-events: none;
   position: absolute;
