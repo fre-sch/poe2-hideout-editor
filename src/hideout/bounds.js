@@ -39,3 +39,21 @@ export function definitions() {
 export function find(hash) {
   return DEFINITIONS.find((definition) => `${definition.hash}` === `${hash}`);
 }
+
+/**
+ * Every type offerable for a file of type `hash` named `name`: the known ones,
+ * and the file's own first when it is not among them.
+ *
+ * The arguments are the file's, not the current selection's, and that is the
+ * whole point. A player whose hideout the editor does not know may still want
+ * to borrow an outline to work against, and must be able to put it back; an
+ * entry that exists only while it is selected is a one-way door -- wiki issue
+ * 0007.
+ *
+ * The file's own entry names no outline file, because there is none to draw.
+ * That absence is how a caller tells the two kinds apart.
+ */
+export function optionsFor(hash, name) {
+  if (find(hash)) return definitions();
+  return [{ hash, name: name || "Unknown hideout" }, ...definitions()];
+}

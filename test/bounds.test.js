@@ -31,6 +31,30 @@ describe("bounds", () => {
     expect(names).toEqual([...names].sort());
   });
 
+  it("offers only the known types for a hideout it knows", () => {
+    expect(bounds.optionsFor(26805, "Shrine Hideout")).toEqual(
+      bounds.definitions(),
+    );
+  });
+
+  // Wiki issue 0007. The player has to be able to leave their own hideout to
+  // borrow an outline and then come back to it, so the entry is keyed off the
+  // file and not off what is selected -- an option that disappears when it
+  // stops being selected cannot be returned to.
+  it("offers an unknown hideout by its own name and hash, first", () => {
+    const options = bounds.optionsFor(99999, "Hall of Ghosts");
+    expect(options[0]).toEqual({ hash: 99999, name: "Hall of Ghosts" });
+    expect(options.slice(1)).toEqual(bounds.definitions());
+  });
+
+  it("names an unknown hideout that names itself nothing", () => {
+    expect(bounds.optionsFor(99999, "")[0].name).toBe("Unknown hideout");
+  });
+
+  it("offers no outline file for an unknown hideout, since there is none", () => {
+    expect(bounds.optionsFor(99999, "Hall of Ghosts")[0].file).toBeUndefined();
+  });
+
   it("names an outline file that exists and holds path data", () => {
     for (const definition of bounds.definitions()) {
       const text = fs.readFileSync(path.join(OUTLINES, definition.file), "utf8");

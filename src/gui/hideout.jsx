@@ -38,20 +38,35 @@ export default function Hideout() {
 
 /**
  * Three of the game's seven hideout types have no outline yet, wiki issue 0007.
- * One of those loads and saves like any other, so the dropdown names the type
- * it cannot draw rather than silently showing someone else's outline.
+ * A file of such a type loads and saves like any other, so the dropdown carries
+ * it by its own name and hash rather than silently showing someone else's
+ * outline. The list comes from the file's type and stays put while the player
+ * looks at other outlines, so returning to the hideout they actually own is the
+ * same gesture as leaving it.
  */
 function TypeSelect() {
-  const hash = state.hideoutType.value;
-  const known = bounds.find(hash) !== undefined;
+  const header = state.hideoutDocument.value.header;
+  const options = bounds.optionsFor(header.hideout_hash, header.hideout_name);
   return (
-    <select class="form-select form-select-sm" value={hash} onChange={select}>
-      {!known && <option value={hash}>No outline (hash {hash})</option>}
-      {bounds.definitions().map((definition) => (
-        <option value={definition.hash}>{definition.name}</option>
+    <select
+      class="form-select form-select-sm"
+      value={state.hideoutType.value}
+      onChange={select}
+    >
+      {options.map((definition) => (
+        <option value={definition.hash}>{label(definition)}</option>
       ))}
     </select>
   );
+}
+
+/**
+ * A type with no outline file says so, and says by which hash: its name is the
+ * file's own, and may name nothing the editor has ever heard of.
+ */
+function label(definition) {
+  if (definition.file) return definition.name;
+  return `${definition.name} (no outline, hash ${definition.hash})`;
 }
 
 function select(event) {
