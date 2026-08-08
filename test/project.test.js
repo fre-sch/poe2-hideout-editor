@@ -36,14 +36,31 @@ describe("bake", () => {
     expect(project.bake(project.parse(saved))).toBe(SHRINE);
   });
 
-  it("exports a hidden or locked layer like any other", () => {
-    // A player who loses doodads to a checkbox they forgot about loses more
-    // than one who exports too many.
+  it("exports a locked layer like any other", () => {
+    // Locking is about the mouse and says nothing about the file.
     const document_ = HideoutDocument.fromText(SHRINE);
-    document_.layers[0].visible = false;
     document_.layers[0].locked = true;
 
     expect(project.bake(document_)).toBe(SHRINE);
+  });
+
+  it("leaves a hidden layer out", () => {
+    const document_ = HideoutDocument.fromText(SHRINE);
+    const garden = document_.addLayer("Garden");
+    document_.assign([document_.doodads[0]], garden.id);
+    garden.visible = false;
+
+    const baked = project.bake(document_);
+
+    expect(baked).not.toMatch(/"Stash"/);
+    expect(baked).toMatch(/"Maraketh Incense Burner"/);
+  });
+
+  it("writes a hideout with no doodads when every layer is hidden", () => {
+    const document_ = HideoutDocument.fromText(SHRINE);
+    document_.layers[0].visible = false;
+
+    expect(project.bake(document_)).toMatch(/"doodads":\s*\{\s*\}/);
   });
 
   it("exports in layer order", () => {
@@ -140,6 +157,18 @@ describe("the doodad limit", () => {
     expect(project.count(withPlaced(project.DOODAD_LIMIT + 1)).exceeded).toBe(
       true,
     );
+  });
+
+  it("counts what the export writes, not what is hidden", () => {
+    const document_ = withPlaced(project.DOODAD_LIMIT + 1);
+    const spare = document_.addLayer("Spare");
+    document_.assign(document_.doodads.slice(0, 2), spare.id);
+    spare.visible = false;
+
+    expect(project.count(document_)).toMatchObject({
+      placed: project.DOODAD_LIMIT - 1,
+      exceeded: false,
+    });
   });
 
   it("is not exceeded by essential doodads", () => {

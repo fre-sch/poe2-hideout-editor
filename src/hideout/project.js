@@ -82,16 +82,17 @@ export function serialize(document_) {
 }
 
 /**
- * The document as `.hideout` text: layers walked in order, doodads within a
- * layer in the order they are held, emitted as `[name, fields]` pairs.
+ * The document as `.hideout` text: visible layers walked in order, doodads
+ * within a layer in the order they are held, emitted as `[name, fields]` pairs.
  *
- * Visibility and lock are not consulted. A hidden layer is hidden, not deleted.
+ * A hidden layer is left out, and keeps its place in the project file -- wiki
+ * issue 0026. `locked` is not consulted at all.
  */
 export function bake(document_) {
   return file.serialize({
     ...document_.header,
     doodads: document_
-      .orderedDoodads()
+      .exportedDoodads()
       .map((doodad) => [doodad.name, doodad.toFields()]),
   });
 }
@@ -102,9 +103,12 @@ export function bake(document_) {
  * Counted here and nowhere else, because generators mean the number is not
  * known until the project is baked. The game truncates silently in file order,
  * so the moment before the download is the only place a player can catch it.
+ *
+ * It counts what the bake writes, hidden layers excluded, so that the warning
+ * is about the file the player is actually about to hand the game.
  */
 export function count(document_) {
-  const doodads = document_.orderedDoodads();
+  const doodads = document_.exportedDoodads();
   const placed = essentials.countPlaced(doodads);
   return {
     total: doodads.length,

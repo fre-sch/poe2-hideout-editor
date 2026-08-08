@@ -36,7 +36,7 @@ export default function File() {
           class="btn btn-success btn-sm"
           disabled={!loaded}
           onClick={exportHideout}
-          title="The file for the game. Layers are baked away."
+          title="The file for the game. Visible layers only, baked into one."
         >
           <i class="bi bi-box-arrow-down"></i> Export .hideout
         </button>
@@ -52,7 +52,8 @@ export default function File() {
       </button>
       <p class="text-secondary mt-1 mb-0">
         Load takes a `.hideout` or a saved project. Export writes the game's
-        file, Save project writes the editor's.
+        file, from the visible layers. Save project writes the editor's, from
+        all of them.
       </p>
       <LoadError />
     </details>
@@ -110,12 +111,26 @@ function saveProject() {
  * rule measured in game, and a player who knows better must still be able to
  * write the file.
  */
+/**
+ * Hidden layers are left out of the export on purpose, and the sidebar says so.
+ * Hiding all of them is the one case that cannot be meant: it writes a hideout
+ * with nothing in it, and the game reads exactly that.
+ */
+const EMPTY_WARNING =
+  "Every layer holding doodads is hidden, so this exports an empty hideout.\n\n" +
+  "Export anyway?";
+
 function exportHideout() {
   const document_ = state.hideoutDocument.value;
   const counted = project.count(document_);
+  if (hidesEverything(document_, counted) && !confirm(EMPTY_WARNING)) return;
   if (counted.exceeded && !confirm(limitWarning(counted))) return;
 
   download(project.bake(document_), `${baseName()}.hideout`);
+}
+
+function hidesEverything(document_, counted) {
+  return counted.total === 0 && document_.doodads.length > 0;
 }
 
 function limitWarning(counted) {
