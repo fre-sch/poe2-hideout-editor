@@ -6,38 +6,59 @@
  * so a doodad cannot be in two collections at once -- which is the whole of
  * wiki issues 0001 and 0005, see wiki/decisions/transform-control-reparenting.
  *
- * The drawing is a flat square with a line marking which way the doodad faces.
- * That is not a downgrade from the 3D editor: there it was one shared, textureless
- * box in one of two colours, and no doodad geometry is reachable -- see
- * wiki/decisions/2d-rendering-with-konva.md.
+ * Every doodad draws as the same gizmo, `src/gizmos/doodad.svg`, turned to face
+ * the way the doodad does. That is not a downgrade from the 3D editor: there it
+ * was one shared, textureless box in one of two colours, and no doodad geometry
+ * is reachable -- see wiki/decisions/2d-rendering-with-konva.md.
+ *
+ * The gizmo is drawn art rather than code, so changing how a doodad looks means
+ * editing an SVG and not this module. It is imported rather than fetched
+ * because it *is* source: it lives under `src/`, and the dev server reloads on
+ * a save in the drawing program.
+ *
+ * Two things the drawing decides, and this module obeys. **The middle of the
+ * page is where the doodad is** -- the art is placed against its own viewBox,
+ * not against its bounding box, so moving the art around the page is how the
+ * anchor is chosen and the tip of a pointer may hang off one side. And the way
+ * the art points is the way a doodad at `r = 0` points.
  */
 
 import Konva from "konva";
 
+import gizmoSource from "../gizmos/doodad.svg?raw";
 import * as units from "../hideout/units.js";
 
 // Doodad units. Large enough to hit with a mouse at a zoom that shows a whole
 // hideout, small enough that adjacent placements stay distinguishable.
 const SIZE = 6;
+
+/**
+ * The gizmo's own fill and stroke are ignored: a doodad has to change colour
+ * when it is selected, so the colours belong to the editor. Everything else
+ * about the drawing comes from the file.
+ */
 const COLOR_NORMAL = "#008080";
 const COLOR_SELECTED = "#C0C000";
 const OUTLINE = "#00FFFF";
 const OUTLINE_SELECTED = "#FFFF00";
 
+const GIZMO = readGizmo(gizmoSource);
+
 export function create(doodad) {
-  const node = new Konva.Shape({
-    sceneFunc: draw,
-    // A custom `sceneFunc` tells Konva how to paint but not how big the result
-    // is, and `getClientRect` -- which the rubber band hit test and the
-    // transformer's box both go through -- reads `width` and `height`. The
-    // offset puts the node's own origin at its centre, so a rotation turns the
-    // doodad about itself.
-    width: SIZE,
-    height: SIZE,
-    offsetX: SIZE / 2,
-    offsetY: SIZE / 2,
+  const node = new Konva.Path({
+    data: GIZMO.data,
+    // Scaled to `SIZE` and offset onto the middle of its page, so that a
+    // rotation turns the doodad about itself rather than swinging it around a
+    // corner.
+    scaleX: GIZMO.scale,
+    scaleY: GIZMO.scale,
+    offsetX: GIZMO.offsetX,
+    offsetY: GIZMO.offsetY,
     fill: COLOR_NORMAL,
     stroke: OUTLINE,
+    // One screen pixel at any zoom. The gizmo's own stroke width is a width in
+    // the drawing, and an outline that thins out as you zoom out is not what it
+    // is there for.
     strokeWidth: 1,
     strokeScaleEnabled: false,
     // A hideout runs to hundreds of nodes and none of them casts a shadow.
@@ -96,13 +117,32 @@ export function boundingRectangle(nodes) {
   };
 }
 
-function draw(context, shape) {
-  const width = shape.width();
-  const height = shape.height();
-  context.beginPath();
-  context.rect(0, 0, width, height);
-  // The rotation indicator, from the centre out to the facing edge.
-  context.moveTo(width / 2, height / 2);
-  context.lineTo(width, height / 2);
-  context.fillStrokeShape(shape);
+/**
+ * The gizmo as Konva needs it: one path, the scale that takes its page to
+ * `SIZE` doodad units, and the offset that puts the middle of that page on the
+ * node's origin.
+ *
+ * Several paths are joined into one rather than becoming several nodes. Path
+ * data concatenates -- an `M` starts a new subpath -- and one node per doodad
+ * is one node to colour, to hit test and to hand the transformer.
+ *
+ * Which way the gizmo points at `r = 0` is decided by the drawing. Whether that
+ * is the way the game points a doodad at `r = 0` is the question
+ * `src/hideout/units.js` leaves open, and it is settled the same way: rotate a
+ * recognisable doodad in the game and compare.
+ */
+function readGizmo(source) {
+  const viewBox = source.match(/\bviewBox="([^"]+)"/);
+  if (!viewBox) throw new Error("gizmo has no viewBox");
+
+  const [left, top, width, height] = viewBox[1].trim().split(/\s+/).map(Number);
+  const paths = [...source.matchAll(/\bd="([^"]+)"/g)].map((match) => match[1]);
+  if (paths.length === 0) throw new Error("gizmo has no path");
+
+  return {
+    data: paths.join(" "),
+    scale: SIZE / Math.max(width, height),
+    offsetX: left + width / 2,
+    offsetY: top + height / 2,
+  };
 }
