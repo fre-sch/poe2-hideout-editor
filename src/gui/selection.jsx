@@ -39,7 +39,7 @@ export default function Selection() {
       <summary>Selection ({selected.length})</summary>
       <ul class="selection-list list-unstyled mb-0">
         {selected.slice(0, LIMIT).map((doodad) => (
-          <Row doodad={doodad} />
+          <Row doodad={doodad} fv={doodad.fv} />
         ))}
       </ul>
       {selected.length > LIMIT && (
@@ -51,14 +51,28 @@ export default function Selection() {
   );
 }
 
-function Row({ doodad }) {
+/**
+ * `fv` is passed as well as the doodad it came off, and it has to be.
+ *
+ * A component that reads a signal gets a `shouldComponentUpdate` from
+ * `@preact/signals` which skips the render when no prop changed by reference and
+ * none of the signals it read has changed. `VariationButton` reads the table, so
+ * it is such a component -- and editing a doodad changes neither of those things:
+ * the field is mutated inside an object the row already holds. Republishing the
+ * selection therefore redrew the section's count and not one row of it.
+ *
+ * So a row is a function of the value it draws. The doodad is what the buttons
+ * edit, `fv` is what they show, and the two are separate arguments because the
+ * renderer can only see one of them.
+ */
+function Row({ doodad, fv }) {
   return (
     <li class="selection-row">
       <span class="selection-name" title={doodad.name}>
         {doodad.name}
       </span>
-      <VariationButton doodad={doodad} />
-      <MirrorButton doodad={doodad} />
+      <VariationButton doodad={doodad} fv={fv} />
+      <MirrorButton doodad={doodad} fv={fv} />
     </li>
   );
 }
@@ -71,7 +85,7 @@ function Row({ doodad }) {
  * refuse to cycle it, which is the honest answer to "what is this one": the file
  * says a variation whatever the editor knows about it.
  */
-function VariationButton({ doodad }) {
+function VariationButton({ doodad, fv }) {
   const count = variationsOf(doodad);
   return (
     <button
@@ -81,7 +95,7 @@ function VariationButton({ doodad }) {
       title={variationTitle(count)}
       onClick={() => cycleVariation(doodad, count)}
     >
-      {variation.ordinal(doodad.fv)}
+      {variation.ordinal(fv)}
     </button>
   );
 }
@@ -105,8 +119,8 @@ function cycleVariation(doodad, count) {
  * anything. The button reads as pressed when it is on, so the state is the
  * button's own look and not a second thing to read.
  */
-function MirrorButton({ doodad }) {
-  const mirrored = variation.mirrored(doodad.fv);
+function MirrorButton({ doodad, fv }) {
+  const mirrored = variation.mirrored(fv);
   return (
     <button
       type="button"
