@@ -22,6 +22,7 @@ const DEFINITIONS = [
   { hash: 26805, name: "Shrine Hideout", file: "shrine_26805.svg" },
   { hash: 60415, name: "Canal Hideout", file: "HideoutCanal_60415.svg" },
   { hash: 12394, name: "Limestone Hideout", file: "limestone_12394.svg" },
+  { hash: 30315, name: "The Dreadnought Hideout", file: "HideoutDreadnought_30315.svg" }
 ];
 
 /** Every known type, by display name, for a dropdown. */
