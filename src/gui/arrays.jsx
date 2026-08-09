@@ -411,29 +411,26 @@ function VariationButton({ index, on, chosen }) {
  * What the array is made of, cycled: doodad `k` is `source[k % length]`. The
  * names are listed because a source is chosen once and read many times, and
  * "three doodads" is not an answer to which three.
+ *
+ * It is a reading and not an editor. Which doodad is the palette's question, and
+ * the palette answers it for an array exactly as it answers it for the floor --
+ * so the button that took the selection instead is gone, and the list says where
+ * the question is asked.
  */
 function Source({ source }) {
-  const selected = state.selection.value;
   return (
     <details class="sidebar-item" open>
       <summary>Source ({source.length})</summary>
-      <p class="text-secondary mb-1">
-        Used in turn: the first doodad, then the second, and round again.
-      </p>
       <ul class="list-unstyled mb-1 array-source">
         {source.map((entry) => (
           <li title={entry.name}>{entry.name}</li>
         ))}
       </ul>
-      <button
-        type="button"
-        class="btn btn-secondary btn-sm"
-        disabled={selected.length === 0}
-        onClick={useSelection}
-      >
-        Use selection as source
-        {selected.length > 0 && ` (${selected.length})`}
-      </button>
+      <p class="text-secondary mb-0">
+        Used in turn: the first doodad, then the second, and round again.
+        Double-click one in <strong>Set array doodad</strong> to change this,
+        and hold <span class="shortcut">Shift</span> there to add another.
+      </p>
     </details>
   );
 }
@@ -453,10 +450,6 @@ function Footer() {
       >
         Close
       </button>
-      <p class="text-secondary mt-1 mb-0">
-        Every change is made as you make it and kept. The box and its handles
-        stay up while this layer is the active one.
-      </p>
     </div>
   );
 }
@@ -573,9 +566,18 @@ function edited() {
  * its gizmo from the document rather than from the reference it was handed.
  */
 function update(changes) {
-  const array = edited();
+  updateArray(state.editedArray.value, changes);
+}
+
+/**
+ * The same, for a caller that names its array: the palette sets the source of
+ * the *active* layer's array, which is the one being worked on -- but it is the
+ * active layer it is answering about, so it says which.
+ */
+function updateArray(layer, changes) {
+  const array = document_().findGenerator(layer);
   document_().replaceGenerator({ ...array, ...changes });
-  state.arrayEdited(array.layer);
+  state.arrayEdited(layer);
 }
 
 function updateBox(changes) {
@@ -609,9 +611,24 @@ function toggleVariation(chosen, index) {
   updateRandom({ variation: next });
 }
 
-function useSelection() {
-  update({ source: state.selection.value.map(arrays.sourceOf) });
+/**
+ * The doodad an array is made of, as the palette says it: a double-click makes
+ * it the whole source, and Shift adds it to the cycle -- the editor's Shift,
+ * which adds to a selection.
+ *
+ * It arrives as the first variation, the same as a placed doodad does. Which
+ * variations the array uses is the Randomness section's question, and it is
+ * asked of the table rather than of one row.
+ */
+export function sourceDoodad(layer, { hash, name }, adding) {
+  const array = document_().findGenerator(layer);
+  const entry = { hash: Number(hash), name, fv: FIRST_VARIATION };
+  updateArray(layer, {
+    source: adding ? [...array.source, entry] : [entry],
+  });
 }
+
+const FIRST_VARIATION = 0;
 
 /**
  * How many variations every doodad of the source has, or `0` where the table
@@ -662,8 +679,13 @@ function addArray() {
 /**
  * Raises the settings, and the handles with them: the settings are for one
  * array, and that array is the one being worked on.
+ *
+ * It becomes the active layer as well, because that is what "being worked on"
+ * means everywhere else -- and it is what the palette reads to know that a
+ * double-click sets this array's doodad rather than placing one.
  */
 export function openSettings(layer) {
+  state.activeLayer.value = layer;
   state.editArray(layer);
   state.showArraySettings.value = true;
 }

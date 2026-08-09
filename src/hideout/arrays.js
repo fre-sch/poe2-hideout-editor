@@ -50,7 +50,7 @@ export function fromSelection(doodads) {
 }
 
 /** What the generator keeps of a doodad: what it is, and which variation. */
-export function sourceOf(doodad) {
+function sourceOf(doodad) {
   return { hash: doodad.hash, name: doodad.name, fv: doodad.fv };
 }
 
