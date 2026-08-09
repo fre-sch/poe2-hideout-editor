@@ -58,7 +58,7 @@ export class Scene {
       state.labels.value = published;
     });
 
-    this.stage.addEventListener("viewchanged", this.onViewChanged);
+    this.stage.addEventListener("viewchanged", this.refreshLabels);
     this.stage.konva.on("mousedown", this.onBandStart);
     container.addEventListener("keydown", this.onKeyDown);
   }
@@ -366,14 +366,5 @@ export class Scene {
 
   refreshLabels = () => {
     this.labels.refresh(this.visibleNodes(), this.stage.konva);
-  };
-
-  /**
-   * The handles are drawn inside the stage, so a zoom changes how big they are;
-   * the labels are drawn beside it, so a zoom changes where they go.
-   */
-  onViewChanged = () => {
-    this.transform.setZoom(this.stage.konva.scaleX());
-    this.refreshLabels();
   };
 }

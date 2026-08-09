@@ -14,6 +14,13 @@
  * `unscaleNodes` keeps the positions the transformer worked out and puts the
  * scale and the rotation back, which turns a corner drag into "spread this
  * arrangement out" -- something the game's own editor cannot do at all.
+ *
+ * **The handles need nothing done about the zoom.** `Konva.Transformer`
+ * overrides `getAbsoluteTransform` to return its own transform, so it measures
+ * the nodes in screen pixels and draws itself in screen pixels however the
+ * stage is scaled or turned. Dividing the anchor size by the stage's scale is
+ * therefore not a fix but the bug: it makes handles that grow as the view
+ * zooms out.
  */
 
 import Konva from "konva";
@@ -22,15 +29,6 @@ import * as doodads from "./doodads.js";
 
 const ROTATION_SNAPS = [0, 45, 90, 135, 180, 225, 270, 315];
 const ROTATION_SNAP_TOLERANCE = 6;
-
-/**
- * The handles at zoom 1, in stage units. They are divided by the stage's scale
- * -- see `setZoom` -- so these are what they measure on screen at every zoom.
- */
-const ANCHOR_SIZE = 10;
-const ANCHOR_STROKE_WIDTH = 1;
-const BORDER_STROKE_WIDTH = 1;
-const ROTATE_ANCHOR_OFFSET = 30;
 
 /**
  * Dispatches `moving` while a gesture is under way, and `changed` once it has
@@ -92,21 +90,6 @@ export class Transform extends EventTarget {
   /** Whether a node is one of the handles. Anchors are the box's children. */
   grips(node) {
     return node.getParent() === this.konva;
-  }
-
-  /**
-   * Keeps the handles the same size on screen.
-   *
-   * The box lives inside the stage, so that it lines up with the doodad grid
-   * rather than with the screen, and the stage scales across a factor of 800.
-   * Handles that grow with it are handles at one zoom and obstacles at another.
-   */
-  setZoom(scale) {
-    this.konva.anchorSize(ANCHOR_SIZE / scale);
-    this.konva.anchorStrokeWidth(ANCHOR_STROKE_WIDTH / scale);
-    this.konva.borderStrokeWidth(BORDER_STROKE_WIDTH / scale);
-    this.konva.rotateAnchorOffset(ROTATE_ANCHOR_OFFSET / scale);
-    this.konva.forceUpdate();
   }
 
   moving = () => {
