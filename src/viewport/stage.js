@@ -54,7 +54,7 @@ const GRID_MAJOR_COLOR = "#407090";
 const GRID_LABEL_FONT = "monospace";
 const GRID_LABEL_SIZE = 11;
 const GRID_LABEL_GAP = 3;
-const GRID_LABEL_SPACING = 40;
+const GRID_LABEL_SPACING = 27;
 
 const ZOOM_STEP = 1.1;
 const ZOOM_MIN = 0.05;
@@ -133,8 +133,13 @@ export class Stage extends EventTarget {
    * but a label is read on the screen: turned with the view it would be upside
    * down for most of a turn, and scaled with it, unreadable at one end of the
    * zoom range and enormous at the other. Turning and scaling each one back is
-   * what makes its own space the screen's, which is what lets the gap that
-   * holds it clear of its line be a number of pixels set once.
+   * what makes its own space the screen's, which is what lets `corner` be a
+   * number of pixels.
+   *
+   * Which way those pixels point is the world's business rather than the
+   * screen's, so the corner is turned with the view. A label says "this side of
+   * my line", and a screen-fixed offset would put it on the other side of that
+   * line as soon as the view came round far enough.
    */
   alignGridLabels() {
     const zoom = this.konva.scaleX();
@@ -142,9 +147,14 @@ export class Stage extends EventTarget {
 
     this.gridLabels.visible(readable);
     if (!readable) return;
+
+    const turned = this.konva.rotation() - VIEW_ROTATION;
     for (const label of this.gridLabels.getChildren()) {
+      const corner = turnedBy(label.corner, turned);
       label.rotation(-this.konva.rotation());
       label.scale({ x: 1 / zoom, y: 1 / zoom });
+      // A Konva offset moves a node by the negative of itself.
+      label.offset({ x: -corner.x, y: -corner.y });
     }
   }
 
@@ -352,24 +362,38 @@ function grid() {
  * -- so a bare number on a view turned 225 degrees is one a player has no way
  * to attribute.
  *
- * One family reads above its line and the other below, which is what keeps
- * `x 0` and `y 0` off each other at the origin.
+ * The two families read off opposite sides of their lines, which is what keeps
+ * `x 0` and `y 0` off each other at the origin. Where exactly was measured by
+ * eye against the game's own orientation, which is what `corner` is in pixels
+ * of.
  */
 function gridLabels() {
   const group = new Konva.Group({ listening: false });
   for (let offset = 0; offset <= GRID_EXTENT; offset += GRID_MAJOR) {
-    group.add(gridLabel(`y ${offset}`, { x: offset, y: 0 }, true));
-    group.add(gridLabel(`x ${offset}`, { x: 0, y: offset }, false));
+    group.add(
+      gridLabel(`y ${offset}`, { x: offset, y: 0 }, (width) => ({
+        x: -width * 1.5,
+        y: -GRID_LABEL_GAP,
+      })),
+    );
+    group.add(
+      gridLabel(`x ${offset}`, { x: 0, y: offset }, () => ({
+        x: 0,
+        y: GRID_LABEL_GAP,
+      })),
+    );
   }
   return group;
 }
 
 /**
- * The offsets are in the label's own space, which `alignGridLabels` keeps as
- * the screen's, so they are set once here: centred across the line it names and
- * a gap clear of it.
+ * `corner` says where the label's top left goes from the point it names, in
+ * pixels of the default view, given how wide the label came out. It is carried
+ * on the node the way `viewport/doodads.js` carries a doodad on one:
+ * `alignGridLabels` needs it every time the view turns, and measuring a string
+ * once is enough.
  */
-function gridLabel(text, at, above) {
+function gridLabel(text, at, corner) {
   const label = new Konva.Text({
     text,
     x: at.x,
@@ -380,9 +404,19 @@ function gridLabel(text, at, above) {
     listening: false,
     perfectDrawEnabled: false,
   });
-  label.offsetX(label.width() / 2);
-  label.offsetY(above ? GRID_LABEL_SIZE + GRID_LABEL_GAP : -GRID_LABEL_GAP);
+  label.corner = corner(label.width());
   return label;
+}
+
+/** A point turned clockwise by `degrees`, the way the y-down stage turns. */
+function turnedBy(point, degrees) {
+  const radians = (degrees * Math.PI) / 180;
+  const cos = Math.cos(radians);
+  const sin = Math.sin(radians);
+  return {
+    x: point.x * cos - point.y * sin,
+    y: point.x * sin + point.y * cos,
+  };
 }
 
 function clamp(value, low, high) {
