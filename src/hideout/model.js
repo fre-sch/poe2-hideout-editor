@@ -104,7 +104,10 @@ const GENERATOR_FIELDS = [
 const SHAPE_FIELDS = {
   grid: ["box"],
   ellipse: ["box"],
-  polygon: ["box", "corners"],
+  // `distribution` is "corners" or "edges", and a project written before it
+  // existed carries neither -- `generator.js` reads that as "corners", which is
+  // what those projects were generated with.
+  polygon: ["box", "corners", "distribution"],
   line: ["ends"],
 };
 

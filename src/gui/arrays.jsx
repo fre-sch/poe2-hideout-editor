@@ -34,6 +34,11 @@ const SHAPES = [
   ["line", "Line"],
 ];
 
+const DISTRIBUTIONS = [
+  [generator.ON_CORNERS, "Corners"],
+  [generator.ON_EDGES, "Edge middles"],
+];
+
 /**
  * A new array out of what is selected. It sits beside "Add layer", which is the
  * gesture it is a variant of: both make a layer out of the selection, and this
@@ -157,17 +162,35 @@ function Shape({ parameters }) {
       ) : (
         <Box box={parameters.box} />
       )}
-      {parameters.type === "polygon" && (
-        <NumberField
-          label="Corners"
-          value={parameters.corners}
-          min={3}
-          onChange={(corners) => update({ corners })}
-        />
-      )}
+      {parameters.type === "polygon" && <Polygon parameters={parameters} />}
       <Resolution parameters={parameters} />
-      <CornerHint parameters={parameters} />
+      <PolygonHint parameters={parameters} />
     </details>
+  );
+}
+
+/**
+ * A polygon's own two questions: how many corners, and whether the doodads go on
+ * them or between them. The second is a real choice and not a detail -- a fence
+ * wants its posts on the corners, and a ring of braziers wants them facing the
+ * middle of each wall.
+ */
+function Polygon({ parameters }) {
+  return (
+    <>
+      <NumberField
+        label="Corners"
+        value={parameters.corners}
+        min={3}
+        onChange={(corners) => update({ corners })}
+      />
+      <Choice
+        label="Doodads on"
+        value={parameters.distribution ?? generator.ON_CORNERS}
+        options={DISTRIBUTIONS}
+        onChange={(distribution) => update({ distribution })}
+      />
+    </>
   );
 }
 
@@ -271,20 +294,40 @@ function Resolution({ parameters }) {
 }
 
 /**
- * A polygon whose doodads do not divide evenly among its edges misses its own
- * corners, which on a sharp shape reads as a mistake rather than as a choice.
- * Said where it can be acted on, next to both numbers it is about.
+ * What a count that does not divide by the corner count costs, which is not the
+ * same thing in the two distributions: on corners it is the corners that are
+ * missed, and between them it is the edges. Said where it can be acted on, next
+ * to both numbers it is about.
+ *
+ * Nothing is wrong with either, so it is a hint and not a refusal -- a run of
+ * doodads that stops halfway round is a thing a player may well want.
  */
-function CornerHint({ parameters }) {
+function PolygonHint({ parameters }) {
   if (parameters.type !== "polygon") return null;
-  if (parameters.resolution % parameters.corners === 0) return null;
+
+  const count = parameters.resolution;
+  const corners = parameters.corners;
+  if (count % corners === 0) return null;
   return (
     <p class="text-warning mb-0">
-      {parameters.resolution} doodads over {parameters.corners} corners does not
-      divide evenly, so some corners carry no doodad. A multiple of{" "}
-      {parameters.corners} puts one on each.
+      {hintFor(parameters.distribution, count, corners)} A multiple of {corners}{" "}
+      gives every{" "}
+      {parameters.distribution === generator.ON_EDGES ? "edge" : "corner"} the
+      same number.
     </p>
   );
+}
+
+function hintFor(distribution, count, corners) {
+  const short = count < corners;
+  if (distribution === generator.ON_EDGES) {
+    return short
+      ? `${count} doodads over ${corners} edges leaves ${corners - count} edges empty.`
+      : `${count} doodads over ${corners} edges does not divide evenly, so some edges carry more than others.`;
+  }
+  return short
+    ? `${count} doodads over ${corners} corners leaves ${corners - count} corners empty.`
+    : `${count} doodads over ${corners} corners does not divide evenly, so the edges between them carry different numbers.`;
 }
 
 function Rotation({ rotation, type }) {

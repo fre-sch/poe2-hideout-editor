@@ -30,9 +30,9 @@ const DEFAULT_RESOLUTION = { x: 3, y: 3 };
  * A new array made from a selection: those doodads are the source, cycled, and
  * the shape is the box they occupy.
  *
- * The selection is left alone. The doodads it holds were placed by hand and the
- * array's are computed, so consuming them would delete what the player still
- * has -- they are a source in the sense of a pattern, not of a supply.
+ * The doodads themselves are the caller's to take: `gui/arrays.jsx` does, the
+ * array's first generation standing where they stand. This is the arithmetic
+ * half of it.
  */
 export function fromSelection(doodads) {
   return {
@@ -101,6 +101,7 @@ export function withType(parameters, type) {
     type,
     resolution: resolutionFor(parameters, type),
     corners: parameters.corners ?? DEFAULT_CORNERS,
+    distribution: parameters.distribution ?? generator.ON_CORNERS,
   };
 }
 

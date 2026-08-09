@@ -11,9 +11,10 @@
  *     layer       the layer id the doodads are written into
  *     type        "grid" | "ellipse" | "polygon" | "line"
  *     source      [{hash, name, fv}], cycled by index
- *     box         {center, width, height, rotation}   every type but "line"
- *     ends        {start, end}                        "line"
- *     corners     integer                             "polygon"
+ *     box           {center, width, height, rotation} every type but "line"
+ *     ends          {start, end}                      "line"
+ *     corners       integer                           "polygon"
+ *     distribution  "corners" | "edges"               "polygon"
  *     resolution  {x, y} for a grid, a number otherwise
  *     rotation    {base, increment, align}
  *     random      {seed, jitter: {x, y, rotation}, variation: [index, ...]}
@@ -32,11 +33,14 @@
  *
  * ## Where the points go
  *
- * The grid is a lattice at cell centres. Every outline is a polyline walked at
- * equal arc length, which is one function for three shapes and is why the
- * ellipse comes out evenly spaced rather than crowded at its pointy ends.
- * `outline` hands the same polyline to the gizmo, so what a player sees and
- * what the doodads sit on cannot disagree.
+ * The grid is a lattice at cell centres. A line and an ellipse are polylines
+ * walked at equal arc length, which is why the ellipse comes out evenly spaced
+ * rather than crowded at its pointy ends. A polygon is dealt to its edges
+ * instead, so that a doodad lands *on* a corner rather than near one -- see
+ * `alongEdges`.
+ *
+ * `outline` hands the same polyline to the gizmo, so what a player sees and what
+ * the doodads sit on cannot disagree.
  */
 
 import { Doodad } from "./model.js";
@@ -52,6 +56,10 @@ const ELLIPSE_SEGMENTS = 512;
 
 /** A step this close to the end of an edge starts the next one. See `pointAt`. */
 const EPSILON = 1e-9;
+
+/** Where a polygon's doodads sit. The default is `ON_CORNERS`. */
+export const ON_CORNERS = "corners";
+export const ON_EDGES = "edges";
 
 const DEGREE = Math.PI / 180;
 
@@ -138,7 +146,78 @@ export function boxOfEnds(ends, height) {
  */
 function placements(generator) {
   if (generator.type === "grid") return lattice(generator);
+  if (generator.type === "polygon") return alongEdges(generator);
   return walk(outline(generator), countOf(generator));
+}
+
+/**
+ * A polygon's doodads, dealt to its edges rather than walked around its
+ * perimeter.
+ *
+ * The walk is right for the shapes that have nothing to land on: equal arc
+ * length is even spacing, and an ellipse has no corners to miss. A polygon is
+ * chosen *for* its corners, and a walk lands a doodad a hair off one whenever
+ * the arithmetic does not come out exactly -- which reads as a mistake at every
+ * corner of a sharp shape. So the count is shared out edge by edge, and each
+ * edge lays its share out from one end: a doodad is on a corner or it is not.
+ *
+ * The two distributions are one half-step apart. `ON_CORNERS` starts each edge
+ * at its own start corner and follows at `step / share`. `ON_EDGES` sits at
+ * `(step + 0.5) / share`, which is the edge's midpoint for a share of one and
+ * stays centred on it for more.
+ *
+ * The cost lands on a box that is not square: a stretched polygon has edges of
+ * different lengths, and equal shares on unequal edges are not equal spacing.
+ * That is the trade a shape with corners is asking for -- a corner every time,
+ * against a gap that varies -- and the ellipse is there for the other answer.
+ */
+function alongEdges(generator) {
+  const corners = polygonCorners(generator.box, generator.corners);
+  const count = countOf(generator);
+  const phase = generator.distribution === ON_EDGES ? 0.5 : 0;
+  return corners.flatMap((from, index) => {
+    const to = corners[(index + 1) % corners.length];
+    const share = shareOf(count, corners.length, index);
+    return range(share).map((step) =>
+      pointAlong(from, to, (step + phase) / share, generator.box.center),
+    );
+  });
+}
+
+/**
+ * Edge `index`'s share of `count` doodads over `edges` edges: as even as whole
+ * doodads allow, and the shares add up to the count by construction rather than
+ * by a correction afterwards. Fewer doodads than edges leaves some edges empty,
+ * which the sidebar warns about.
+ */
+function shareOf(count, edges, index) {
+  return (
+    Math.floor(((index + 1) * count) / edges) -
+    Math.floor((index * count) / edges)
+  );
+}
+
+/**
+ * A point a fraction along an edge, and which way the shape runs there.
+ *
+ * A doodad on the corner is the one case the edge cannot answer: it belongs to
+ * the edge arriving and the edge leaving equally, so neither direction is its.
+ * The box's centre is what can say -- the corner faces along the circle through
+ * it, which is where the two edges average to, and which is the same answer at
+ * every corner of a regular shape.
+ */
+function pointAlong(from, to, fraction, center) {
+  const span = { x: to.x - from.x, y: to.y - from.y };
+  const at = add(from, scale(span, fraction));
+  return {
+    ...at,
+    direction: fraction === 0 ? facingFrom(center, at) : angleOf(span),
+  };
+}
+
+/** The tangent at a point of the circle about a centre, in stage degrees. */
+function facingFrom(center, at) {
+  return angleOf({ x: at.x - center.x, y: at.y - center.y }) - 90;
 }
 
 function countOf(generator) {
@@ -270,11 +349,13 @@ function segmentsOf(points, closed) {
  * The point at an arc length along the polyline, and the direction of the edge
  * carrying it.
  *
- * A step landing on a corner belongs to the edge it *starts*, which is what
- * makes a polygon at a resolution that is a multiple of its corner count divide
- * every edge evenly and face each corner's doodad along the outgoing edge. The
- * last edge takes whatever is left over, so the end of an open walk lands on
+ * A step landing on a joint belongs to the edge it *starts*, so a walk reads the
+ * direction it is about to travel in rather than the one it has finished with.
+ * The last edge takes whatever is left over, so the end of an open walk lands on
  * the final point rather than falling off it.
+ *
+ * Only the line and the ellipse are walked. A polygon's corners are worth
+ * landing on exactly, which arc length cannot promise -- see `alongEdges`.
  */
 function pointAt(segments, distance) {
   let remaining = distance;
