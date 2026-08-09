@@ -3,8 +3,8 @@
  *
  * `.hideout` holds five fields per doodad and nothing else, and the game parses
  * it, so an extra key is a gamble that costs a player their hideout. Anything
- * the editor wants to remember beyond position and rotation -- layers now,
- * generators later -- is remembered here instead, and `.hideout` becomes an
+ * the editor wants to remember beyond position and rotation -- layers and
+ * generators -- is remembered here instead, and `.hideout` becomes an
  * export target produced from it. See
  * wiki/discussions/project-format-and-user-layers.md.
  *
@@ -14,7 +14,7 @@
 
 import * as essentials from "./essentials.js";
 import * as file from "./file.js";
-import { Doodad, HideoutDocument, Layer } from "./model.js";
+import { Doodad, Generator, HideoutDocument, Layer } from "./model.js";
 
 const FORMAT = "poe2-hideout-editor-project";
 
@@ -51,20 +51,22 @@ export function parse(text) {
   }
 
   const layers = readLayers(data.layers);
-  return new HideoutDocument(
+  const document_ = new HideoutDocument(
     readHeader(data.hideout),
     readDoodads(data.doodads, layers),
     layers,
-    data.generators ?? [],
+    readGenerators(data.generators ?? [], layers),
   );
+  return expand(document_);
 }
 
 /**
  * The document as project text.
  *
- * `generators` is written empty and read back untouched. It is the slot the
- * array placement feature plugs into, and a slot that disappears on the first
- * save is not a slot -- see wiki/discussions/project-format-and-user-layers.
+ * `generators` carries the parameters of every array, and an array's doodads
+ * are not written: they are computed from those parameters on load. Writing both
+ * would write a claim that can disagree with them -- see
+ * wiki/decisions/array-placement.md. The `.hideout` is where the result belongs.
  */
 export function serialize(document_) {
   return JSON.stringify(
@@ -73,8 +75,8 @@ export function serialize(document_) {
       format_version: FORMAT_VERSION,
       hideout: pick(document_.header, HEADER_FIELDS),
       layers: document_.layers.map((layer) => ({ ...layer })),
-      doodads: document_.orderedDoodads().map(toEntry),
-      generators: document_.generators,
+      doodads: authoredDoodads(document_).map(toEntry),
+      generators: document_.generators.map((array) => ({ ...array })),
     },
     null,
     2,
@@ -148,6 +150,53 @@ function readDoodads(doodads, layers) {
     }
     return new Doodad(entry.name, entry, entry.layer);
   });
+}
+
+/**
+ * One generator per layer, and it names a layer the project lists. Two
+ * generators over one layer is two answers to what its doodads are, and there is
+ * no reading of the file that resolves it.
+ *
+ * An unknown `type` is refused by `Generator` itself. Nothing is loaded in any
+ * of these cases: the document is built and returned in one expression.
+ */
+function readGenerators(generators, layers) {
+  if (!Array.isArray(generators)) {
+    throw new Error("Project's generators are not a list");
+  }
+
+  const known = new Set(layers.map((layer) => layer.id));
+  const taken = new Set();
+  return generators.map((entry) => {
+    if (!known.has(entry.layer)) {
+      throw new Error(`Generator is in unknown layer '${entry.layer}'`);
+    }
+    if (taken.has(entry.layer)) {
+      throw new Error(`Layer '${entry.layer}' has more than one generator`);
+    }
+    taken.add(entry.layer);
+    return new Generator(entry);
+  });
+}
+
+/** The generated doodads, which the file does not carry. */
+function expand(document_) {
+  for (const array of document_.generators) {
+    document_.regenerate(array.layer);
+  }
+  return document_;
+}
+
+/**
+ * The doodads the project file writes: those of the layers carrying no
+ * generator. An array layer's are computed on load, so writing them would write
+ * the same doodads twice and let the two copies drift apart.
+ */
+function authoredDoodads(document_) {
+  const generated = new Set(document_.generators.map((array) => array.layer));
+  return document_
+    .orderedDoodads()
+    .filter((doodad) => !generated.has(doodad.layer));
 }
 
 function toEntry(doodad) {

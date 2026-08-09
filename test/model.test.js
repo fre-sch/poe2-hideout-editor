@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { HideoutDocument } from "../src/hideout/model.js";
+import { Generator, HideoutDocument } from "../src/hideout/model.js";
 
 const SHRINE = `﻿{
   "version": 1,
@@ -23,6 +23,16 @@ const SHRINE = `﻿{
     }
   }
 }`;
+
+/** Six doodads, which is enough to tell one generation from another. */
+const GRID = {
+  type: "grid",
+  source: [{ hash: 3230065491, name: "Stash", fv: 0 }],
+  box: { center: { x: 400, y: 300 }, width: 120, height: 80, rotation: 0 },
+  resolution: { x: 3, y: 2 },
+  rotation: { base: 0, increment: 0, align: false },
+  random: { seed: 1, jitter: { x: 0, y: 0, rotation: 0 }, variation: [] },
+};
 
 describe("HideoutDocument", () => {
   it("holds doodads in one flat array, in file order", () => {
@@ -128,6 +138,82 @@ describe("layers", () => {
 
     const ids = [named.id, document_.addLayer("Second").id];
     expect(new Set(ids).size).toBe(2);
+  });
+});
+
+describe("Generator", () => {
+  it("keeps the fields the type it names has, and no others", () => {
+    const line = new Generator({
+      ...GRID,
+      type: "line",
+      ends: { start: { x: 0, y: 0 }, end: { x: 100, y: 0 } },
+      resolution: 4,
+    });
+
+    expect(line.ends).toEqual({ start: { x: 0, y: 0 }, end: { x: 100, y: 0 } });
+    expect("box" in line).toBe(false);
+  });
+
+  it("refuses a type it does not know", () => {
+    expect(() => new Generator({ ...GRID, type: "spiral" })).toThrow(/spiral/);
+  });
+});
+
+describe("array layers", () => {
+  it("places the generator's doodads when the layer is added", () => {
+    const document_ = HideoutDocument.fromText(SHRINE);
+    const array = document_.addArrayLayer("Braziers", GRID);
+
+    expect(document_.findGenerator(array.layer)).toBe(array);
+    expect(document_.doodadsIn(array.layer)).toHaveLength(6);
+    expect(names(document_.orderedDoodads())).toHaveLength(8);
+  });
+
+  it("replaces the doodads it placed before, rather than adding to them", () => {
+    const document_ = HideoutDocument.fromText(SHRINE);
+    const array = document_.addArrayLayer("Braziers", GRID);
+
+    array.resolution = { x: 2, y: 2 };
+    document_.regenerate(array.layer);
+
+    expect(document_.doodadsIn(array.layer)).toHaveLength(4);
+    expect(document_.doodads).toHaveLength(6);
+  });
+
+  it("refuses to regenerate a layer that carries no generator", () => {
+    const document_ = HideoutDocument.fromText(SHRINE);
+
+    expect(() => document_.regenerate("default")).toThrow(/no generator/);
+  });
+
+  it("keeps the doodads and drops the parameters on a detach", () => {
+    const document_ = HideoutDocument.fromText(SHRINE);
+    const array = document_.addArrayLayer("Braziers", GRID);
+    document_.detach(array.layer);
+
+    expect(document_.generators).toEqual([]);
+    expect(document_.doodadsIn(array.layer)).toHaveLength(6);
+  });
+
+  it("deletes the doodads with the layer, needing nowhere to put them", () => {
+    // The exception to "deleting a layer never deletes doodads": they were
+    // derived, so there is nobody to hand them to.
+    const document_ = HideoutDocument.fromText(SHRINE);
+    const array = document_.addArrayLayer("Braziers", GRID);
+    document_.removeLayer(array.layer);
+
+    expect(document_.doodads).toHaveLength(2);
+    expect(document_.generators).toEqual([]);
+    expect(document_.findLayer(array.layer)).toBeUndefined();
+  });
+
+  it("hands a detached layer's doodads on like any other layer's", () => {
+    const document_ = HideoutDocument.fromText(SHRINE);
+    const array = document_.addArrayLayer("Braziers", GRID);
+    document_.detach(array.layer);
+    document_.removeLayer(array.layer, "default");
+
+    expect(document_.doodadsIn("default")).toHaveLength(8);
   });
 });
 
