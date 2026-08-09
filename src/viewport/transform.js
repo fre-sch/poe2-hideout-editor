@@ -205,7 +205,9 @@ export class Transform extends EventTarget {
    * which is exactly the thing the anchors are stretching.
    */
   unscaleNodes() {
-    for (const node of this.nodes) {
+    // The transformer's own list, not the one handed to `setNodes`: it filters
+    // what it was given, and the nodes it wrote to are the nodes to undo.
+    for (const node of this.konva.nodes()) {
       doodads.unscale(node);
     }
   }

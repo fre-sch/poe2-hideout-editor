@@ -102,14 +102,31 @@ export function apply(node) {
 }
 
 /**
- * The node drawn exactly as its doodad says: where, which way, and the size the
- * gizmo is drawn at. The scale is in here because a doodad has none -- whatever
- * put one on the node, `apply` is the end of it.
+ * The node drawn exactly as its doodad says, in every attribute a doodad has an
+ * opinion about -- which is where, which way, and nothing else.
+ *
+ * The scale and the skew are here because a doodad has neither, and something
+ * that puts one on a node has to be undone somewhere. `apply` is the end of it.
  */
 export function place(node) {
   node.position(units.toStage(node.doodad));
   node.rotation(facing(node.doodad));
+  undistort(node);
+}
+
+/**
+ * The scale and the shear off a node, keeping where it is and which way it
+ * faces.
+ *
+ * `Konva.Transformer` writes a resize onto a node by decomposing a matrix, and
+ * a matrix that scales a turned node unevenly is a shear -- so `decompose`
+ * hands back `skewX` and `setAttrs` puts it on. A doodad has no shear any more
+ * than it has a scale, and left on, it compounds: the next step decomposes a
+ * matrix that already carries it.
+ */
+export function undistort(node) {
   node.scale({ x: GIZMO.scale, y: GIZMO.scale });
+  node.skew({ x: 0, y: 0 });
 }
 
 /** The way the gizmo has to be turned to face the way the doodad faces. */
@@ -118,17 +135,16 @@ function facing(doodad) {
 }
 
 /**
- * Everything a resize did to a node except where it put it: the scale back to
- * the drawing's, the rotation back to the doodad's.
+ * Everything a resize did to a node except where it put it.
  *
- * A doodad has no scale to save, so stretching a selection is a way of moving
- * doodads apart and nothing else -- wiki issue 0038. The rotation comes back
- * too because a non-uniform scale of a turned node is a skew, which Konva
- * decomposes into whatever rotation comes closest; turning is the rotate
- * handle's job and not a side effect of spacing.
+ * Stretching a selection is a way of moving doodads apart and nothing else --
+ * wiki issue 0038 -- so the scale and the shear come off and the rotation goes
+ * back to the doodad's. The rotation is in here because the same decomposition
+ * that produces the shear also turns the node a little to fit what is left;
+ * turning is the rotate handle's job and not a side effect of spacing.
  */
 export function unscale(node) {
-  node.scale({ x: GIZMO.scale, y: GIZMO.scale });
+  undistort(node);
   node.rotation(facing(node.doodad));
 }
 

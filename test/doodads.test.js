@@ -108,14 +108,16 @@ describe("apply", () => {
    * `transform` at its own minimum box size, so the step-by-step undo below
    * cannot be the only place this happens.
    */
-  it("draws a scaled node at the size the gizmo is drawn", () => {
+  it("draws a scaled and sheared node the way the gizmo is drawn", () => {
     const node = doodads.create(doodad({ x: 1, y: 2 }));
     const drawn = node.scaleX();
 
     node.scale({ x: drawn * 4, y: drawn * 4 });
+    node.skew({ x: 0.3, y: 0 });
     doodads.apply(node);
 
     expect(node.scale()).toEqual({ x: drawn, y: drawn });
+    expect(node.skew()).toEqual({ x: 0, y: 0 });
   });
 
   it("keeps hash and fv out of it", () => {
@@ -159,6 +161,20 @@ describe("unscale", () => {
     doodads.unscale(node);
 
     expect(node.getClientRect()).toEqual(before);
+  });
+
+  /**
+   * Scaling a turned node unevenly is a shear, so Konva's `decompose` hands
+   * back a `skewX` and `setAttrs` puts it on the node. Left there it compounds,
+   * because the next step decomposes a matrix that already carries it.
+   */
+  it("takes the shear off a turned node", () => {
+    const node = doodads.create(doodad({ x: 5, y: 5, r: 58301 }));
+
+    node.skew({ x: 0.4, y: 0.2 });
+    doodads.unscale(node);
+
+    expect(node.skew()).toEqual({ x: 0, y: 0 });
   });
 });
 
