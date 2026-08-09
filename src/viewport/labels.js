@@ -26,12 +26,19 @@ export class Labels {
     else if (!enabled) this.publish([]);
   }
 
-  refresh(nodes, stage) {
-    this.pending = [nodes, stage];
+  /**
+   * `collectNodes` is called in the frame that renders and not here. Which
+   * doodads are on show is a pass over the whole hideout, and every ask inside
+   * one frame would get the same answer -- an answer the labels do not need at
+   * all when they are turned off.
+   */
+  refresh(collectNodes, stage) {
+    this.pending = [collectNodes, stage];
     if (this.frame !== null) return;
     this.frame = requestAnimationFrame(() => {
       this.frame = null;
-      this.publish(this.enabled ? visible(...this.pending) : []);
+      const [collectPending, pendingStage] = this.pending;
+      this.publish(this.enabled ? visible(collectPending(), pendingStage) : []);
     });
   }
 

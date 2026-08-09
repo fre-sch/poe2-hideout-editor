@@ -41,6 +41,21 @@ const GRID_MAJOR = 50;
 const GRID_MINOR_COLOR = "#204070";
 const GRID_MAJOR_COLOR = "#407090";
 
+/**
+ * The coordinate labels on the major lines. Monospace because they are read as
+ * numbers rather than as words, and in the major line's own colour because they
+ * are that line, written down.
+ *
+ * The gap and the size are screen pixels: a label is counter-turned and
+ * counter-scaled, so its own space is the screen's -- see `alignGridLabels`.
+ * Below `GRID_LABEL_SPACING` pixels between major lines there is no room to read
+ * one, and forty-two of them at once is a smear rather than a grid.
+ */
+const GRID_LABEL_FONT = "monospace";
+const GRID_LABEL_SIZE = 11;
+const GRID_LABEL_GAP = 3;
+const GRID_LABEL_SPACING = 27;
+
 const ZOOM_STEP = 1.1;
 const ZOOM_MIN = 0.05;
 const ZOOM_MAX = 40;
@@ -75,7 +90,18 @@ export class Stage extends EventTarget {
     // hundred lines with `strokeScaleEnabled` off cost less than that trade.
     // Kept as a field so it can be hidden; built once either way.
     this.grid = grid();
+    // Inside the grid, so that the toggle hides both without knowing there are
+    // two things to hide.
+    this.gridLabels = gridLabels();
+    this.grid.add(this.gridLabels);
     this.static.add(this.grid);
+
+    // The view starts on the world origin rather than on the stage's own top
+    // left corner. The origin is the corner the grid and every hideout grow away
+    // from, and a turn of VIEW_ROTATION about the corner of the viewport puts all
+    // of that off the screen -- an editor that has just opened would show empty
+    // space and no way to know which way to pan.
+    this.centreOn({ x: 500, y: 500 });
 
     this.konva.on("wheel", this.onWheel);
     container.addEventListener("mousedown", this.onViewDragStart);
@@ -101,7 +127,41 @@ export class Stage extends EventTarget {
   }
 
   viewChanged() {
+    this.alignGridLabels();
     this.dispatchEvent(new CustomEvent("viewchanged"));
+  }
+
+  /**
+   * Keeps the coordinate labels upright and one size, whatever the view is
+   * doing.
+   *
+   * They are anchored in the world, so that a label stays on the line it names,
+   * but a label is read on the screen: turned with the view it would be upside
+   * down for most of a turn, and scaled with it, unreadable at one end of the
+   * zoom range and enormous at the other. Turning and scaling each one back is
+   * what makes its own space the screen's, which is what lets `corner` be a
+   * number of pixels.
+   *
+   * Which way those pixels point is the world's business rather than the
+   * screen's, so the corner is turned with the view. A label says "this side of
+   * my line", and a screen-fixed offset would put it on the other side of that
+   * line as soon as the view came round far enough.
+   */
+  alignGridLabels() {
+    const zoom = this.konva.scaleX();
+    const readable = GRID_MAJOR * zoom >= GRID_LABEL_SPACING;
+
+    this.gridLabels.visible(readable);
+    if (!readable) return;
+
+    const turned = this.konva.rotation() - VIEW_ROTATION;
+    for (const label of this.gridLabels.getChildren()) {
+      const corner = turnedBy(label.corner, turned);
+      label.rotation(-this.konva.rotation());
+      label.scale({ x: 1 / zoom, y: 1 / zoom });
+      // A Konva offset moves a node by the negative of itself.
+      label.offset({ x: -corner.x, y: -corner.y });
+    }
   }
 
   /**
@@ -296,6 +356,73 @@ function grid() {
     );
   }
   return group;
+}
+
+/**
+ * A coordinate on every major line, along the axes of the world: the `y` labels
+ * lie on the line where `x` is zero, and the `x` labels on the line where `y`
+ * is zero.
+ *
+ * Each label names its axis, and the axis it names is the file's. `toStage`
+ * swaps them -- the line drawn at stage `x = 300` is where a doodad's `y` is 300
+ * -- so a bare number on a view turned 225 degrees is one a player has no way
+ * to attribute.
+ *
+ * The two families read off opposite sides of their lines, which is what keeps
+ * `x 0` and `y 0` off each other at the origin. Where exactly was measured by
+ * eye against the game's own orientation, which is what `corner` is in pixels
+ * of.
+ */
+function gridLabels() {
+  const group = new Konva.Group({ listening: false });
+  for (let offset = 0; offset <= GRID_EXTENT; offset += GRID_MAJOR) {
+    group.add(
+      gridLabel(`y ${offset}`, { x: offset, y: 0 }, (width) => ({
+        x: -width * 1.5,
+        y: -GRID_LABEL_GAP,
+      })),
+    );
+    group.add(
+      gridLabel(`x ${offset}`, { x: 0, y: offset }, () => ({
+        x: 0,
+        y: GRID_LABEL_GAP,
+      })),
+    );
+  }
+  return group;
+}
+
+/**
+ * `corner` says where the label's top left goes from the point it names, in
+ * pixels of the default view, given how wide the label came out. It is carried
+ * on the node the way `viewport/doodads.js` carries a doodad on one:
+ * `alignGridLabels` needs it every time the view turns, and measuring a string
+ * once is enough.
+ */
+function gridLabel(text, at, corner) {
+  const label = new Konva.Text({
+    text,
+    x: at.x,
+    y: at.y,
+    fontFamily: GRID_LABEL_FONT,
+    fontSize: GRID_LABEL_SIZE,
+    fill: GRID_MAJOR_COLOR,
+    listening: false,
+    perfectDrawEnabled: false,
+  });
+  label.corner = corner(label.width());
+  return label;
+}
+
+/** A point turned clockwise by `degrees`, the way the y-down stage turns. */
+function turnedBy(point, degrees) {
+  const radians = (degrees * Math.PI) / 180;
+  const cos = Math.cos(radians);
+  const sin = Math.sin(radians);
+  return {
+    x: point.x * cos - point.y * sin,
+    y: point.x * sin + point.y * cos,
+  };
 }
 
 function clamp(value, low, high) {

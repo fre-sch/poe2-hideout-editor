@@ -18,10 +18,10 @@ export default function Sidebar() {
       <h1>PoE2 Hideout Editor</h1>
       <hr />
       <File />
-      <View />
       <Hideout />
       <AddDoodadButton />
       <Layers />
+      <View />
       <HelpButton />
       <div class="text-center">
         <a href="https://github.com/fre-sch/poe2-hideout-editor/issues">
