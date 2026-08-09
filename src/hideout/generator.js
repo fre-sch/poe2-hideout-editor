@@ -63,10 +63,13 @@ export function generate(generator) {
 }
 
 /**
- * The polyline an outline shape is drawn as and walked along: the points in
- * doodad units, and whether the last one joins the first.
+ * The polyline a shape is drawn as: the points in doodad units, and whether the
+ * last one joins the first.
  *
- * A grid has no outline and says so rather than returning something empty.
+ * For every type but the grid it is also the polyline the walk consumes, so
+ * what a player sees and what the doodads sit on cannot disagree. A grid's
+ * doodads are a lattice instead, and what it is drawn as is the box they are
+ * spread inside -- the same box, through the same frame change.
  */
 export function outline(generator) {
   switch (generator.type) {
@@ -82,6 +85,8 @@ export function outline(generator) {
       };
     case "ellipse":
       return { points: ellipsePoints(generator.box), closed: true };
+    case "grid":
+      return { points: boxCorners(generator.box), closed: true };
     default:
       throw new Error(`A '${generator.type}' has no outline`);
   }
@@ -156,6 +161,17 @@ function polygonCorners(box, corners) {
     return { x: Math.cos(angle), y: Math.sin(angle) };
   });
   return fitToBox(unit, box).map((local) => fromLocal(local, box));
+}
+
+/** The box's own four corners, anticlockwise from its bottom left. */
+function boxCorners(box) {
+  const half = { x: box.width / 2, y: box.height / 2 };
+  return [
+    { x: -half.x, y: -half.y },
+    { x: half.x, y: -half.y },
+    { x: half.x, y: half.y },
+    { x: -half.x, y: half.y },
+  ].map((local) => fromLocal(local, box));
 }
 
 function ellipsePoints(box) {

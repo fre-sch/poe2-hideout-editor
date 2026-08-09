@@ -98,6 +98,9 @@ async function load(event) {
     // checked against the document's own -- so a palette that survived a load
     // would be describing the previous file.
     state.showPalette.value = false;
+    // And the generator sidebar with it, for the same reason: it describes one
+    // array of one document.
+    state.editedArray.value = null;
   } catch (error) {
     state.loadError.value = error;
   }

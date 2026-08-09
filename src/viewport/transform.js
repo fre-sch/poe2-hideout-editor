@@ -17,12 +17,10 @@
  * price of measuring spacing that way is that spacing multiplies, so `bounded`
  * is what stops a squeeze from reaching zero and staying there.
  *
- * **The handles need nothing done about the zoom.** `Konva.Transformer`
- * overrides `getAbsoluteTransform` to return its own transform, so it measures
- * the nodes in screen pixels and draws itself in screen pixels however the
- * stage is scaled or turned. Dividing the anchor size by the stage's scale is
- * therefore not a fix but the bug: it makes handles that grow as the view
- * zooms out.
+ * `Box` is the transformer itself and `Transform` is what it does to a
+ * selection of doodads. The split is not decoration: `viewport/arrays.js` needs
+ * the same box around an array's shape and none of the doodad arithmetic below
+ * -- wiki issue 0034.
  */
 
 import Konva from "konva";
@@ -86,6 +84,30 @@ function floor(size) {
 }
 
 /**
+ * What every box in the editor agrees about, whatever it holds.
+ *
+ * The array's box takes the same snaps and the same refusal to flip as the
+ * selection's -- wiki issue 0034 -- because they are the same gesture on the
+ * same screen, and a player who has learnt one has learnt the other.
+ */
+const BOX_DEFAULTS = {
+  rotationSnaps: ROTATION_SNAPS,
+  rotationSnapTolerance: ROTATION_SNAP_TOLERANCE,
+  // Mirroring would leave every gizmo pointing the way it was while the
+  // arrangement turned inside out, and a doodad has no mirror to save.
+  flipEnabled: false,
+  // Stretching one axis is the point of having the anchors at all, so the
+  // corners are free too; Shift is Konva's own way to ask for the ratio.
+  keepRatio: false,
+  // Dragging inside the box moves what it holds, but the scene decides that
+  // rather than Konva. The area Konva would claim is a shape in the overlay
+  // layer, above the doodads, so it would swallow the click that takes a doodad
+  // back out of the selection.
+  shouldOverdrawWholeArea: false,
+  ignoreStroke: true,
+};
+
+/**
  * The transformer, measuring itself at most once a frame.
  *
  * Konva remeasures the box for every node whose absolute transform changed, and
@@ -97,8 +119,22 @@ function floor(size) {
  * A frame and not a timer, and none of the asks is dropped: the callback runs
  * before the browser paints, so the box is still drawn where it belongs in the
  * frame the view moved in.
+ *
+ * **The handles need nothing done about the zoom.** `Konva.Transformer`
+ * overrides `getAbsoluteTransform` to return its own transform, so it measures
+ * the nodes in screen pixels and draws itself in screen pixels however the stage
+ * is scaled or turned. Dividing the anchor size by the stage's scale is
+ * therefore not a fix but the bug: it makes handles that grow as the view zooms
+ * out.
  */
-class Box extends Konva.Transformer {
+export class Box extends Konva.Transformer {
+  constructor(config) {
+    super({ ...BOX_DEFAULTS, ...config });
+    // Here rather than in the config because it needs the transformer it
+    // belongs to, and Konva calls it with no receiver of its own.
+    this.anchorDragBoundFunc((_was, wants) => this.inside(wants));
+  }
+
   /**
    * `frame` is undefined until the first ask, and no class field declares it:
    * Konva's constructor may update, and a field initialiser runs after that and
@@ -126,6 +162,79 @@ class Box extends Konva.Transformer {
     super._handleMouseDown(event);
   }
 
+  /**
+   * The box's own space, in screen pixels -- and the one place it is asked for.
+   *
+   * The box measures itself a frame at a time, so anything reading where it *is*
+   * has to let a scheduled measurement land first. Reading it is rarer than
+   * moving it: these are gestures, and they arrive one at a time.
+   */
+  space() {
+    this.flush();
+    return this.getAbsoluteTransform();
+  }
+
+  /**
+   * An anchor position, in screen pixels, brought back inside the floor.
+   *
+   * The box is turned with the view, so "nearer the opposite side" is a
+   * question in the box's own space and the point has to be asked there. Its
+   * `getAbsoluteTransform` is that space -- it returns its own transform and
+   * nothing above it, which is also why the box is in screen pixels to begin
+   * with.
+   *
+   * The rotate handle is left alone. It is dragged around the outside of the
+   * box, where nothing it does is a collapse.
+   */
+  inside(point) {
+    const anchor = this.getActiveAnchor();
+    if (anchor === "rotater") return point;
+
+    const space = this.space();
+    const box = { width: this.width(), height: this.height() };
+    return space.point(
+      clamped(anchor, box, space.copy().invert().point(point)),
+    );
+  }
+
+  /**
+   * Whether a point in screen pixels is inside the box. The box is turned with
+   * the view, so the question is asked in the box's own space, where it spans
+   * `0..width` across and `0..height` down.
+   */
+  encloses(point) {
+    const at = this.space().copy().invert().point(point);
+    return (
+      at.x >= 0 && at.x <= this.width() && at.y >= 0 && at.y <= this.height()
+    );
+  }
+
+  /** Whether a node is one of the handles. Anchors are the box's children. */
+  grips(node) {
+    return node.getParent() === this;
+  }
+
+  /**
+   * The corner a resize turns about: the one across the box from the anchor
+   * being dragged, in screen pixels.
+   *
+   * A side anchor leaves one axis alone, and that axis's coordinate here is
+   * whichever end of it -- the end that does not move is not worth choosing
+   * between.
+   */
+  corner(anchor) {
+    return this.space().point({
+      x: anchor.includes("left") ? this.width() : 0,
+      y: anchor.includes("top") ? this.height() : 0,
+    });
+  }
+
+  /** Which gesture the anchors are running: the rotate handle, or the rest. */
+  resizing() {
+    const anchor = this.getActiveAnchor();
+    return Boolean(anchor) && anchor !== "rotater";
+  }
+
   destroy() {
     cancelAnimationFrame(this.frame);
     this.frame = null;
@@ -142,26 +251,8 @@ export class Transform extends EventTarget {
   constructor(layer) {
     super();
 
-    this.konva = new Box({
-      rotationSnaps: ROTATION_SNAPS,
-      rotationSnapTolerance: ROTATION_SNAP_TOLERANCE,
-      // Mirroring would leave every gizmo pointing the way it was while the
-      // arrangement turned inside out, and a doodad has no mirror to save.
-      flipEnabled: false,
-      // Stretching one axis is the point of having the anchors at all, so the
-      // corners are free too; Shift is Konva's own way to ask for the ratio.
-      keepRatio: false,
-      // Dragging inside the box moves the selection, but `scene.js` decides
-      // that rather than Konva. The area Konva would claim is a shape in the
-      // overlay layer, above the doodads, so it would swallow the click that
-      // takes a doodad back out of the selection.
-      shouldOverdrawWholeArea: false,
-      ignoreStroke: true,
-    });
+    this.konva = new Box();
     layer.add(this.konva);
-    // Set here rather than above because it needs the transformer it belongs
-    // to, and Konva calls it with no receiver of its own.
-    this.konva.anchorDragBoundFunc((_was, wants) => this.insideBox(wants));
 
     this.nodes = [];
     this.step = null;
@@ -192,60 +283,14 @@ export class Transform extends EventTarget {
     this.konva.visible(nodes.length > 0);
   }
 
-  /**
-   * An anchor position, in screen pixels, brought back inside the floor.
-   *
-   * The box is turned with the view, so "nearer the opposite side" is a
-   * question in the box's own space and the point has to be asked there. The
-   * transformer's `getAbsoluteTransform` is that space -- it returns its own
-   * transform and nothing above it, which is also why the box is in screen
-   * pixels to begin with.
-   *
-   * The rotate handle is left alone. It is dragged around the outside of the
-   * box, where nothing it does is a collapse.
-   */
-  insideBox(point) {
-    const anchor = this.konva.getActiveAnchor();
-    if (anchor === "rotater") return point;
-
-    const space = this.boxSpace();
-    const box = { width: this.konva.width(), height: this.konva.height() };
-    const inside = clamped(anchor, box, space.copy().invert().point(point));
-    return space.point(inside);
-  }
-
-  /**
-   * The box's own space, in screen pixels -- and the one place it is asked for.
-   *
-   * `Box` measures itself a frame at a time, so anything reading where the box
-   * *is* has to let a scheduled measurement land first. Reading it is rarer than
-   * moving it: these are gestures, and they arrive one at a time.
-   */
-  boxSpace() {
-    this.konva.flush();
-    return this.konva.getAbsoluteTransform();
-  }
-
   /** Whether a node is one the box would move. */
   holds(node) {
     return this.nodes.includes(node);
   }
 
-  /**
-   * Whether a point in screen pixels is inside the box. The box is turned with
-   * the view, so the question is asked in the box's own space, where it spans
-   * `0..width` across and `0..height` down.
-   */
+  /** Whether a point in screen pixels is inside the box around the selection. */
   encloses(point) {
-    if (this.nodes.length === 0) return false;
-
-    const inside = this.boxSpace().copy().invert().point(point);
-    return (
-      inside.x >= 0 &&
-      inside.x <= this.konva.width() &&
-      inside.y >= 0 &&
-      inside.y <= this.konva.height()
-    );
+    return this.nodes.length > 0 && this.konva.encloses(point);
   }
 
   /**
@@ -262,7 +307,7 @@ export class Transform extends EventTarget {
 
   /** Whether a node is one of the handles. Anchors are the box's children. */
   grips(node) {
-    return node.getParent() === this.konva;
+    return this.konva.grips(node);
   }
 
   /**
@@ -274,26 +319,11 @@ export class Transform extends EventTarget {
   begin = () => {
     this.step = null;
     this.pinned = null;
-    if (!this.resizing()) return;
+    if (!this.konva.resizing()) return;
 
     const anchor = this.konva.getActiveAnchor();
-    this.pinned = { anchor, at: this.corner(anchor) };
+    this.pinned = { anchor, at: this.konva.corner(anchor) };
   };
-
-  /**
-   * The corner a resize turns about: the one across the box from the anchor
-   * being dragged, in screen pixels.
-   *
-   * A side anchor leaves one axis alone, and that axis's coordinate here is
-   * whichever end of it -- the end that does not move is not worth choosing
-   * between.
-   */
-  corner(anchor) {
-    return this.boxSpace().point({
-      x: anchor.includes("left") ? this.konva.width() : 0,
-      y: anchor.includes("top") ? this.konva.height() : 0,
-    });
-  }
 
   /**
    * Puts the far corner back where the resize started.
@@ -309,7 +339,7 @@ export class Transform extends EventTarget {
    * worked out changes.
    */
   repin() {
-    const drifted = this.corner(this.pinned.anchor);
+    const drifted = this.konva.corner(this.pinned.anchor);
     const across = this.pinned.at.x - drifted.x;
     const down = this.pinned.at.y - drifted.y;
     if (across === 0 && down === 0) return;
@@ -342,17 +372,6 @@ export class Transform extends EventTarget {
     }
     this.moving();
   };
-
-  /**
-   * Which gesture the anchors are running: the rotate handle, or the rest.
-   * Asked once, at the start, and remembered as `pinned` -- Konva swaps the
-   * anchor it is holding around mid-gesture, and the answer must not swap
-   * with it.
-   */
-  resizing() {
-    const anchor = this.konva.getActiveAnchor();
-    return Boolean(anchor) && anchor !== "rotater";
-  }
 
   /**
    * Takes back everything a resize did to a node except where it put it.
