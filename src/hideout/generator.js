@@ -98,6 +98,37 @@ export function randomSeed() {
 }
 
 /**
+ * The two ends of a box's own x axis: what a shape becomes when its type is
+ * changed to `line`.
+ *
+ * The pair with the reverse below is here rather than in the sidebar that asks
+ * for it, because both are the frame change of `fromLocal` read in one direction
+ * or the other -- and the frames are reasoned about in this module only.
+ */
+export function endsOfBox(box) {
+  const half = box.width / 2;
+  return {
+    start: fromLocal({ x: -half, y: 0 }, box),
+    end: fromLocal({ x: half, y: 0 }, box),
+  };
+}
+
+/**
+ * The box a line spans, given the height it is to have: its own x axis runs
+ * from one end to the other, so a shape made out of a line keeps the line's
+ * length and the direction it was drawn in.
+ */
+export function boxOfEnds(ends, height) {
+  const span = { x: ends.end.x - ends.start.x, y: ends.end.y - ends.start.y };
+  return {
+    center: scale(add(ends.start, ends.end), 0.5),
+    width: Math.hypot(span.x, span.y),
+    height,
+    rotation: angleOf(span),
+  };
+}
+
+/**
  * Where the doodads land and which way the shape runs there, before any
  * rotation or jitter: `{x, y, direction}` in doodad units and stage degrees.
  *

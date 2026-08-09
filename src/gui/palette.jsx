@@ -325,7 +325,19 @@ function refusal() {
   // the same trade `gui/layers.jsx` makes.
   if (layer && !layer.visible) return hiddenOrLocked(layer, "hidden");
   if (layer && layer.locked) return hiddenOrLocked(layer, "locked");
+  if (layer && isArray(layer)) {
+    return (
+      `New doodads land in the layer '${layer.name}', which is an array. It ` +
+      `writes its own doodads from its settings, so one placed there would go ` +
+      `at the next change. Make another layer the active one.`
+    );
+  }
   return null;
+}
+
+/** An array owns its layer's doodads -- see wiki/decisions/array-placement.md. */
+function isArray(layer) {
+  return Boolean(state.hideoutDocument.value?.findGenerator(layer.id));
 }
 
 function hiddenOrLocked(layer, flag) {

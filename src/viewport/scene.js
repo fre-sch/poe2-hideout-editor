@@ -46,6 +46,7 @@ export class Scene {
     this.nodes = [];
     this.groups = new Map();
     this.layers = [];
+    this.generated = new Set();
     this.outline = null;
     this.outlineRequest = 0;
     this.placement = null;
@@ -115,26 +116,61 @@ export class Scene {
    */
   showLayers(layers) {
     this.layers = layers;
+    this.generated = generatedLayers();
+    this.dropNodesOfGoneLayers(layers);
     this.groups = groups.sync(
       this.stage.doodads,
       this.groups,
       layers,
       this.nodes,
+      this.generated,
     );
     this.selection.discard(this.unselectableNodes());
     this.refreshLabels();
+  }
+
+  /**
+   * The nodes of a layer that is no longer there.
+   *
+   * Deleting a layer hands its doodads to another one and leaves nothing to
+   * drop -- except for an array, which takes its doodads with it, and that
+   * delete happens in the sidebar. So this is where the drawing hears about
+   * them. Every other node keeps `groups.sync`'s guarantee that it has a group
+   * to be drawn in.
+   */
+  dropNodesOfGoneLayers(layers) {
+    const known = new Set(layers.map((layer) => layer.id));
+    const gone = this.nodes.filter((node) => !known.has(node.doodad.layer));
+    if (gone.length === 0) return;
+
+    this.selection.discard(gone);
+    for (const node of gone) {
+      node.destroy();
+    }
+    this.nodes = this.nodes.filter((node) => known.has(node.doodad.layer));
   }
 
   layerOf(node) {
     return this.layers.find((layer) => layer.id === node.doodad.layer);
   }
 
+  /**
+   * Whether a node is the player's to select. An array's doodads are not: they
+   * are derived, and detaching the layer is what makes them ordinary.
+   */
+  selectableNode(node) {
+    return groups.selectable(
+      this.layerOf(node),
+      this.generated.has(node.doodad.layer),
+    );
+  }
+
   selectableNodes() {
-    return this.nodes.filter((node) => groups.selectable(this.layerOf(node)));
+    return this.nodes.filter((node) => this.selectableNode(node));
   }
 
   unselectableNodes() {
-    return this.nodes.filter((node) => !groups.selectable(this.layerOf(node)));
+    return this.nodes.filter((node) => !this.selectableNode(node));
   }
 
   visibleNodes() {
@@ -262,7 +298,23 @@ export class Scene {
    */
   onArrayChanged = (event) => {
     this.regenerateArray(event.detail.layer);
+    // The sidebar is showing the numbers this gesture has just rewritten.
+    state.arrayMoved.value++;
   };
+
+  /**
+   * An array the sidebar has rewritten: its doodads regenerated, and its gizmo
+   * drawn again from parameters that may be a different object -- changing a
+   * type builds new ones, see `model.replaceGenerator`.
+   *
+   * The gizmo is drawn for whatever the state says is being edited rather than
+   * for the layer named here, and the two differ exactly once: **Close &
+   * discard** restores an array and closes its sidebar in one action.
+   */
+  refreshArray(layer) {
+    this.showArray(state.editedArray.value);
+    this.regenerateArray(layer);
+  }
 
   regenerateArray(layer) {
     const document_ = state.hideoutDocument.value;
@@ -490,6 +542,12 @@ export class Scene {
     this.arrays.viewScaled(this.stage.konva.scaleX());
     this.refreshLabels();
   };
+}
+
+/** The ids of the layers whose doodads an array writes. */
+function generatedLayers() {
+  const generators = state.hideoutDocument.value?.generators ?? [];
+  return new Set(generators.map((array) => array.layer));
 }
 
 /** Regenerated doodads onto the nodes that were drawing the previous ones. */

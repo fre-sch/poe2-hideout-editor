@@ -509,6 +509,43 @@ describe("outline", () => {
 });
 
 /**
+ * The two conversions a change of type is made of. They live in this module
+ * because they are the frame change of `fromLocal` read one way and then the
+ * other, and the frames are reasoned about here only.
+ */
+describe("box and ends", () => {
+  const PLACED = {
+    center: { x: 200, y: 100 },
+    width: 100,
+    height: 40,
+    rotation: 0,
+  };
+
+  it("puts a box's ends on its own x axis, which is its width", () => {
+    expect(generator.endsOfBox(PLACED)).toEqual({
+      start: { x: 200, y: 50 },
+      end: { x: 200, y: 150 },
+    });
+  });
+
+  it("spans a box along a line, keeping its length and direction", () => {
+    const spanned = generator.boxOfEnds(generator.endsOfBox(PLACED), 40);
+
+    expect(spanned).toEqual(PLACED);
+  });
+
+  it("takes a turned box out to its ends and back unchanged", () => {
+    const turned = box(100, 40, 30);
+    const there = generator.boxOfEnds(generator.endsOfBox(turned), 40);
+
+    expect(there.center.x).toBeCloseTo(turned.center.x);
+    expect(there.center.y).toBeCloseTo(turned.center.y);
+    expect(there.width).toBeCloseTo(turned.width);
+    expect(wrapped(there.rotation)).toBeCloseTo(turned.rotation);
+  });
+});
+
+/**
  * The compatibility surface. These are not hand-computed: they are what the
  * math produced on the day it was written, recorded so that it cannot change
  * by accident. A failure here is either a bug being fixed on purpose or a

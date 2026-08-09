@@ -88,7 +88,7 @@ async function load(event) {
 
     state.hideoutDocument.value = hideout;
     state.layers.value = [...hideout.layers];
-    state.activeLayer.value = hideout.layers[0].id;
+    state.activeLayer.value = firstOrdinaryLayer(hideout).id;
     state.fileName.value = file.name;
     state.hideoutType.value = hideout.header.hideout_hash;
     state.doodadCount.value = hideout.doodads.length;
@@ -104,6 +104,21 @@ async function load(event) {
   } catch (error) {
     state.loadError.value = error;
   }
+}
+
+/**
+ * Where new doodads land after a load: the first layer that is not an array.
+ *
+ * An array writes its own doodads and writes over anything else in its layer,
+ * so making one the active layer is a way of losing a doodad the moment a
+ * parameter changes. A project whose every layer is an array falls back to the
+ * first of them, and the palette refuses to place there.
+ */
+function firstOrdinaryLayer(hideout) {
+  const ordinary = hideout.layers.find(
+    (layer) => !hideout.findGenerator(layer.id),
+  );
+  return ordinary ?? hideout.layers[0];
 }
 
 function saveProject() {

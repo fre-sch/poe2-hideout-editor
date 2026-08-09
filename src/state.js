@@ -91,6 +91,36 @@ export const showPalette = signal(false);
 export const editedArray = signal(null);
 
 /**
+ * The array the sidebar has just rewritten, as `{ layer }`, or `null`.
+ *
+ * `selectionRequest`'s reasoning, applied to parameters: the sidebar edits the
+ * document in place, which nothing can subscribe to, and what has to happen
+ * next -- regenerate the doodads, move the nodes drawing them -- is the
+ * viewport's. A fresh object per edit, so two edits that say the same thing are
+ * two edits.
+ *
+ * It names the layer rather than being read off `editedArray`, because a
+ * discard restores the parameters *and* closes the sidebar, and the array whose
+ * doodads have to come back is the one that is no longer being edited.
+ */
+export const arrayEdit = signal(null);
+
+export function arrayEdited(layer) {
+  arrayEdit.value = { layer };
+}
+
+/**
+ * Bumped whenever a gesture in the viewport rewrites an array's geometry.
+ *
+ * The other direction, and it carries nothing: the sidebar is showing the
+ * parameters a handle has just moved, and needs only to be told to read them
+ * again. It cannot be the same signal as `arrayEdit` -- that one asks the
+ * viewport to redraw the gizmo, which mid-drag would take the outline out from
+ * under the hand dragging it.
+ */
+export const arrayMoved = signal(0);
+
+/**
  * A doodad the palette asks for, as `{ hash, name }`, or `null`.
  *
  * `selectionRequest`'s reasoning, applied to placing: where the middle of the

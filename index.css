@@ -292,6 +292,57 @@ main {
   font-size: 0.9em;
 }
 
+/* An array's settings: the same column as the palette's, on the far right of
+   it. A generator carries a dozen parameters, so the fields between the heading
+   and the buttons are what scrolls -- the buttons that keep or discard them
+   must never be the part that is off the bottom. */
+#array-sidebar {
+  display: flex;
+  flex-direction: column;
+  width: 300px;
+  min-width: 300px;
+  height: 100vh;
+  max-height: 100vh;
+  background-color: var(--bs-secondary-bg-subtle);
+  overflow: hidden;
+  padding: 0.5rem;
+}
+#array-sidebar h2 {
+  font-size: 1.1rem;
+  padding: 0;
+  margin: 0;
+}
+#array-sidebar hr {
+  margin: 0.5rem 0;
+}
+.array-fields {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+.array-footer {
+  padding-top: 0.5rem;
+  border-top: 1px solid #222;
+}
+
+/* Label and input on one line, every input starting in the same column: the
+   fields are read down the column as a list of numbers. */
+.array-field {
+  display: grid;
+  grid-template-columns: 8rem auto;
+  align-items: center;
+  gap: 0.25rem;
+  margin-bottom: 0.15rem;
+}
+
+/* One source doodad per line, truncated: the names are long, the column is
+   narrow, and what matters is which doodads and in what order. */
+.array-source li {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 #label-overlay {
   pointer-events: none;
   position: absolute;

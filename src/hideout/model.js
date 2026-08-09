@@ -201,6 +201,27 @@ export class HideoutDocument {
   }
 
   /**
+   * Swaps an array's parameters for a new set, and answers with them.
+   *
+   * They go through `Generator`, which is what makes changing a type safe: the
+   * fields of the shape being left are dropped rather than lingering, so a
+   * `line` cannot carry the `box` it used to be. The doodads are not touched --
+   * `regenerate` is a separate step, because the caller may be about to change
+   * several things.
+   */
+  replaceGenerator(parameters) {
+    const next = new Generator(parameters);
+    if (!this.findGenerator(next.layer)) {
+      throw new Error(`Layer '${next.layer}' has no generator`);
+    }
+
+    this.generators = this.generators.map((array) =>
+      array.layer === next.layer ? next : array,
+    );
+    return next;
+  }
+
+  /**
    * Replaces an array layer's doodads with what its parameters say now.
    *
    * The old ones go: they were derived, and keeping any of them is how a layer

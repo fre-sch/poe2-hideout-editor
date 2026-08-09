@@ -118,6 +118,10 @@ function Shortcuts() {
         handle above it to turn them.
       </li>
       <li>
+        Drag <span class="shortcut">an array's outline</span> to move it, and
+        its handles to resize and turn it. They are up while its settings are.
+      </li>
+      <li>
         Drag <span class="shortcut">middle mouse button</span> to pan.
       </li>
       <li>
