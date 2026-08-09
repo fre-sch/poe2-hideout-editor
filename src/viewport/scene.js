@@ -22,6 +22,12 @@ import { Stage } from "./stage.js";
 const SELECT_BUTTON = 0;
 
 /**
+ * How far a band may span and still be a click, in pixels. A press meant to be
+ * a click carries a pixel or two of the hand with it.
+ */
+const CLICK_SLOP = 3;
+
+/**
  * How far each placement of a run lands from the one before, in doodad units.
  * The gizmo is 6 across, so a step of 4 overlaps and still leaves every doodad
  * of a run its own edge to be grabbed by.
@@ -41,7 +47,6 @@ export class Scene {
     this.layers = [];
     this.outline = null;
     this.outlineRequest = 0;
-    this.mode = transform.SELECT;
     this.placement = null;
 
     // Selecting happens in screen pixels: the band is a screen gesture, and
@@ -227,11 +232,6 @@ export class Scene {
     );
   }
 
-  setMode(mode) {
-    this.mode = mode;
-    this.transform.setMode(mode);
-  }
-
   showLabels(enabled) {
     this.labels.setEnabled(enabled);
   }
@@ -242,13 +242,9 @@ export class Scene {
 
   // -- rubber band ----------------------------------------------------------
 
-  /**
-   * Selecting is a select-mode gesture only, as it was in 3D: in translate and
-   * rotate mode the left button belongs to the transformer.
-   */
   onBandStart = (event) => {
     if (event.evt.button !== SELECT_BUTTON) return;
-    if (this.mode !== transform.SELECT) return;
+    if (this.grabbedSelection(event)) return;
 
     // Keyboard shortcuts are bound to the container, not to the window, so the
     // container has to take focus for them to arrive -- wiki issue 0010.
@@ -266,18 +262,71 @@ export class Scene {
     window.addEventListener("mouseup", this.onBandEnd);
   };
 
+  /**
+   * Whether the left button belongs to the selection rather than to the band,
+   * and starts the move if it does. There are no modes, so where the gesture
+   * started is the whole of the answer -- wiki issue 0038.
+   *
+   * A handle always belongs to it, and so does anywhere inside the box, which
+   * is a rectangle of empty floor as often as not: a selection is moved by
+   * grabbing it, not by finding one of its doodads to grab. Konva offers that
+   * as `shouldOverdrawWholeArea`, and it is refused -- the area it claims is a
+   * shape above the doodads, and it would swallow the click that takes one of
+   * them back out of the selection.
+   *
+   * Shift and Ctrl say "I am selecting", which is what keeps that click
+   * working, and what leaves a band startable inside the box.
+   */
+  grabbedSelection(event) {
+    if (this.transform.grips(event.target)) return true;
+    if (event.evt.shiftKey || event.evt.ctrlKey) return false;
+    // Konva starts this one itself, and starting a second is a second drag.
+    if (this.transform.holds(event.target)) return true;
+
+    if (!this.transform.encloses(this.stage.konva.getPointerPosition())) {
+      return false;
+    }
+    this.transform.startDragging(event);
+    return true;
+  }
+
   onBandMove = (event) => {
     const area = this.bandArea(event);
     state.band.value = area;
-    this.selection.drag(area, this.candidates);
+    this.selection.drag(area, this.candidatesIn(area));
   };
 
   onBandEnd = (event) => {
-    this.selection.drag(this.bandArea(event), this.candidates);
+    const area = this.bandArea(event);
+    this.selection.drag(area, this.candidatesIn(area));
     this.selection.end();
     state.band.value = null;
     this.endBand();
   };
+
+  /**
+   * What a band of this size may take: everything selectable, or -- for a band
+   * with no size, which is a click -- only the doodad actually under the
+   * pointer.
+   *
+   * The two gestures ask different questions. A sweep asks what is under the
+   * region, and answering it with the upright box around each doodad is the
+   * generous side to err on. A click asks which doodad is being pointed at, and
+   * the box is the wrong answer to that: a turned gizmo's box is much bigger
+   * than the drawing, and in a dense hideout several of them cover any given
+   * pixel. So a click is put to the gizmos themselves, and a player who wants
+   * the generous answer has it a few pixels of sweep away.
+   */
+  candidatesIn(area) {
+    if (area.width > CLICK_SLOP || area.height > CLICK_SLOP) {
+      return this.candidates;
+    }
+    const picked = this.stage.konva.getIntersection(
+      this.stage.konva.getPointerPosition(),
+    );
+    // Whatever is topmost may be a handle, or a doodad in a locked layer.
+    return this.candidates.includes(picked) ? [picked] : [];
+  }
 
   /**
    * The band in viewport pixels. `setPointersPositions` is what lets a drag
@@ -319,14 +368,7 @@ export class Scene {
         this.deleteSelection();
         break;
       case "Escape":
-      case "1":
-        state.viewportMode.value = transform.SELECT;
-        break;
-      case "2":
-        state.viewportMode.value = transform.TRANSLATE;
-        break;
-      case "3":
-        state.viewportMode.value = transform.ROTATE;
+        this.selection.clear();
         break;
       case "f":
         this.stage.fit(doodads.boundingRectangle(this.selection.nodes));

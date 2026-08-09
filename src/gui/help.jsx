@@ -109,7 +109,13 @@ function Shortcuts() {
         Drag <span class="shortcut">left mouse button</span> to select.
         <br />
         Hold <span class="shortcut">Shift</span> to add,{" "}
-        <span class="shortcut">Ctrl</span> to remove.
+        <span class="shortcut">Ctrl</span> to remove. Either one also selects
+        inside the box, where a plain drag would move the selection.
+      </li>
+      <li>
+        Drag <span class="shortcut">inside the selection box</span> to move the
+        selection. Drag the box's corners to spread the doodads out, and the
+        handle above it to turn them.
       </li>
       <li>
         Drag <span class="shortcut">middle mouse button</span> to pan.
@@ -123,11 +129,8 @@ function Shortcuts() {
         <span class="shortcut">Mouse wheel</span> zooms about the pointer.
       </li>
       <li>
-        <span class="shortcut">Del</span> deletes the selection.
-      </li>
-      <li>
-        <span class="shortcut">1</span> select, <span class="shortcut">2</span>{" "}
-        move, <span class="shortcut">3</span> rotate.
+        <span class="shortcut">Del</span> deletes the selection,{" "}
+        <span class="shortcut">Esc</span> clears it.
       </li>
       <li>
         <span class="shortcut">f</span> frames the selection,{" "}
