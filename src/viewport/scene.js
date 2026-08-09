@@ -9,15 +9,28 @@
  */
 
 import * as state from "../state.js";
+import * as units from "../hideout/units.js";
 import * as bounds from "./bounds.js";
 import * as doodads from "./doodads.js";
 import * as groups from "./groups.js";
 import * as select from "./select.js";
 import * as transform from "./transform.js";
+import { Doodad } from "../hideout/model.js";
 import { Labels } from "./labels.js";
 import { Stage } from "./stage.js";
 
 const SELECT_BUTTON = 0;
+
+/**
+ * How far each placement of a run lands from the one before, in doodad units.
+ * The gizmo is 6 across, so a step of 4 overlaps and still leaves every doodad
+ * of a run its own edge to be grabbed by.
+ */
+const CASCADE_STEP = 4;
+
+/** A doodad the editor places, before the player has said anything else about it. */
+const PLACED_ROTATION = 0;
+const PLACED_VARIATION = 0;
 
 export class Scene {
   constructor(container) {
@@ -29,6 +42,7 @@ export class Scene {
     this.outline = null;
     this.outlineRequest = 0;
     this.mode = transform.SELECT;
+    this.placement = null;
 
     // Selecting happens in screen pixels: the band is a screen gesture, and
     // `getClientRect` measures a node where the player sees it, however the
@@ -67,6 +81,7 @@ export class Scene {
   load(hideout) {
     this.selection.clear();
     this.transform.setNodes([]);
+    this.placement = null;
     for (const node of this.nodes) {
       node.destroy();
     }
@@ -142,6 +157,73 @@ export class Scene {
     const wanted = new Set(doodads);
     this.selection.set(
       this.selectableNodes().filter((node) => wanted.has(node.doodad)),
+    );
+  }
+
+  /**
+   * Places a doodad the palette named, and selects it.
+   *
+   * The document's array gets the doodad and the scene gets a node for it, in
+   * that order and nowhere else -- a new doodad is one object in one array, the
+   * same as a loaded one. `showLayers` is what puts the node in the group of the
+   * layer it names, so nothing here knows how a layer is drawn.
+   *
+   * It becomes the selection because placing and then moving is meant to be one
+   * gesture; a doodad that has to be found again is a doodad placed twice.
+   */
+  placeDoodad({ hash, name }) {
+    const hideout = state.hideoutDocument.value;
+    if (!hideout) return;
+
+    const doodad = new Doodad(
+      name,
+      {
+        hash: Number(hash),
+        ...this.nextPlacement(),
+        r: PLACED_ROTATION,
+        fv: PLACED_VARIATION,
+      },
+      state.activeLayer.value,
+    );
+    hideout.doodads.push(doodad);
+    state.doodadCount.value = hideout.doodads.length;
+
+    const node = doodads.create(doodad);
+    this.nodes.push(node);
+    this.showLayers(this.layers);
+    this.selection.set([node]);
+  }
+
+  /**
+   * Where the next placement goes: the middle of the view, or a step on from
+   * the last one when the view has not moved since.
+   *
+   * Eight double-clicks at one coordinate is a stack nobody can pull apart, and
+   * the middle of the view is the only place the first one can go -- the palette
+   * is a list of names and says nothing about where. Moving the view is how a
+   * player says "that run is over", which is the same gesture they would make
+   * anyway to place somewhere else.
+   */
+  nextPlacement() {
+    const centre = units.fromStage(
+      this.stage.contentAt(this.stage.middleOfView()),
+    );
+    const at = this.cascadesFrom(centre)
+      ? {
+          x: this.placement.at.x + CASCADE_STEP,
+          y: this.placement.at.y + CASCADE_STEP,
+        }
+      : centre;
+
+    this.placement = { centre, at };
+    return at;
+  }
+
+  cascadesFrom(centre) {
+    return (
+      this.placement !== null &&
+      this.placement.centre.x === centre.x &&
+      this.placement.centre.y === centre.y
     );
   }
 

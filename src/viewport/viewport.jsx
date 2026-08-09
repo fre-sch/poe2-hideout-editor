@@ -28,6 +28,7 @@ export default function Viewport() {
   const showLabels = state.showLabels.value;
   const showGrid = state.showGrid.value;
   const selectionRequest = state.selectionRequest.value;
+  const placementRequest = state.placementRequest.value;
 
   useEffect(() => {
     scene.current = new Scene(container.current);
@@ -69,6 +70,12 @@ export default function Viewport() {
     if (selectionRequest === null) return;
     scene.current.selectDoodads(selectionRequest);
   }, [selectionRequest]);
+  // A fresh object per request, for the same reason: the palette placing the
+  // same doodad twice is two placements.
+  useEffect(() => {
+    if (placementRequest === null) return;
+    scene.current.placeDoodad(placementRequest);
+  }, [placementRequest]);
 
   // Konva appends its canvases to the inner element, so nothing Preact renders
   // may live there -- the two would diff against each other's children.

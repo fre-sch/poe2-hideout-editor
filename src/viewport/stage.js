@@ -138,11 +138,13 @@ export class Stage extends EventTarget {
   /** Pans so that a point in doodad units sits in the middle of the view. */
   centreOn(point) {
     this.konva.position({ x: 0, y: 0 });
-    this.keepUnder(point, {
-      x: this.konva.width() / 2,
-      y: this.konva.height() / 2,
-    });
+    this.keepUnder(point, this.middleOfView());
     this.viewChanged();
+  }
+
+  /** The middle of the view, in viewport pixels. */
+  middleOfView() {
+    return { x: this.konva.width() / 2, y: this.konva.height() / 2 };
   }
 
   /**
@@ -151,7 +153,7 @@ export class Stage extends EventTarget {
    * back rather than a steady hand.
    */
   alignToGame() {
-    const middle = { x: this.konva.width() / 2, y: this.konva.height() / 2 };
+    const middle = this.middleOfView();
     const anchor = this.contentAt(middle);
     this.konva.rotation(VIEW_ROTATION);
     this.keepUnder(anchor, middle);

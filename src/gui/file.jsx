@@ -40,16 +40,16 @@ export default function File() {
         >
           <i class="bi bi-box-arrow-down"></i> Export .hideout
         </button>
+        <button
+          type="button"
+          class="btn btn-secondary btn-sm"
+          disabled={!loaded}
+          onClick={saveProject}
+          title="Your work, layers and all. The game cannot read it."
+        >
+          <i class="bi bi-hdd"></i> Save project
+        </button>
       </div>
-      <button
-        type="button"
-        class="btn btn-secondary btn-sm"
-        disabled={!loaded}
-        onClick={saveProject}
-        title="Your work, layers and all. The game cannot read it."
-      >
-        <i class="bi bi-hdd"></i> Save project
-      </button>
       <p class="text-secondary mt-1 mb-0">
         Load takes a `.hideout` or a saved project. Export writes the game's
         file, from the visible layers. Save project writes the editor's, from
@@ -92,6 +92,11 @@ async function load(event) {
     state.hideoutType.value = hideout.header.hideout_hash;
     state.doodadCount.value = hideout.doodads.length;
     state.loadError.value = null;
+    // A loaded file resets the GUI. The palette in particular describes one
+    // document -- its table is the document's language, and its names have been
+    // checked against the document's own -- so a palette that survived a load
+    // would be describing the previous file.
+    state.showPalette.value = false;
   } catch (error) {
     state.loadError.value = error;
   }

@@ -64,6 +64,25 @@ export function requestSelection(doodads) {
   selectionRequest.value = doodads;
 }
 
+/** Whether the doodad palette is up. Loading a file puts it away. */
+export const showPalette = signal(false);
+
+/**
+ * A doodad the palette asks for, as `{ hash, name }`, or `null`.
+ *
+ * `selectionRequest`'s reasoning, applied to placing: where the middle of the
+ * view is, and what a Konva node for a new doodad looks like, are the
+ * viewport's to know. The palette knows what to place and asks for it.
+ *
+ * Every request is a fresh object, so asking twice for the same doodad places
+ * twice -- which is what double-clicking the same row twice means.
+ */
+export const placementRequest = signal(null);
+
+export function requestPlacement(hash, name) {
+  placementRequest.value = { hash, name };
+}
+
 /**
  * The rubber band while it is down, in pixels inside the viewport, or `null`.
  *

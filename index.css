@@ -97,8 +97,14 @@ main {
   min-height: 0;
   overflow-y: auto;
 }
+/* `min-width: 0` because Konva fills this with canvases of a fixed pixel width,
+   and a flex item's automatic minimum size is its content -- so opening the
+   doodad palette would push it off the right edge instead of narrowing the
+   viewport, and the ResizeObserver that shrinks the canvases would never
+   fire. */
 #viewport-container {
   flex-grow: 1;
+  min-width: 0;
   max-height: 100vh;
   position: relative;
 }
@@ -165,6 +171,95 @@ main {
 }
 .help-modal::backdrop {
   background-color: rgba(0, 0, 0, 0.6);
+}
+
+/* The doodad palette: the sidebar on the other side. A column beside the
+   viewport rather than a panel over it, so that it is never in the way and
+   never has to be moved out of it.
+
+   Same column as #sidebar, and narrower: it holds one list of short names. */
+#doodad-sidebar {
+  display: flex;
+  flex-direction: column;
+  width: 300px;
+  min-width: 300px;
+  height: 100vh;
+  max-height: 100vh;
+  background-color: var(--bs-secondary-bg-subtle);
+  overflow: hidden;
+  padding: 0.5rem;
+}
+#doodad-sidebar h2 {
+  font-size: 1.1rem;
+  padding: 0;
+  margin: 0;
+}
+#doodad-sidebar hr {
+  margin: 0.5rem 0;
+}
+
+/* Both filter lists are longer than the room for them -- 98 categories, 38
+   tags -- so each scrolls within a share of the sidebar rather than pushing
+   the doodads off it. */
+.filter-list {
+  max-height: 30vh;
+  overflow-y: auto;
+}
+.filter-row {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: 0;
+  padding: 0;
+  background: transparent;
+}
+.filter-row:hover {
+  background-color: var(--bs-secondary-bg);
+}
+
+/* Takes the height the sections above it leave, and scrolls. `min-height: 0`
+   for the same reason the layer list carries it. */
+.palette-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+.palette-heading {
+  font-size: 0.85rem;
+  font-weight: bold;
+  color: var(--bs-secondary);
+  margin: 0;
+}
+.palette-row {
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+  margin-bottom: 0.15rem;
+}
+.palette-row:hover {
+  background-color: var(--bs-secondary-bg);
+}
+
+/* Nothing can be placed, and the message above the list says why. The rows stay
+   where they are: a list that emptied itself would leave the player wondering
+   what else had gone. */
+.palette-refused .palette-row {
+  cursor: default;
+  color: var(--bs-secondary);
+}
+.palette-refused .palette-row:hover {
+  background-color: transparent;
+}
+.palette-mark {
+  color: var(--bs-secondary);
+}
+
+/* The hideout that grants the doodad, under its name. Smaller and quieter: it
+   answers "can I place this", which is a second question. */
+.palette-hideout {
+  color: var(--bs-secondary);
+  font-size: 0.9em;
 }
 
 #label-overlay {

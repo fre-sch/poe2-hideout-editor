@@ -9,6 +9,7 @@ import File from "./file.jsx";
 import Hideout from "./hideout.jsx";
 import Layers from "./layers.jsx";
 import Mode from "./mode.jsx";
+import { AddDoodadButton } from "./palette.jsx";
 import { HelpButton } from "./help.jsx";
 
 export default function Sidebar() {
@@ -19,6 +20,7 @@ export default function Sidebar() {
       <File />
       <Mode />
       <Hideout />
+      <AddDoodadButton />
       <Layers />
       <HelpButton />
       <div class="text-center">
