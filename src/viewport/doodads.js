@@ -80,9 +80,27 @@ export function create(doodad) {
     perfectDrawEnabled: false,
     shadowForStrokeEnabled: false,
   });
+  node.getSelfRect = gizmoSelfRect;
   node.doodad = doodad;
   place(node);
   return node;
+}
+
+/**
+ * How far the gizmo reaches on its own page.
+ *
+ * `Konva.Path` works this out by walking the path data and sampling every curve
+ * at a hundred points, and it does not keep the answer. Everything that measures
+ * a node asks for it: the box measures every selected doodad on every frame of a
+ * pan, and the rubber band measures every doodad in the hideout on every frame
+ * of a sweep -- see wiki issue 0041.
+ *
+ * Every doodad is the same drawing, so there is one answer and it is measured
+ * once, at import. What is left for `getClientRect` to do is the transform,
+ * which is the part that differs per doodad.
+ */
+function gizmoSelfRect() {
+  return GIZMO.rect;
 }
 
 /**
@@ -203,8 +221,13 @@ function readGizmo(source) {
   const paths = [...source.matchAll(/\bd="([^"]+)"/g)].map((match) => match[1]);
   if (paths.length === 0) throw new Error("gizmo has no path");
 
+  const data = paths.join(" ");
   return {
-    data: paths.join(" "),
+    data,
+    // The one measurement of the drawing every node then shares, see
+    // `gizmoSelfRect`. A throwaway node because parsing path data is what
+    // `Konva.Path` is for.
+    rect: new Konva.Path({ data }).getSelfRect(),
     scale: SIZE / Math.max(width, height),
     offsetX: left + width / 2,
     offsetY: top + height / 2,

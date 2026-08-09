@@ -407,7 +407,12 @@ export class Scene {
     this.refreshLabels();
   }
 
+  /**
+   * The nodes are handed over as a function, not a list: a view that moves asks
+   * for labels several times a frame, and `visibleNodes` walks the whole
+   * hideout.
+   */
   refreshLabels = () => {
-    this.labels.refresh(this.visibleNodes(), this.stage.konva);
+    this.labels.refresh(() => this.visibleNodes(), this.stage.konva);
   };
 }

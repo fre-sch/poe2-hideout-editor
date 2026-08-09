@@ -95,7 +95,13 @@ export class Stage extends EventTarget {
     this.gridLabels = gridLabels();
     this.grid.add(this.gridLabels);
     this.static.add(this.grid);
-    this.alignGridLabels();
+
+    // The view starts on the world origin rather than on the stage's own top
+    // left corner. The origin is the corner the grid and every hideout grow away
+    // from, and a turn of VIEW_ROTATION about the corner of the viewport puts all
+    // of that off the screen -- an editor that has just opened would show empty
+    // space and no way to know which way to pan.
+    this.centreOn({ x: 500, y: 500 });
 
     this.konva.on("wheel", this.onWheel);
     container.addEventListener("mousedown", this.onViewDragStart);

@@ -86,6 +86,54 @@ function floor(size) {
 }
 
 /**
+ * The transformer, measuring itself at most once a frame.
+ *
+ * Konva remeasures the box for every node whose absolute transform changed, and
+ * one pan changes all of them at once: ten selected doodads measured the box ten
+ * times a frame, each measurement walking all ten nodes -- wiki issue 0041. All
+ * of those asks describe the same frame, so the first one schedules the work and
+ * the rest are it.
+ *
+ * A frame and not a timer, and none of the asks is dropped: the callback runs
+ * before the browser paints, so the box is still drawn where it belongs in the
+ * frame the view moved in.
+ */
+class Box extends Konva.Transformer {
+  /**
+   * `frame` is undefined until the first ask, and no class field declares it:
+   * Konva's constructor may update, and a field initialiser runs after that and
+   * would drop the frame it scheduled.
+   */
+  update() {
+    if (this.frame) return;
+    this.frame = requestAnimationFrame(() => this.flush());
+  }
+
+  /** The scheduled measurement, now. */
+  flush() {
+    if (!this.frame) return;
+    cancelAnimationFrame(this.frame);
+    this.frame = null;
+    super.update();
+  }
+
+  /**
+   * Konva measures a grab from where the anchor already is, so a scheduled
+   * measurement has to land before a gesture starts.
+   */
+  _handleMouseDown(event) {
+    this.flush();
+    super._handleMouseDown(event);
+  }
+
+  destroy() {
+    cancelAnimationFrame(this.frame);
+    this.frame = null;
+    return super.destroy();
+  }
+}
+
+/**
  * Dispatches `moving` while a gesture is under way, and `changed` once it has
  * been written back to the domain doodads. Both matter: the labels have to
  * follow the doodads across the drag, not catch up when it ends.
@@ -94,7 +142,7 @@ export class Transform extends EventTarget {
   constructor(layer) {
     super();
 
-    this.konva = new Konva.Transformer({
+    this.konva = new Box({
       rotationSnaps: ROTATION_SNAPS,
       rotationSnapTolerance: ROTATION_SNAP_TOLERANCE,
       // Mirroring would leave every gizmo pointing the way it was while the
@@ -160,10 +208,22 @@ export class Transform extends EventTarget {
     const anchor = this.konva.getActiveAnchor();
     if (anchor === "rotater") return point;
 
-    const space = this.konva.getAbsoluteTransform();
+    const space = this.boxSpace();
     const box = { width: this.konva.width(), height: this.konva.height() };
     const inside = clamped(anchor, box, space.copy().invert().point(point));
     return space.point(inside);
+  }
+
+  /**
+   * The box's own space, in screen pixels -- and the one place it is asked for.
+   *
+   * `Box` measures itself a frame at a time, so anything reading where the box
+   * *is* has to let a scheduled measurement land first. Reading it is rarer than
+   * moving it: these are gestures, and they arrive one at a time.
+   */
+  boxSpace() {
+    this.konva.flush();
+    return this.konva.getAbsoluteTransform();
   }
 
   /** Whether a node is one the box would move. */
@@ -179,11 +239,7 @@ export class Transform extends EventTarget {
   encloses(point) {
     if (this.nodes.length === 0) return false;
 
-    const inside = this.konva
-      .getAbsoluteTransform()
-      .copy()
-      .invert()
-      .point(point);
+    const inside = this.boxSpace().copy().invert().point(point);
     return (
       inside.x >= 0 &&
       inside.x <= this.konva.width() &&
@@ -233,7 +289,7 @@ export class Transform extends EventTarget {
    * between.
    */
   corner(anchor) {
-    return this.konva.getAbsoluteTransform().point({
+    return this.boxSpace().point({
       x: anchor.includes("left") ? this.konva.width() : 0,
       y: anchor.includes("top") ? this.konva.height() : 0,
     });
