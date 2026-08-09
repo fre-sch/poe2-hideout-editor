@@ -51,8 +51,13 @@ const MINIMUM_BOX = 24;
  *
  * A box already under the floor -- everything is, at a far enough zoom out --
  * may still be grown, or nothing under the floor could ever be resized at all.
- * Signs are dropped because `flipEnabled` is off but a step may still ask for a
- * negative width on its way past zero.
+ *
+ * A negative side is a collapse whatever its size, and not a small one: it is
+ * a box dragged out the far side of zero, and the doodads went through the
+ * same point on the way. `flipEnabled` is off, so Konva keeps the sign off the
+ * nodes' own scale, but the box swings through zero regardless -- and it is the
+ * zero that does the damage, not the mirroring. Comparing how big a side is
+ * rather than what it is misses a drag fast enough to jump the floor.
  */
 export function bounded(was, wants) {
   if (collapsing(was.width, wants.width)) return was;
@@ -61,7 +66,7 @@ export function bounded(was, wants) {
 }
 
 function collapsing(was, wants) {
-  return Math.abs(wants) < MINIMUM_BOX && Math.abs(wants) < Math.abs(was);
+  return wants < MINIMUM_BOX && wants < was;
 }
 
 /**

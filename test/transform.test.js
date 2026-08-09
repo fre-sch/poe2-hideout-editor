@@ -28,14 +28,17 @@ describe("bounded", () => {
   });
 
   /**
-   * A box on its way past zero arrives as a negative width, and it is the same
-   * collapse whichever side of zero it came out on: `flipEnabled` is off, so
-   * nothing is mirrored, but the step still asks.
+   * A flip arrives as a negative side, and it is a collapse however big it is:
+   * the doodads went through one point to get there. A drag fast enough asks
+   * for the far side of zero in a single step, which is how the floor was
+   * jumped when this compared sizes rather than signs.
    */
-  it("reads a negative width as the collapse it is", () => {
+  it("reads a negative side as the collapse it is, at any size", () => {
     const was = box(300, 100);
 
     expect(bounded(was, box(-5, 100))).toBe(was);
+    expect(bounded(was, box(-400, 100))).toBe(was);
+    expect(bounded(was, box(300, -400))).toBe(was);
   });
 
   /**
