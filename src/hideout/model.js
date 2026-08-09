@@ -13,11 +13,17 @@
  * list of labels. Membership is therefore impossible to lose track of, and
  * export order is a walk over the same one array.
  *
+ * An array is a layer carrying a `Generator`, and its doodads are ordinary
+ * doodads in that same flat array. So the viewport draws them, the count counts
+ * them and the bake emits them without learning anything new; what the layer
+ * does differently is that it computes its doodads instead of remembering them.
+ *
  * `.hideout` cannot carry any of it, so a document that has been organised is
  * saved through `project.js` -- see wiki/discussions/project-format-and-user-layers.
  */
 
 import * as file from "./file.js";
+import * as generator from "./generator.js";
 
 const DOODAD_FIELDS = ["hash", "x", "y", "r", "fv"];
 
@@ -63,6 +69,45 @@ export class Layer {
   }
 }
 
+/**
+ * The parameters one array is computed from, and the id of the layer its
+ * doodads are written into. `generator.js` does the computing and documents
+ * every field; this is the shape the project file holds.
+ *
+ * Only the fields the named `type` has are kept, and an unknown type is refused
+ * rather than half-read -- the rule `project.js` already applies to its own
+ * version. So a `line` never carries a `box` and a reader never has to ask
+ * which of two shapes a generator meant.
+ */
+export class Generator {
+  constructor(parameters) {
+    const shape = SHAPE_FIELDS[parameters.type];
+    if (!shape) {
+      throw new Error(`Unknown generator type '${parameters.type}'`);
+    }
+    for (const field of [...GENERATOR_FIELDS, ...shape]) {
+      this[field] = parameters[field];
+    }
+  }
+}
+
+const GENERATOR_FIELDS = [
+  "layer",
+  "type",
+  "source",
+  "resolution",
+  "rotation",
+  "random",
+];
+
+/** The geometry each type carries, beside the fields all of them carry. */
+const SHAPE_FIELDS = {
+  grid: ["box"],
+  ellipse: ["box"],
+  polygon: ["box", "corners"],
+  line: ["ends"],
+};
+
 export class HideoutDocument {
   /**
    * `header` is whatever the file said, kept verbatim. The editor knows the
@@ -75,9 +120,9 @@ export class HideoutDocument {
     this.header = header;
     this.doodads = doodads;
     this.layers = layers;
-    // Reserved for array placement. Carried and never inspected, so that the
-    // slot exists before the feature does and a project saved by a later build
-    // is not quietly emptied by an earlier one.
+    // Array placement: at most one `Generator` per layer, and a layer carrying
+    // one owns its doodads -- they are computed from the parameters and not
+    // authored, so nothing else may write into that layer.
     this.generators = generators;
   }
 
@@ -139,19 +184,82 @@ export class HideoutDocument {
   }
 
   /**
+   * A new layer holding an array: the parameters name it, and its doodads are
+   * there when this returns.
+   */
+  addArrayLayer(name, parameters) {
+    const layer = this.addLayer(name);
+    const array = new Generator({ ...parameters, layer: layer.id });
+    this.generators = [...this.generators, array];
+    this.regenerate(layer.id);
+    return array;
+  }
+
+  /** The generator the layer carries, or `undefined` for an ordinary layer. */
+  findGenerator(id) {
+    return this.generators.find((array) => array.layer === id);
+  }
+
+  /**
+   * Replaces an array layer's doodads with what its parameters say now.
+   *
+   * The old ones go: they were derived, and keeping any of them is how a layer
+   * ends up with two generations of the same array in it. Position in the flat
+   * array does not matter, export order being layer order.
+   */
+  regenerate(id) {
+    const parameters = this.findGenerator(id);
+    if (!parameters) throw new Error(`Layer '${id}' has no generator`);
+
+    this.doodads = [
+      ...this.doodads.filter((doodad) => doodad.layer !== id),
+      ...generator.generate(parameters),
+    ];
+  }
+
+  /**
+   * Drops a layer's generator and keeps its doodads, which makes it an ordinary
+   * layer that saves its doodads and can be edited by hand.
+   *
+   * One way, per wiki/decisions/array-placement.md: the parameters are gone and
+   * the doodads are now what the player has.
+   */
+  detach(id) {
+    this.generators = this.generators.filter((array) => array.layer !== id);
+  }
+
+  /**
    * Removes a layer and hands its doodads to another one.
    *
    * The doodads are never dropped, and the caller names where they go, because
    * a delete that silently takes four hundred doodads with it is the one
    * mistake this feature can make that a player cannot undo.
+   *
+   * An array layer is the exception and is handled first, so that deleting one
+   * needs no layer to hand doodads to.
    */
   removeLayer(id, keepDoodadsIn) {
     if (this.layers.length < 2) throw new Error("The last layer cannot go");
+    if (this.findGenerator(id)) {
+      this.removeArrayLayer(id);
+      return;
+    }
     if (!this.findLayer(keepDoodadsIn)) {
       throw new Error(`No layer '${keepDoodadsIn}' to keep doodads in`);
     }
 
     this.assign(this.doodadsIn(id), keepDoodadsIn);
+    this.layers = this.layers.filter((layer) => layer.id !== id);
+  }
+
+  /**
+   * An array layer takes its doodads with it. They are derived, so handing them
+   * to a neighbour would hand over four hundred objects nobody placed -- see
+   * wiki/decisions/array-placement.md. The caller states the number first.
+   */
+  removeArrayLayer(id) {
+    this.doodads = this.doodads.filter((doodad) => doodad.layer !== id);
+    this.detach(id);
     this.layers = this.layers.filter((layer) => layer.id !== id);
   }
 

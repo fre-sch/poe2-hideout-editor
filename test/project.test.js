@@ -104,7 +104,7 @@ describe("project files", () => {
     });
   });
 
-  it("keeps generators, empty or not", () => {
+  it("loads a project that has no generators", () => {
     const document_ = HideoutDocument.fromText(SHRINE);
 
     expect(JSON.parse(project.serialize(document_)).generators).toEqual([]);
@@ -136,6 +136,96 @@ describe("project files", () => {
         project.serialize(HideoutDocument.fromText(SHRINE)),
       ),
     ).toBe(true);
+  });
+});
+
+/**
+ * The file holds the parameters and the `.hideout` holds the result, so a
+ * project's array layer has doodads only after they are computed. Everything
+ * here is about the two not being able to disagree.
+ */
+describe("arrays in a project file", () => {
+  const ELLIPSE = {
+    type: "ellipse",
+    source: [{ hash: 279768580, name: "Maraketh Incense Burner", fv: 128 }],
+    box: { center: { x: 500, y: 400 }, width: 300, height: 100, rotation: 20 },
+    resolution: 7,
+    rotation: { base: 5, increment: 0, align: true },
+    random: {
+      seed: 4242,
+      jitter: { x: 2, y: 2, rotation: 3 },
+      variation: [1, 2],
+    },
+  };
+
+  function withArray() {
+    const document_ = HideoutDocument.fromText(SHRINE);
+    document_.addArrayLayer("Burners", ELLIPSE);
+    return document_;
+  }
+
+  it("round trips the doodads through the parameters alone", () => {
+    const document_ = withArray();
+    const loaded = project.parse(project.serialize(document_));
+
+    expect(loaded.generators).toEqual(document_.generators);
+    expect(loaded.doodads.map((doodad) => doodad.toFields())).toEqual(
+      document_.doodads.map((doodad) => doodad.toFields()),
+    );
+  });
+
+  it("writes no doodads for an array layer", () => {
+    const written = JSON.parse(project.serialize(withArray()));
+
+    expect(written.doodads).toHaveLength(2);
+    expect(written.doodads.map((entry) => entry.layer)).toEqual([
+      "default",
+      "default",
+    ]);
+  });
+
+  it("exports and counts an array's doodads like any others", () => {
+    const document_ = withArray();
+
+    expect(project.count(document_)).toMatchObject({ total: 9, placed: 8 });
+    expect(
+      project.bake(document_).match(/"Maraketh Incense Burner"/g),
+    ).toHaveLength(8);
+  });
+
+  it("writes a detached layer's doodads out", () => {
+    const document_ = withArray();
+    const array = document_.generators[0];
+    document_.detach(array.layer);
+
+    const written = JSON.parse(project.serialize(document_));
+
+    expect(written.generators).toEqual([]);
+    expect(written.doodads).toHaveLength(9);
+  });
+
+  it("refuses two generators over one layer, naming it", () => {
+    const document_ = withArray();
+    const array = document_.generators[0];
+    document_.generators = [array, { ...array }];
+
+    expect(() => project.parse(project.serialize(document_))).toThrow(
+      new RegExp(`'${array.layer}' has more than one generator`),
+    );
+  });
+
+  it("refuses a generator in a layer the file does not list", () => {
+    const text = project.serialize(withArray());
+    const broken = text.replace(/"layer": "layer-2"/, '"layer": "gone"');
+
+    expect(() => project.parse(broken)).toThrow(/unknown layer 'gone'/);
+  });
+
+  it("refuses a type it does not know, and loads nothing", () => {
+    const text = project.serialize(withArray());
+    const broken = text.replace('"type": "ellipse"', '"type": "spiral"');
+
+    expect(() => project.parse(broken)).toThrow(/spiral/);
   });
 });
 
