@@ -24,7 +24,6 @@ export default function Viewport() {
   const hideout = state.hideoutDocument.value;
   const layers = state.layers.value;
   const hideoutType = state.hideoutType.value;
-  const viewportMode = state.viewportMode.value;
   const showLabels = state.showLabels.value;
   const showGrid = state.showGrid.value;
   const selectionRequest = state.selectionRequest.value;
@@ -55,9 +54,6 @@ export default function Viewport() {
   useEffect(() => {
     scene.current.showBounds(hideoutType);
   }, [hideoutType]);
-  useEffect(() => {
-    scene.current.setMode(viewportMode);
-  }, [viewportMode]);
   useEffect(() => {
     scene.current.showLabels(showLabels);
   }, [showLabels]);

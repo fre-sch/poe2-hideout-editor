@@ -41,7 +41,6 @@ export class Scene {
     this.layers = [];
     this.outline = null;
     this.outlineRequest = 0;
-    this.mode = transform.SELECT;
     this.placement = null;
 
     // Selecting happens in screen pixels: the band is a screen gesture, and
@@ -59,7 +58,7 @@ export class Scene {
       state.labels.value = published;
     });
 
-    this.stage.addEventListener("viewchanged", this.refreshLabels);
+    this.stage.addEventListener("viewchanged", this.onViewChanged);
     this.stage.konva.on("mousedown", this.onBandStart);
     container.addEventListener("keydown", this.onKeyDown);
   }
@@ -227,11 +226,6 @@ export class Scene {
     );
   }
 
-  setMode(mode) {
-    this.mode = mode;
-    this.transform.setMode(mode);
-  }
-
   showLabels(enabled) {
     this.labels.setEnabled(enabled);
   }
@@ -242,13 +236,9 @@ export class Scene {
 
   // -- rubber band ----------------------------------------------------------
 
-  /**
-   * Selecting is a select-mode gesture only, as it was in 3D: in translate and
-   * rotate mode the left button belongs to the transformer.
-   */
   onBandStart = (event) => {
     if (event.evt.button !== SELECT_BUTTON) return;
-    if (this.mode !== transform.SELECT) return;
+    if (this.manipulating(event)) return;
 
     // Keyboard shortcuts are bound to the container, not to the window, so the
     // container has to take focus for them to arrive -- wiki issue 0010.
@@ -265,6 +255,22 @@ export class Scene {
     window.addEventListener("mousemove", this.onBandMove);
     window.addEventListener("mouseup", this.onBandEnd);
   };
+
+  /**
+   * Whether the left button belongs to the box rather than to the band. There
+   * are no modes, so the answer is what the gesture started on -- wiki issue
+   * 0038.
+   *
+   * A handle always is; a doodad already selected is, because dragging one is
+   * how the whole selection is moved. Shift and Ctrl say "I am selecting"
+   * either way, which is what keeps a doodad inside the selection reachable to
+   * be taken out of it again.
+   */
+  manipulating(event) {
+    if (this.transform.grips(event.target)) return true;
+    if (event.evt.shiftKey || event.evt.ctrlKey) return false;
+    return this.transform.holds(event.target);
+  }
 
   onBandMove = (event) => {
     const area = this.bandArea(event);
@@ -319,14 +325,7 @@ export class Scene {
         this.deleteSelection();
         break;
       case "Escape":
-      case "1":
-        state.viewportMode.value = transform.SELECT;
-        break;
-      case "2":
-        state.viewportMode.value = transform.TRANSLATE;
-        break;
-      case "3":
-        state.viewportMode.value = transform.ROTATE;
+        this.selection.clear();
         break;
       case "f":
         this.stage.fit(doodads.boundingRectangle(this.selection.nodes));
@@ -367,5 +366,14 @@ export class Scene {
 
   refreshLabels = () => {
     this.labels.refresh(this.visibleNodes(), this.stage.konva);
+  };
+
+  /**
+   * The handles are drawn inside the stage, so a zoom changes how big they are;
+   * the labels are drawn beside it, so a zoom changes where they go.
+   */
+  onViewChanged = () => {
+    this.transform.setZoom(this.stage.konva.scaleX());
+    this.refreshLabels();
   };
 }

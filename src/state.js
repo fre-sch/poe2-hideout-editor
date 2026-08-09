@@ -44,9 +44,6 @@ export function layersChanged() {
   layers.value = [...hideoutDocument.value.layers];
 }
 
-/** `"select"`, `"translate"` or `"rotate"` -- see `viewport/transform.js`. */
-export const viewportMode = signal("select");
-
 /** The selected `Doodad` objects, for the sidebar to list. */
 export const selection = signal([]);
 

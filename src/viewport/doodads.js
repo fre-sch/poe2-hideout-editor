@@ -103,7 +103,27 @@ export function apply(node) {
 
 export function place(node) {
   node.position(units.toStage(node.doodad));
-  node.rotation(units.toDegrees(node.doodad.r) + GIZMO_ROTATION);
+  node.rotation(facing(node.doodad));
+}
+
+/** The way the gizmo has to be turned to face the way the doodad faces. */
+function facing(doodad) {
+  return units.toDegrees(doodad.r) + GIZMO_ROTATION;
+}
+
+/**
+ * Everything a resize did to a node except where it put it: the scale back to
+ * the drawing's, the rotation back to the doodad's.
+ *
+ * A doodad has no scale to save, so stretching a selection is a way of moving
+ * doodads apart and nothing else -- wiki issue 0038. The rotation comes back
+ * too because a non-uniform scale of a turned node is a skew, which Konva
+ * decomposes into whatever rotation comes closest; turning is the rotate
+ * handle's job and not a side effect of spacing.
+ */
+export function unscale(node) {
+  node.scale({ x: GIZMO.scale, y: GIZMO.scale });
+  node.rotation(facing(node.doodad));
 }
 
 export function setSelected(node, selected) {

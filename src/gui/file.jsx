@@ -12,9 +12,10 @@
  * button, because a player who has picked the file has already said which one
  * it is.
  *
- * Saving serializes the document, so it neither forces a mode change nor goes
- * through a `CustomEvent` to reach the viewport -- the two halves of wiki issue
- * 0005. What is on the canvas and what is in the file are the same doodads.
+ * Saving serializes the document and goes nowhere near the viewport -- no
+ * `CustomEvent` hop, and, since wiki issue 0038, no mode left to force. That is
+ * wiki issue 0005 gone twice over: what is on the canvas and what is in the
+ * file are the same doodads.
  */
 
 import * as state from "../state.js";

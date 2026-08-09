@@ -115,6 +115,38 @@ describe("apply", () => {
   });
 });
 
+/**
+ * The whole of "scaling moves doodads apart", wiki issue 0038. The transformer
+ * writes a scale, a rotation and a position onto a node; only the position is
+ * a doodad's to keep.
+ */
+describe("unscale", () => {
+  it("keeps where a resize put a node and drops the rest of it", () => {
+    const stretched = doodad({ x: 10, y: 20, r: 58301 });
+    const node = doodads.create(stretched);
+    const drawn = node.scaleX();
+
+    node.setAttrs({ x: 40, y: 60, scaleX: drawn * 3, scaleY: drawn * 3 });
+    node.rotation(node.rotation() + 17);
+    doodads.unscale(node);
+
+    expect(node.position()).toEqual({ x: 40, y: 60 });
+    expect(node.scale()).toEqual({ x: drawn, y: drawn });
+    doodads.apply(node);
+    expect(stretched.r).toBe(58301);
+  });
+
+  it("leaves a gizmo the size it was drawn", () => {
+    const node = doodads.create(doodad({ x: 0, y: 0 }));
+    const before = node.getClientRect();
+
+    node.scale({ x: node.scaleX() * 5, y: node.scaleY() * 5 });
+    doodads.unscale(node);
+
+    expect(node.getClientRect()).toEqual(before);
+  });
+});
+
 describe("setSelected", () => {
   it("colours a node and puts it back", () => {
     const node = doodads.create(doodad({ x: 0, y: 0 }));
