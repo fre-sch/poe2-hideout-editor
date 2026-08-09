@@ -167,70 +167,69 @@ main {
   background-color: rgba(0, 0, 0, 0.6);
 }
 
-/* The doodad palette. A panel rather than a <dialog>: it must not block the
-   viewport it places into, and it is dragged by its title bar.
+/* The doodad palette: the sidebar on the other side. A column beside the
+   viewport rather than a panel over it, so that it is never in the way and
+   never has to be moved out of it.
 
-   `left` and `top` are the panel's own starting place, which a drag overrides
-   with an inline style. Sized in rem so that a list of 1730 gets room without
-   any part of the markup carrying a pixel. */
-.palette-panel {
-  position: fixed;
-  left: 26rem;
-  top: 4rem;
-  z-index: 10;
+   Same column as #sidebar, and narrower: it holds one list of short names. */
+#doodad-sidebar {
   display: flex;
   flex-direction: column;
-  width: min(48rem, 90vw);
-  height: min(38rem, 85vh);
-  border: 1px solid var(--bs-border-color);
-  border-radius: 0.5rem;
-  background-color: var(--bs-body-bg);
-  color: var(--bs-body-color);
-}
-.palette-title {
-  cursor: move;
-  user-select: none;
-  font-weight: bold;
-  text-align: center;
-  padding: 0.3rem;
-  border-bottom: 1px solid var(--bs-border-color);
-}
-
-/* The body takes the height the title and the footer leave, and the list is
-   the part inside it that scrolls. `min-height: 0` for the same reason the
-   layer list carries it. */
-.palette-body {
-  display: flex;
-  flex-direction: column;
-  flex: 1 1 auto;
-  min-height: 0;
+  width: 300px;
+  min-width: 300px;
+  height: 100vh;
+  max-height: 100vh;
+  background-color: var(--bs-secondary-bg-subtle);
+  overflow: hidden;
   padding: 0.5rem;
 }
-.palette-scroll {
+#doodad-sidebar h2 {
+  font-size: 1.1rem;
+  padding: 0;
+  margin: 0;
+}
+#doodad-sidebar hr {
+  margin: 0.5rem 0;
+}
+
+/* Both filter lists are longer than the room for them -- 98 categories, 38
+   tags -- so each scrolls within a share of the sidebar rather than pushing
+   the doodads off it. */
+.filter-list {
+  max-height: 30vh;
+  overflow-y: auto;
+}
+.filter-row {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: 0;
+  padding: 0;
+  background: transparent;
+}
+.filter-row:hover {
+  background-color: var(--bs-secondary-bg);
+}
+
+/* Takes the height the sections above it leave, and scrolls. `min-height: 0`
+   for the same reason the layer list carries it. */
+.palette-list {
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
-}
-
-/* Columns rather than one long list: the rows are short and the panel is wide,
-   and 98 category headers read as headers only when they are near what they
-   head. The column box grows with its content and the box around it scrolls, so
-   the columns are as tall as the list and the scrolling stays vertical. */
-.palette-list {
-  column-width: 11rem;
-  column-gap: 1rem;
 }
 .palette-heading {
   font-size: 0.85rem;
   font-weight: bold;
   color: var(--bs-secondary);
   margin: 0;
-  break-inside: avoid;
-  break-after: avoid;
 }
 .palette-row {
   cursor: pointer;
-  break-inside: avoid;
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+  margin-bottom: 0.15rem;
 }
 .palette-row:hover {
   background-color: var(--bs-secondary-bg);
@@ -249,18 +248,12 @@ main {
 .palette-mark {
   color: var(--bs-secondary);
 }
-.palette-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.2rem;
-}
-.palette-footer {
-  display: flex;
-  gap: 0.5rem;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0.5rem;
-  border-top: 1px solid var(--bs-border-color);
+
+/* The hideout that grants the doodad, under its name. Smaller and quieter: it
+   answers "can I place this", which is a second question. */
+.palette-hideout {
+  color: var(--bs-secondary);
+  font-size: 0.9em;
 }
 
 #label-overlay {

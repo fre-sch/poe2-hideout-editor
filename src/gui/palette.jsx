@@ -1,24 +1,24 @@
 /**
- * The doodad palette: a panel of everything that can be placed, and the button
- * that raises it.
+ * The doodad palette: everything that can be placed, and the button that opens
+ * it.
  *
  * It is the first thing in the editor that adds a doodad rather than moving one
  * the player already had -- see wiki/decisions/doodad-palette.md.
  *
- * **It does not block.** A modal would cover the viewport it places into, and
- * every placement would be a blind one; placing a doodad and then moving it is
- * meant to be one gesture. So this is a plain panel rather than the `<dialog>`
- * of `help.jsx`: a non-modal dialog element would be a dialog in name only --
- * no backdrop, no Escape, no focus trap -- and would still have to be dragged
- * and positioned here.
+ * **It is a sidebar on the right, not a floating panel.** It was a draggable
+ * panel first, and dragging it was the part nobody wanted: a panel is in the
+ * way or it is somewhere else, and either way the player is moving it instead
+ * of placing doodads. A column beside the viewport is never in the way, and the
+ * viewport it places into is the space that is left.
  *
  * **It lives outside the viewport container.** The editor's shortcuts are bound
  * to that container, not to the window -- wiki issue 0010 -- so typing `g` into
- * the search input here cannot align the view to the game. Keeping the panel out
- * of that element is what guarantees it, and `app.jsx` is where that is decided.
+ * the search input here cannot align the view to the game. Keeping the palette
+ * out of that element is what guarantees it, and `app.jsx` is where that is
+ * decided.
  *
  * **Loading a file closes it.** A new document may be in another language, which
- * invalidates both the table and the check below; a panel that survived a load
+ * invalidates both the table and the check below; a palette that survived a load
  * would be describing the previous document. `gui/file.jsx` puts it away.
  */
 
@@ -26,7 +26,7 @@ import { useEffect } from "preact/hooks";
 import { signal } from "@preact/signals";
 
 import * as state from "../state.js";
-import { Palette, UNTAGGED } from "../hideout/palette.js";
+import { Palette, INCLUDE, EXCLUDE } from "../hideout/palette.js";
 
 /**
  * The table for the document's language, once it has been fetched and checked,
@@ -35,7 +35,7 @@ import { Palette, UNTAGGED } from "../hideout/palette.js";
  * `{ document, language, palette, check }`, where `check` is what
  * `disagreements` found against the document. It is computed once, when the
  * table arrives, rather than per render: it walks every doodad in the hideout,
- * and what it walks does not change while the panel is up -- a doodad placed
+ * and what it walks does not change while the palette is up -- a doodad placed
  * from the table is named by the table and cannot disagree with it.
  *
  * The document is remembered beside the language because two documents can
@@ -44,15 +44,17 @@ import { Palette, UNTAGGED } from "../hideout/palette.js";
 const table = signal(null);
 const tableError = signal(null);
 
-const search = signal("");
-const activeTags = signal(new Set());
-
 /**
- * Where the panel sits, once it has been dragged, or `null` while it sits where
- * the stylesheet put it. Remembered across openings: a player who moved it out
- * of the way meant it to stay out of the way.
+ * What the player is looking for. Kept across openings, because closing the
+ * palette to look at the viewport is not the same as giving up on a search.
+ *
+ * The two filters are `Map`s of key to `INCLUDE` or `EXCLUDE` -- see
+ * `hideout/palette.js`. A key not in the map is unset, so an empty map is no
+ * filter rather than a filter matching nothing.
  */
-const position = signal(null);
+const search = signal("");
+const categoryFilter = signal(new Map());
+const tagFilter = signal(new Map());
 
 /** Cached per language: ten files, and a player loads one or two of them. */
 const FETCHED = new Map();
@@ -65,7 +67,7 @@ export function AddDoodadButton() {
         class="btn btn-primary btn-sm"
         disabled={state.hideoutDocument.value === null}
         onClick={() => {
-          state.showPalette.value = true;
+          state.showPalette.value = !state.showPalette.value;
         }}
       >
         <i class="bi bi-plus-square"></i> Add doodad
@@ -84,91 +86,151 @@ export function DoodadPalette() {
 
   if (!shown) return null;
   return (
-    <div
-      class="palette-panel"
-      role="dialog"
-      aria-label="Doodad palette"
-      style={position.value}
-    >
-      <div class="palette-title" onMouseDown={startDrag}>
-        Doodad palette
-      </div>
-      <div class="palette-body">
-        <Search />
-        <Tags />
-        <Refusal />
-        <List />
-      </div>
-      <div class="palette-footer">
-        <p class="text-secondary mb-0">
-          Double-click a doodad to place it in the view. Place several and they
-          step away from each other; move the view to start again.
-        </p>
+    <div id="doodad-sidebar">
+      <div class="d-flex justify-content-between align-items-center">
+        <h2>Add doodad</h2>
         <button
           type="button"
-          class="btn btn-primary btn-sm"
+          class="btn-close btn-close-white"
+          aria-label="Close the doodad palette"
           onClick={() => {
             state.showPalette.value = false;
           }}
-        >
-          Close
-        </button>
+        ></button>
       </div>
+      <hr />
+      <Search />
+      <Refusal />
+      <Filters
+        title="Categories"
+        items={table.value?.palette.categories}
+        filter={categoryFilter}
+      />
+      <Filters
+        title="Tags"
+        items={table.value?.palette.tags}
+        filter={tagFilter}
+      />
+      <List />
+      <p class="text-secondary mt-1 mb-0">
+        Double-click a doodad to place it in the view. Place several and they
+        step away from each other; move the view to start again.
+      </p>
     </div>
   );
 }
 
 function Search() {
   return (
-    <input
-      type="search"
-      class="form-control form-control-sm mb-1"
-      placeholder="Search names"
-      value={search.value}
-      onInput={(event) => {
-        search.value = event.currentTarget.value;
-      }}
-    />
-  );
-}
-
-/**
- * The tag toggles, as Bootstrap badges on buttons -- a badge is a class rather
- * than an element, so it costs nothing in focus or keyboard behaviour.
- *
- * No toggle set shows everything, which is why `Untagged` has to be one of them:
- * without it the 52 doodads carrying no tag are the only ones a filtered list
- * can never reach.
- */
-function Tags() {
-  const palette = table.value?.palette;
-  if (!palette) return null;
-
-  return (
-    <div class="palette-tags mb-1">
-      {palette.tags.map((tag) => (
-        <button
-          type="button"
-          class={`badge border-0 ${badgeOf(tag)}`}
-          onClick={() => toggleTag(tag.key)}
-        >
-          {tag.name}
-        </button>
-      ))}
+    <div class="sidebar-item d-flex gap-1">
+      <input
+        type="search"
+        class="form-control form-control-sm"
+        placeholder="Search names"
+        value={search.value}
+        onInput={(event) => {
+          search.value = event.currentTarget.value;
+        }}
+      />
+      <button
+        type="button"
+        class="btn btn-secondary btn-sm text-nowrap"
+        disabled={!narrowed()}
+        onClick={clearSearch}
+        title="Clear the search and every category and tag filter."
+      >
+        Clear
+      </button>
     </div>
   );
 }
 
-function badgeOf(tag) {
-  return activeTags.value.has(tag.key)
-    ? "text-bg-primary"
-    : "text-bg-secondary";
+function narrowed() {
+  return (
+    search.value !== "" ||
+    categoryFilter.value.size > 0 ||
+    tagFilter.value.size > 0
+  );
 }
 
-function toggleTag(key) {
-  const tags = new Set(activeTags.value);
-  if (!tags.delete(key)) tags.add(key);
-  activeTags.value = tags;
+function clearSearch() {
+  search.value = "";
+  categoryFilter.value = new Map();
+  tagFilter.value = new Map();
+}
+
+/**
+ * One filter section: a list of keys, each cycling unset -> include -> exclude.
+ *
+ * Include reads as OR and exclude beats every include, which is what makes two
+ * lists of 98 and 38 usable at all: "the Karui and Vaal ones, but no NPCs" is
+ * three clicks, where an include-only filter cannot say it.
+ *
+ * Both sections are `<details>`, closed until asked for. 136 rows above the
+ * doodads would leave no doodads on screen, and the search input answers most
+ * of what a filter would.
+ */
+function Filters({ title, items, filter }) {
+  if (!items) return null;
+  return (
+    <details class="sidebar-item">
+      <summary>
+        {title} <FilterCount filter={filter} />
+      </summary>
+      <div class="filter-list">
+        {items.map((item) => (
+          <FilterRow item={item} filter={filter} />
+        ))}
+      </div>
+    </details>
+  );
+}
+
+/** What the section is doing while it is closed, which is when it matters. */
+function FilterCount({ filter }) {
+  if (filter.value.size === 0) return null;
+  const excluded = [...filter.value.values()].filter(
+    (state_) => state_ === EXCLUDE,
+  ).length;
+  return (
+    <span class="text-info">
+      {filter.value.size - excluded} in, {excluded} out
+    </span>
+  );
+}
+
+function FilterRow({ item, filter }) {
+  const state_ = filter.value.get(item.key);
+  return (
+    <button
+      type="button"
+      class={`filter-row ${filterColour(state_)}`}
+      onClick={() => cycleFilter(filter, item.key)}
+    >
+      <i class={`bi ${filterIcon(state_)}`}></i> {item.name}
+    </button>
+  );
+}
+
+function filterIcon(state_) {
+  if (state_ === INCLUDE) return "bi-plus-circle-fill";
+  if (state_ === EXCLUDE) return "bi-dash-circle-fill";
+  return "bi-circle";
+}
+
+function filterColour(state_) {
+  if (state_ === INCLUDE) return "text-info";
+  if (state_ === EXCLUDE) return "text-danger";
+  return "text-secondary";
+}
+
+function cycleFilter(filter, key) {
+  const next = new Map(filter.value);
+  const state_ = next.get(key);
+  if (state_ === undefined) next.set(key, INCLUDE);
+  else if (state_ === INCLUDE) next.set(key, EXCLUDE);
+  else next.delete(key);
+  filter.value = next;
 }
 
 function List() {
@@ -179,22 +241,21 @@ function List() {
 
   const found = table.value.palette.groups({
     text: search.value,
-    tags: activeTags.value,
+    categories: categoryFilter.value,
+    tags: tagFilter.value,
   });
   if (found.length === 0) {
     return <p class="text-secondary">Nothing matches.</p>;
   }
 
   // Said once for the whole list rather than per row: it is one answer, and
-  // there are 1730 rows to ask it of.
+  // there are 1719 rows to ask it of.
   const refused = refusal() === null ? "" : "palette-refused";
   return (
-    <div class="palette-scroll">
-      <div class={`palette-list ${refused}`}>
-        {found.map((group) => (
-          <Category group={group} />
-        ))}
-      </div>
+    <div class={`palette-list ${refused}`}>
+      {found.map((group) => (
+        <Category group={group} />
+      ))}
     </div>
   );
 }
@@ -202,7 +263,7 @@ function List() {
 /**
  * Grouped by category and not by tag. Every doodad has exactly one category, so
  * headers are lossless; a tag heading would strand the untagged and repeat the
- * 437 doodads carrying several.
+ * doodads carrying several.
  */
 function Category({ group }) {
   return (
@@ -219,21 +280,23 @@ function Category({ group }) {
 
 /**
  * One row. The metadata id is the title of every row and is shown on the rows
- * whose name is shared -- seven doodads are called `Warp Rune`, and seven
- * identical rows are a choice a player cannot make.
+ * whose name is shared -- several doodads are called `Warp Rune`, and identical
+ * rows are a choice a player cannot make.
  *
- * The hideout mark is the only thing the data supports saying about what a
- * player owns: no table names an MTX pack. 1516 doodads carry no mark, and no
- * empty space where one would be.
+ * The hideout is the only thing the data supports saying about what a player
+ * owns: no table names an MTX pack. It reads under the name, where a row that
+ * has none simply has one line.
  */
 function Entry({ entry }) {
   return (
     <li class="palette-row" title={entry.id} onDblClick={() => place(entry)}>
-      {entry.name}
-      {entry.distinguisher && (
-        <span class="palette-mark"> {entry.distinguisher}</span>
-      )}
-      {entry.hideout && <span class="palette-mark"> [{entry.hideout}]</span>}
+      <span>
+        {entry.name}
+        {entry.distinguisher && (
+          <span class="palette-mark"> {entry.distinguisher}</span>
+        )}
+      </span>
+      {entry.hideout && <span class="palette-hideout">{entry.hideout}</span>}
     </li>
   );
 }
@@ -301,8 +364,8 @@ function place(entry) {
  * Fetches the table for a language and checks it against the document.
  *
  * The generated files are static assets rather than source, the same as the
- * bounds outlines, so they are fetched and not imported -- one file of 1730
- * doodads per language, and a player opens one of them.
+ * bounds outlines, so they are fetched and not imported -- one file per
+ * language, and a player opens one of them.
  *
  * The check is the point of doing it here: the table is only usable once it has
  * agreed with the hundreds of names the game itself wrote into the document.
@@ -344,40 +407,4 @@ async function fetchJson(language) {
     );
   }
   return response.json();
-}
-
-// -- dragging ----------------------------------------------------------------
-
-/**
- * The title bar is the handle, which is where a player reaches for it and the
- * only part of the panel that is not something else already.
- *
- * On the window rather than the panel, as every other drag in the editor is, so
- * that a pointer leaving the panel keeps dragging and -- above all -- still
- * lets go. Clamped to the window: a panel dragged past the edge is a panel with
- * no title bar left to drag back.
- */
-function startDrag(event) {
-  const panel = event.currentTarget.parentElement;
-  const box = panel.getBoundingClientRect();
-  const grab = { x: event.clientX - box.left, y: event.clientY - box.top };
-
-  const move = (moved) => {
-    position.value = {
-      left: `${clamp(moved.clientX - grab.x, window.innerWidth - box.width)}px`,
-      top: `${clamp(moved.clientY - grab.y, window.innerHeight - box.height)}px`,
-    };
-  };
-  const end = () => {
-    window.removeEventListener("mousemove", move);
-    window.removeEventListener("mouseup", end);
-  };
-
-  event.preventDefault();
-  window.addEventListener("mousemove", move);
-  window.addEventListener("mouseup", end);
-}
-
-function clamp(value, high) {
-  return Math.max(0, Math.min(value, high));
 }

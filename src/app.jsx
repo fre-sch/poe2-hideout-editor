@@ -1,5 +1,7 @@
 /**
- * Application shell. A sidebar and a viewport, side by side.
+ * Application shell. The sidebar, the viewport, and the doodad palette beside
+ * it on the right when it is open -- three columns, the viewport taking what
+ * the other two leave.
  *
  * The palette is a sibling of the viewport and not a child of it, which is what
  * keeps its search input out of the viewport's keyboard shortcuts -- those are

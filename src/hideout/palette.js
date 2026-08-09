@@ -22,11 +22,24 @@
  */
 
 /**
- * The synthetic tag for the 52 doodads that carry none. Grouping is by
- * category, which is lossless, so this is a filter and not a heading -- but
- * without it those 52 are the only ones no toggle can reach.
+ * The synthetic tag for the doodads that carry none. Grouping is by category,
+ * which is lossless, so this is a filter and not a heading -- but without it
+ * those doodads are the only ones no toggle can reach.
  */
 export const UNTAGGED = "Untagged";
+
+/**
+ * The two things a category or tag filter can say about a key. The third state
+ * is saying nothing, which is a key the filter does not hold -- there is no
+ * `UNSET` value, because an unset key is one nobody has touched.
+ *
+ * `INCLUDE` is what a player reaches for first -- show me these -- and reads as
+ * OR, because a doodad carrying any of the wanted tags is wanted. `EXCLUDE` is
+ * stronger than any include: a player who says "not NPCs" means it, whatever
+ * else the doodad is tagged with.
+ */
+export const INCLUDE = "include";
+export const EXCLUDE = "exclude";
 
 export class Palette {
   /** `data` is a parsed `public/doodads/{language}.json`. */
@@ -34,7 +47,8 @@ export class Palette {
     this.language = data.language;
     this.entries = readEntries(data);
     this.byHash = new Map(this.entries.map((entry) => [entry.hash, entry]));
-    this.tags = readTags(data.t9nTags);
+    this.tags = readTags(data.t9nTags, this.entries);
+    this.categories = readCategories(this.entries);
   }
 
   /**
@@ -48,16 +62,24 @@ export class Palette {
   }
 
   /**
-   * What to show, as `[{ category, entries }]` in category order.
+   * What to show, as `[{ key, category, entries }]` in category order.
    *
    * `text` matches the displayed name, because that is what a player has in
-   * front of them to type. `tags` is a set of tag keys, and an empty one is
-   * not a filter that excludes everything -- it is no filter at all.
+   * front of them to type. `categories` and `tags` are `Map`s of key to
+   * `INCLUDE` or `EXCLUDE`; a key not in the map is `UNSET`, and a map holding
+   * nothing is not a filter that excludes everything -- it is no filter at all.
+   *
+   * The two filters are read together: a doodad shows when its category and
+   * its tags both allow it. They answer different questions -- where a doodad
+   * is from, and what it is -- so a player narrowing both means both.
    */
-  groups({ text = "", tags = new Set() } = {}) {
+  groups({ text = "", categories = new Map(), tags = new Map() } = {}) {
     const wanted = text.trim().toLocaleLowerCase();
     const matching = this.entries.filter(
-      (entry) => matchesText(entry, wanted) && matchesTags(entry, tags),
+      (entry) =>
+        matchesText(entry, wanted) &&
+        allows(categories, [entry.categoryKey]) &&
+        allows(tags, tagKeys(entry)),
     );
     return groupByCategory(matching);
   }
@@ -102,13 +124,14 @@ export class Palette {
  *
  * A name is not unique -- 34 English names cover 74 doodads, seven of them
  * `Warp Rune` -- so an entry sharing its name carries a `distinguisher`, the
- * last segment of its metadata id. Only the ones that share, because 1730 rows
+ * last segment of its metadata id. Only the ones that share, because 1719 rows
  * of metadata id is noise obscuring the 34 places it is the answer.
  */
 function readEntries(data) {
   const entries = Object.entries(data.doodads).map(([hash, doodad]) => ({
     ...doodad,
     hash,
+    categoryKey: doodad.category,
     category: data.t9nCategory[doodad.category] ?? doodad.category,
   }));
 
@@ -133,10 +156,32 @@ function lastSegment(id) {
   return id.slice(id.lastIndexOf("/") + 1);
 }
 
-/** The tag toggles: every tag the table translates, and `Untagged` besides. */
-function readTags(t9nTags) {
+/**
+ * The tag filters: every tag the table translates, and `Untagged` besides --
+ * the last only where there is something untagged to reach with it.
+ */
+function readTags(t9nTags, entries) {
   const tags = Object.entries(t9nTags).map(([key, name]) => ({ key, name }));
-  return [...tags.sort(byName), { key: UNTAGGED, name: UNTAGGED }];
+  tags.sort(byName);
+  if (entries.some((entry) => entry.tags.length === 0)) {
+    tags.push({ key: UNTAGGED, name: UNTAGGED });
+  }
+  return tags;
+}
+
+/**
+ * The category filters, read off the entries rather than off `t9nCategory`.
+ *
+ * The generated table translates only the categories its doodads are in, and a
+ * filter for a category holding nothing is a row that can only ever empty the
+ * list.
+ */
+function readCategories(entries) {
+  const categories = new Map();
+  for (const entry of entries) {
+    categories.set(entry.categoryKey, entry.category);
+  }
+  return [...categories].map(([key, name]) => ({ key, name })).sort(byName);
 }
 
 function matchesText(entry, text) {
@@ -144,20 +189,42 @@ function matchesText(entry, text) {
   return entry.name.toLocaleLowerCase().includes(text);
 }
 
-function matchesTags(entry, tags) {
-  if (tags.size === 0) return true;
-  if (entry.tags.length === 0) return tags.has(UNTAGGED);
-  return entry.tags.some((tag) => tags.has(tag));
+/** What a tag filter matches an entry on: its tags, or being untagged. */
+function tagKeys(entry) {
+  if (entry.tags.length === 0) return [UNTAGGED];
+  return entry.tags;
+}
+
+/**
+ * Whether a tri-state filter lets an entry carrying `keys` through.
+ *
+ * One exclude is enough to drop it, whatever else it carries. Past that, an
+ * include anywhere in the filter turns it into a list of what to show, and an
+ * entry has to be on it.
+ */
+function allows(filter, keys) {
+  if (keys.some((key) => filter.get(key) === EXCLUDE)) return false;
+  if (!hasInclude(filter)) return true;
+  return keys.some((key) => filter.get(key) === INCLUDE);
+}
+
+function hasInclude(filter) {
+  for (const state of filter.values()) {
+    if (state === INCLUDE) return true;
+  }
+  return false;
 }
 
 function groupByCategory(entries) {
   const groups = new Map();
   for (const entry of entries) {
-    if (!groups.has(entry.category)) groups.set(entry.category, []);
-    groups.get(entry.category).push(entry);
+    if (!groups.has(entry.categoryKey)) {
+      groups.set(entry.categoryKey, { category: entry.category, entries: [] });
+    }
+    groups.get(entry.categoryKey).entries.push(entry);
   }
   return [...groups]
-    .map(([category, grouped]) => ({ category, entries: grouped }))
+    .map(([key, group]) => ({ key, ...group }))
     .sort((one, other) => one.category.localeCompare(other.category));
 }
 

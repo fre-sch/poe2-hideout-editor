@@ -5,7 +5,12 @@ import { describe, expect, it } from "vitest";
 
 import * as gameExport from "./game-export.js";
 import { HideoutDocument } from "../src/hideout/model.js";
-import { Palette, UNTAGGED } from "../src/hideout/palette.js";
+import {
+  Palette,
+  UNTAGGED,
+  INCLUDE,
+  EXCLUDE,
+} from "../src/hideout/palette.js";
 
 const TABLES = path.resolve(
   path.dirname(url.fileURLToPath(import.meta.url)),
@@ -90,21 +95,21 @@ describe("Palette", () => {
     expect(palette.groups({ text: "nothing here" })).toEqual([]);
   });
 
-  it("shows everything when no tag is toggled", () => {
+  it("shows everything when nothing is filtered", () => {
     const palette = new Palette(DATA);
 
-    expect(palette.groups({ tags: new Set() })).toEqual(palette.groups());
+    expect(palette.groups({ tags: new Map(), categories: new Map() })).toEqual(
+      palette.groups(),
+    );
   });
 
   it("filters by tag, and Untagged is one of them", () => {
     const palette = new Palette(DATA);
-    const tagged = palette.groups({ tags: new Set(["Plants"]) });
-    const untagged = palette.groups({ tags: new Set([UNTAGGED]) });
+    const tagged = names(palette, { tags: filter({ Plants: INCLUDE }) });
+    const untagged = names(palette, { tags: filter({ [UNTAGGED]: INCLUDE }) });
 
-    expect(tagged.flatMap((group) => group.entries)[0].name).toBe("Nikau Palm");
-    expect(untagged.flatMap((group) => group.entries)[0].id).toBe(
-      "Metadata/Items/Hideout/HideoutRedWarpRune",
-    );
+    expect(tagged).toEqual(["Nikau Palm"]);
+    expect(untagged).toEqual(["Warp Rune"]);
   });
 
   it("offers Untagged besides every tag the table translates", () => {
@@ -116,7 +121,63 @@ describe("Palette", () => {
       UNTAGGED,
     ]);
   });
+
+  it("offers the categories its doodads are in, by their translation", () => {
+    const palette = new Palette(DATA);
+
+    expect(palette.categories).toEqual([
+      { key: "Coastal", name: "Coast" },
+      { key: "Teleporter", name: "Teleporter" },
+    ]);
+  });
+
+  it("includes as OR", () => {
+    const palette = new Palette(DATA);
+    const found = names(palette, {
+      tags: filter({ Plants: INCLUDE, Furniture: INCLUDE }),
+    });
+
+    expect(found).toEqual(["Nikau Palm", "Warp Rune"]);
+  });
+
+  it("excludes over any include", () => {
+    const palette = new Palette(DATA);
+    const found = names(palette, {
+      tags: filter({ Plants: INCLUDE, Furniture: INCLUDE }),
+      categories: filter({ Coastal: EXCLUDE }),
+    });
+
+    expect(found).toEqual(["Warp Rune"]);
+  });
+
+  it("excludes a doodad whose other tag is included", () => {
+    const palette = new Palette(DATA);
+    const found = names(palette, {
+      tags: filter({ Plants: INCLUDE, Furniture: EXCLUDE }),
+    });
+
+    expect(found).toEqual(["Nikau Palm"]);
+  });
+
+  it("reads the two filters together", () => {
+    const palette = new Palette(DATA);
+    const found = names(palette, {
+      categories: filter({ Teleporter: INCLUDE }),
+      tags: filter({ Furniture: INCLUDE }),
+    });
+
+    expect(found).toEqual(["Warp Rune"]);
+    expect(names(palette, { categories: filter({ Teleporter: INCLUDE }) }))
+      .toHaveLength(2);
+  });
 });
+
+const filter = (states) => new Map(Object.entries(states));
+
+const names = (palette, wanted) =>
+  palette
+    .groups(wanted)
+    .flatMap((group) => group.entries.map((entry) => entry.name));
 
 /**
  * The check that decides whether the editor may write a name at all. A table
@@ -159,27 +220,49 @@ describe("the generated tables", () => {
     const palette = new Palette(table("English"));
     const grouped = palette.groups().flatMap((group) => group.entries);
 
-    expect(palette.entries).toHaveLength(1730);
-    expect(grouped).toHaveLength(1730);
+    expect(palette.entries).toHaveLength(1719);
+    expect(grouped).toHaveLength(1719);
     expect(palette.groups()).toHaveLength(98);
   });
 
-  it("leaves no doodad unreachable by the toggles", () => {
+  it("leaves no doodad unreachable by the tag filters", () => {
     const palette = new Palette(table("English"));
     const keys = palette.tags.map((tag) => tag.key);
-    const reachable = palette
-      .groups({ tags: new Set(keys) })
-      .flatMap((group) => group.entries);
+    const reachable = names(palette, {
+      tags: new Map(keys.map((key) => [key, INCLUDE])),
+    });
 
     expect(keys).toHaveLength(39);
-    expect(reachable).toHaveLength(1730);
+    expect(reachable).toHaveLength(1719);
+  });
+
+  it("offers a filter for every category, and no empty ones", () => {
+    const palette = new Palette(table("English"));
+
+    expect(palette.categories).toHaveLength(98);
+    for (const category of palette.categories) {
+      expect(
+        names(palette, { categories: filter({ [category.key]: INCLUDE }) })
+          .length,
+      ).toBeGreaterThan(0);
+    }
   });
 
   it("marks the doodads a hideout grants, and no others", () => {
     const palette = new Palette(table("English"));
     const marked = palette.entries.filter((entry) => entry.hideout);
 
-    expect(marked).toHaveLength(214);
+    expect(marked).toHaveLength(212);
+  });
+
+  /** The blacklist of `scripts/doodad_palette.py`, seen from this end. */
+  it("offers nothing the game marks as not for use", () => {
+    const palette = new Palette(table("English"));
+    const marked = palette.entries.filter((entry) =>
+      /\[DNT\]|\[DO NOT USE\]/.test(entry.name),
+    );
+
+    expect(marked).toEqual([]);
   });
 });
 
