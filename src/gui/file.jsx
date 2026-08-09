@@ -40,16 +40,16 @@ export default function File() {
         >
           <i class="bi bi-box-arrow-down"></i> Export .hideout
         </button>
+        <button
+          type="button"
+          class="btn btn-secondary btn-sm"
+          disabled={!loaded}
+          onClick={saveProject}
+          title="Your work, layers and all. The game cannot read it."
+        >
+          <i class="bi bi-hdd"></i> Save project
+        </button>
       </div>
-      <button
-        type="button"
-        class="btn btn-secondary btn-sm"
-        disabled={!loaded}
-        onClick={saveProject}
-        title="Your work, layers and all. The game cannot read it."
-      >
-        <i class="bi bi-hdd"></i> Save project
-      </button>
       <p class="text-secondary mt-1 mb-0">
         Load takes a `.hideout` or a saved project. Export writes the game's
         file, from the visible layers. Save project writes the editor's, from
