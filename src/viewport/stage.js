@@ -41,6 +41,21 @@ const GRID_MAJOR = 50;
 const GRID_MINOR_COLOR = "#204070";
 const GRID_MAJOR_COLOR = "#407090";
 
+/**
+ * The coordinate labels on the major lines. Monospace because they are read as
+ * numbers rather than as words, and in the major line's own colour because they
+ * are that line, written down.
+ *
+ * The gap and the size are screen pixels: a label is counter-turned and
+ * counter-scaled, so its own space is the screen's -- see `alignGridLabels`.
+ * Below `GRID_LABEL_SPACING` pixels between major lines there is no room to read
+ * one, and forty-two of them at once is a smear rather than a grid.
+ */
+const GRID_LABEL_FONT = "monospace";
+const GRID_LABEL_SIZE = 11;
+const GRID_LABEL_GAP = 3;
+const GRID_LABEL_SPACING = 40;
+
 const ZOOM_STEP = 1.1;
 const ZOOM_MIN = 0.05;
 const ZOOM_MAX = 40;
@@ -75,7 +90,12 @@ export class Stage extends EventTarget {
     // hundred lines with `strokeScaleEnabled` off cost less than that trade.
     // Kept as a field so it can be hidden; built once either way.
     this.grid = grid();
+    // Inside the grid, so that the toggle hides both without knowing there are
+    // two things to hide.
+    this.gridLabels = gridLabels();
+    this.grid.add(this.gridLabels);
     this.static.add(this.grid);
+    this.alignGridLabels();
 
     this.konva.on("wheel", this.onWheel);
     container.addEventListener("mousedown", this.onViewDragStart);
@@ -101,7 +121,31 @@ export class Stage extends EventTarget {
   }
 
   viewChanged() {
+    this.alignGridLabels();
     this.dispatchEvent(new CustomEvent("viewchanged"));
+  }
+
+  /**
+   * Keeps the coordinate labels upright and one size, whatever the view is
+   * doing.
+   *
+   * They are anchored in the world, so that a label stays on the line it names,
+   * but a label is read on the screen: turned with the view it would be upside
+   * down for most of a turn, and scaled with it, unreadable at one end of the
+   * zoom range and enormous at the other. Turning and scaling each one back is
+   * what makes its own space the screen's, which is what lets the gap that
+   * holds it clear of its line be a number of pixels set once.
+   */
+  alignGridLabels() {
+    const zoom = this.konva.scaleX();
+    const readable = GRID_MAJOR * zoom >= GRID_LABEL_SPACING;
+
+    this.gridLabels.visible(readable);
+    if (!readable) return;
+    for (const label of this.gridLabels.getChildren()) {
+      label.rotation(-this.konva.rotation());
+      label.scale({ x: 1 / zoom, y: 1 / zoom });
+    }
   }
 
   /**
@@ -296,6 +340,49 @@ function grid() {
     );
   }
   return group;
+}
+
+/**
+ * A coordinate on every major line, along the axes of the world: the `y` labels
+ * lie on the line where `x` is zero, and the `x` labels on the line where `y`
+ * is zero.
+ *
+ * Each label names its axis, and the axis it names is the file's. `toStage`
+ * swaps them -- the line drawn at stage `x = 300` is where a doodad's `y` is 300
+ * -- so a bare number on a view turned 225 degrees is one a player has no way
+ * to attribute.
+ *
+ * One family reads above its line and the other below, which is what keeps
+ * `x 0` and `y 0` off each other at the origin.
+ */
+function gridLabels() {
+  const group = new Konva.Group({ listening: false });
+  for (let offset = 0; offset <= GRID_EXTENT; offset += GRID_MAJOR) {
+    group.add(gridLabel(`y ${offset}`, { x: offset, y: 0 }, true));
+    group.add(gridLabel(`x ${offset}`, { x: 0, y: offset }, false));
+  }
+  return group;
+}
+
+/**
+ * The offsets are in the label's own space, which `alignGridLabels` keeps as
+ * the screen's, so they are set once here: centred across the line it names and
+ * a gap clear of it.
+ */
+function gridLabel(text, at, above) {
+  const label = new Konva.Text({
+    text,
+    x: at.x,
+    y: at.y,
+    fontFamily: GRID_LABEL_FONT,
+    fontSize: GRID_LABEL_SIZE,
+    fill: GRID_MAJOR_COLOR,
+    listening: false,
+    perfectDrawEnabled: false,
+  });
+  label.offsetX(label.width() / 2);
+  label.offsetY(above ? GRID_LABEL_SIZE + GRID_LABEL_GAP : -GRID_LABEL_GAP);
+  return label;
 }
 
 function clamp(value, low, high) {
