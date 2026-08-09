@@ -484,18 +484,18 @@ function VariationButton({ index, on, chosen }) {
  * names are listed because a source is chosen once and read many times, and
  * "three doodads" is not an answer to which three.
  *
- * It is a reading and not an editor. Which doodad is the palette's question, and
- * the palette answers it for an array exactly as it answers it for the floor --
- * so the button that took the selection instead is gone, and the list says where
- * the question is asked.
+ * Adding is the palette's -- which doodad is the question it exists to answer,
+ * for an array exactly as for the floor. Taking one back out is here, because
+ * *which of these* is a question only this list can put. The last one cannot go:
+ * an array with nothing to place is not an emptier array, it is a broken one.
  */
 function Source({ source }) {
   return (
     <details class="sidebar-item" open>
       <summary>Source ({source.length})</summary>
       <ul class="list-unstyled mb-1 array-source">
-        {source.map((entry) => (
-          <li title={entry.name}>{entry.name}</li>
+        {source.map((entry, index) => (
+          <SourceRow entry={entry} index={index} only={source.length === 1} />
         ))}
       </ul>
       <p class="text-secondary mb-0">
@@ -504,6 +504,29 @@ function Source({ source }) {
         and hold <span class="shortcut">Shift</span> there to add another.
       </p>
     </details>
+  );
+}
+
+function SourceRow({ entry, index, only }) {
+  return (
+    <li class="array-source-row">
+      <span class="array-source-name" title={entry.name}>
+        {entry.name}
+      </span>
+      <button
+        type="button"
+        class="btn btn-sm btn-link p-0 text-danger"
+        title={
+          only
+            ? "An array needs something to place, so the last one stays"
+            : "Take this doodad out of the source"
+        }
+        disabled={only}
+        onClick={() => removeSource(index)}
+      >
+        <i class="bi bi-x-lg"></i>
+      </button>
+    </li>
   );
 }
 
@@ -698,6 +721,17 @@ function toggleVariation(chosen, index) {
  * variations the array uses is the Randomness section's question, and it is
  * asked of the table rather than of one row.
  */
+/**
+ * One doodad out of the source. The doodads that were being made from it are not
+ * where they were: the cycle is shorter, so every index after the gap takes the
+ * next one along -- which is what a cycle means, and is visible immediately.
+ */
+function removeSource(index) {
+  const source = edited().source;
+  if (source.length < 2) return;
+  update({ source: source.filter((_, other) => other !== index) });
+}
+
 export function sourceDoodad(layer, { hash, name }, adding) {
   const array = document_().findGenerator(layer);
   const entry = { hash: Number(hash), name, fv: FIRST_VARIATION };

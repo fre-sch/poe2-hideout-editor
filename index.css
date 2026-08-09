@@ -335,9 +335,17 @@ main {
   margin-bottom: 0.15rem;
 }
 
-/* One source doodad per line, truncated: the names are long, the column is
-   narrow, and what matters is which doodads and in what order. */
-.array-source li {
+/* One source doodad per line, with the button that takes it back out. The name
+   truncates rather than wrapping: the names are long, the column is narrow, and
+   what matters is which doodads and in what order. */
+.array-source-row {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+.array-source-name {
+  flex: 1 1 auto;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

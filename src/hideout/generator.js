@@ -64,8 +64,18 @@ export const ON_EDGES = "edges";
 
 const DEGREE = Math.PI / 180;
 
-/** The doodads a generator evaluates to, in index order. */
+/**
+ * The doodads a generator evaluates to, in index order.
+ *
+ * A source of nothing is refused rather than evaluated to nothing: `source` is
+ * cycled by index, so an empty one is a division by zero wearing a modulo, and
+ * an array that quietly places nothing is a layout a player has to work out for
+ * themselves. The sidebar keeps the last source doodad for the same reason.
+ */
 export function generate(generator) {
+  if (!generator.source?.length) {
+    throw new Error(`Array '${generator.layer}' has no doodad to place`);
+  }
   return placements(generator).map((placement, index) =>
     doodadAt(generator, index, placement),
   );

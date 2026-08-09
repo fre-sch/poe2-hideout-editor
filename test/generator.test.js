@@ -638,6 +638,22 @@ describe("variation", () => {
 });
 
 describe("source", () => {
+  /**
+   * `source[k % length]` over an empty list is `source[NaN]`, so an array with
+   * nothing to place would evaluate to doodads with no name. It says so instead,
+   * and the sidebar keeps the last one rather than reaching this.
+   */
+  it("refuses an array with nothing to place, naming its layer", () => {
+    const empty = array({
+      type: "line",
+      ends: { start: { x: 0, y: 0 }, end: { x: 10, y: 0 } },
+      resolution: 2,
+      source: [],
+    });
+
+    expect(() => generator.generate(empty)).toThrow(/layer-2/);
+  });
+
   it("cycles the sources by index", () => {
     const sources = [
       { hash: 1, name: "One", fv: 0 },
