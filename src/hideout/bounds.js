@@ -31,6 +31,11 @@ const DEFINITIONS = [
     name: "The Dreadnought Hideout",
     file: "HideoutDreadnought_30315.svg",
   },
+  {
+    hash: 6697,
+    name: "Titan Apex Hideout",
+    file: "HideoutColossalTitan_6697.svg",
+  },
 ];
 
 /** Every known type, by display name, for a dropdown. */

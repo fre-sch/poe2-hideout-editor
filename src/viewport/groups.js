@@ -24,8 +24,12 @@ import Konva from "konva";
  * `existing` maps layer id to group; the returned map replaces it. Nodes move
  * before anything is destroyed, so a deleted layer whose doodads went elsewhere
  * takes no node with it.
+ *
+ * `generated` is the ids of the layers carrying an array. Their doodads are
+ * computed and would be overwritten by the next regeneration, so the group is
+ * taken out of hit testing -- see `selectable`.
  */
-export function sync(parent, existing, layers, nodes) {
+export function sync(parent, existing, layers, nodes, generated = new Set()) {
   const current = new Map();
   for (const layer of layers) {
     current.set(layer.id, existing.get(layer.id) ?? added(parent, layer.id));
@@ -49,7 +53,7 @@ export function sync(parent, existing, layers, nodes) {
   for (const layer of layers) {
     const group = current.get(layer.id);
     group.visible(layer.visible);
-    group.listening(!layer.locked);
+    group.listening(selectable(layer, generated.has(layer.id)));
     group.moveToTop();
   }
   return current;
@@ -59,9 +63,15 @@ export function sync(parent, existing, layers, nodes) {
  * Whether a layer's doodads can be picked. Locked says so outright, and hidden
  * says it by implication -- a band that selects what a player cannot see is a
  * band that deletes what a player cannot see.
+ *
+ * An array's are refused for a third reason: they are derived, and the array
+ * writes them again from its parameters whenever one of them changes. A doodad
+ * that can be moved and then moves back by itself is worse than one that cannot
+ * be moved -- wiki/decisions/array-placement.md. **Detach** is how a player says
+ * they want these ones by hand.
  */
-export function selectable(layer) {
-  return Boolean(layer) && layer.visible && !layer.locked;
+export function selectable(layer, generated = false) {
+  return Boolean(layer) && layer.visible && !layer.locked && !generated;
 }
 
 function added(parent, id) {

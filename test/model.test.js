@@ -217,6 +217,47 @@ describe("array layers", () => {
   });
 });
 
+describe("replaceGenerator", () => {
+  it("swaps the parameters, keeping the layer and its place", () => {
+    const document_ = HideoutDocument.fromText(SHRINE);
+    const array = document_.addArrayLayer("Braziers", GRID);
+    const replaced = document_.replaceGenerator({
+      ...array,
+      resolution: { x: 2, y: 2 },
+    });
+
+    expect(document_.generators).toEqual([replaced]);
+    expect(document_.findGenerator(array.layer)).toBe(replaced);
+    expect(replaced).not.toBe(array);
+  });
+
+  /**
+   * The reason it goes through `Generator` at all: a shape that has been
+   * changed must not carry the geometry of the shape it was, or a project file
+   * saves two answers to where the doodads are.
+   */
+  it("drops the geometry of the type it no longer is", () => {
+    const document_ = HideoutDocument.fromText(SHRINE);
+    const array = document_.addArrayLayer("Braziers", GRID);
+    const line = document_.replaceGenerator({
+      ...array,
+      type: "line",
+      ends: { start: { x: 0, y: 0 }, end: { x: 10, y: 0 } },
+      resolution: 4,
+    });
+
+    expect("box" in line).toBe(false);
+  });
+
+  it("refuses a layer that carries no generator", () => {
+    const document_ = HideoutDocument.fromText(SHRINE);
+
+    expect(() => document_.replaceGenerator({ ...GRID, layer: "default" })).toThrow(
+      /no generator/,
+    );
+  });
+});
+
 function names(doodads) {
   return doodads.map((doodad) => doodad.name);
 }

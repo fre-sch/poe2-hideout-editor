@@ -9,11 +9,13 @@
  * ## The parameters
  *
  *     layer       the layer id the doodads are written into
- *     type        "grid" | "ellipse" | "polygon" | "line"
+ *     type        "grid" | "ellipse" | "polygon" | "line" | "bezier"
  *     source      [{hash, name, fv}], cycled by index
- *     box         {center, width, height, rotation}   every type but "line"
- *     ends        {start, end}                        "line"
- *     corners     integer                             "polygon"
+ *     box           {center, width, height, rotation} the shapes that fill a box
+ *     ends          {start, end}                      "line", "bezier"
+ *     controls      {first, second}                   "bezier"
+ *     corners       integer                           "polygon"
+ *     distribution  "corners" | "edges"               "polygon"
  *     resolution  {x, y} for a grid, a number otherwise
  *     rotation    {base, increment, align}
  *     random      {seed, jitter: {x, y, rotation}, variation: [index, ...]}
@@ -32,11 +34,14 @@
  *
  * ## Where the points go
  *
- * The grid is a lattice at cell centres. Every outline is a polyline walked at
- * equal arc length, which is one function for three shapes and is why the
- * ellipse comes out evenly spaced rather than crowded at its pointy ends.
- * `outline` hands the same polyline to the gizmo, so what a player sees and
- * what the doodads sit on cannot disagree.
+ * The grid is a lattice at cell centres. A line, an ellipse and a Bézier are
+ * polylines walked at equal arc length, which is why the curves come out evenly
+ * spaced rather than crowded where they turn. A polygon is dealt to its edges
+ * instead, so that a doodad lands *on* a corner rather than near one -- see
+ * `alongEdges`.
+ *
+ * `outline` hands the same polyline to the gizmo, so what a player sees and what
+ * the doodads sit on cannot disagree.
  */
 
 import { Doodad } from "./model.js";
@@ -44,19 +49,33 @@ import * as units from "./units.js";
 import * as variation from "./variation.js";
 
 /**
- * How finely an ellipse is measured, not how many doodads it carries. A curve
- * with no closed-form arc length is walked by sampling it; 512 segments is
- * accurate to parts per million.
+ * How finely a curve is measured, not how many doodads it carries. A curve with
+ * no closed-form arc length is walked by sampling it; 512 segments is accurate
+ * to parts per million, for the ellipse and the Bézier alike.
  */
-const ELLIPSE_SEGMENTS = 512;
+const CURVE_SEGMENTS = 512;
 
 /** A step this close to the end of an edge starts the next one. See `pointAt`. */
 const EPSILON = 1e-9;
 
+/** Where a polygon's doodads sit. The default is `ON_CORNERS`. */
+export const ON_CORNERS = "corners";
+export const ON_EDGES = "edges";
+
 const DEGREE = Math.PI / 180;
 
-/** The doodads a generator evaluates to, in index order. */
+/**
+ * The doodads a generator evaluates to, in index order.
+ *
+ * A source of nothing is refused rather than evaluated to nothing: `source` is
+ * cycled by index, so an empty one is a division by zero wearing a modulo, and
+ * an array that quietly places nothing is a layout a player has to work out for
+ * themselves. The sidebar keeps the last source doodad for the same reason.
+ */
 export function generate(generator) {
+  if (!generator.source?.length) {
+    throw new Error(`Array '${generator.layer}' has no doodad to place`);
+  }
   return placements(generator).map((placement, index) =>
     doodadAt(generator, index, placement),
   );
@@ -83,6 +102,11 @@ export function outline(generator) {
         points: polygonCorners(generator.box, generator.corners),
         closed: true,
       };
+    case "bezier":
+      return {
+        points: bezierPoints(generator.ends, generator.controls),
+        closed: false,
+      };
     case "ellipse":
       return { points: ellipsePoints(generator.box), closed: true };
     case "grid":
@@ -98,6 +122,37 @@ export function randomSeed() {
 }
 
 /**
+ * The two ends of a box's own x axis: what a shape becomes when its type is
+ * changed to `line`.
+ *
+ * The pair with the reverse below is here rather than in the sidebar that asks
+ * for it, because both are the frame change of `fromLocal` read in one direction
+ * or the other -- and the frames are reasoned about in this module only.
+ */
+export function endsOfBox(box) {
+  const half = box.width / 2;
+  return {
+    start: fromLocal({ x: -half, y: 0 }, box),
+    end: fromLocal({ x: half, y: 0 }, box),
+  };
+}
+
+/**
+ * The box a line spans, given the height it is to have: its own x axis runs
+ * from one end to the other, so a shape made out of a line keeps the line's
+ * length and the direction it was drawn in.
+ */
+export function boxOfEnds(ends, height) {
+  const span = { x: ends.end.x - ends.start.x, y: ends.end.y - ends.start.y };
+  return {
+    center: scale(add(ends.start, ends.end), 0.5),
+    width: Math.hypot(span.x, span.y),
+    height,
+    rotation: angleOf(span),
+  };
+}
+
+/**
  * Where the doodads land and which way the shape runs there, before any
  * rotation or jitter: `{x, y, direction}` in doodad units and stage degrees.
  *
@@ -107,7 +162,78 @@ export function randomSeed() {
  */
 function placements(generator) {
   if (generator.type === "grid") return lattice(generator);
+  if (generator.type === "polygon") return alongEdges(generator);
   return walk(outline(generator), countOf(generator));
+}
+
+/**
+ * A polygon's doodads, dealt to its edges rather than walked around its
+ * perimeter.
+ *
+ * The walk is right for the shapes that have nothing to land on: equal arc
+ * length is even spacing, and an ellipse has no corners to miss. A polygon is
+ * chosen *for* its corners, and a walk lands a doodad a hair off one whenever
+ * the arithmetic does not come out exactly -- which reads as a mistake at every
+ * corner of a sharp shape. So the count is shared out edge by edge, and each
+ * edge lays its share out from one end: a doodad is on a corner or it is not.
+ *
+ * The two distributions are one half-step apart. `ON_CORNERS` starts each edge
+ * at its own start corner and follows at `step / share`. `ON_EDGES` sits at
+ * `(step + 0.5) / share`, which is the edge's midpoint for a share of one and
+ * stays centred on it for more.
+ *
+ * The cost lands on a box that is not square: a stretched polygon has edges of
+ * different lengths, and equal shares on unequal edges are not equal spacing.
+ * That is the trade a shape with corners is asking for -- a corner every time,
+ * against a gap that varies -- and the ellipse is there for the other answer.
+ */
+function alongEdges(generator) {
+  const corners = polygonCorners(generator.box, generator.corners);
+  const count = countOf(generator);
+  const phase = generator.distribution === ON_EDGES ? 0.5 : 0;
+  return corners.flatMap((from, index) => {
+    const to = corners[(index + 1) % corners.length];
+    const share = shareOf(count, corners.length, index);
+    return range(share).map((step) =>
+      pointAlong(from, to, (step + phase) / share, generator.box.center),
+    );
+  });
+}
+
+/**
+ * Edge `index`'s share of `count` doodads over `edges` edges: as even as whole
+ * doodads allow, and the shares add up to the count by construction rather than
+ * by a correction afterwards. Fewer doodads than edges leaves some edges empty,
+ * which the sidebar warns about.
+ */
+function shareOf(count, edges, index) {
+  return (
+    Math.floor(((index + 1) * count) / edges) -
+    Math.floor((index * count) / edges)
+  );
+}
+
+/**
+ * A point a fraction along an edge, and which way the shape runs there.
+ *
+ * A doodad on the corner is the one case the edge cannot answer: it belongs to
+ * the edge arriving and the edge leaving equally, so neither direction is its.
+ * The box's centre is what can say -- the corner faces along the circle through
+ * it, which is where the two edges average to, and which is the same answer at
+ * every corner of a regular shape.
+ */
+function pointAlong(from, to, fraction, center) {
+  const span = { x: to.x - from.x, y: to.y - from.y };
+  const at = add(from, scale(span, fraction));
+  return {
+    ...at,
+    direction: fraction === 0 ? facingFrom(center, at) : angleOf(span),
+  };
+}
+
+/** The tangent at a point of the circle about a centre, in stage degrees. */
+function facingFrom(center, at) {
+  return angleOf({ x: at.x - center.x, y: at.y - center.y }) - 90;
 }
 
 function countOf(generator) {
@@ -174,9 +300,36 @@ function boxCorners(box) {
   ].map((local) => fromLocal(local, box));
 }
 
+/**
+ * A cubic Bézier as a polyline, open, both ends included.
+ *
+ * Cubic and not quadratic: one control point per end is what draws an S, and a
+ * path along a hideout wall bends twice as often as it bends once. It is
+ * sampled and then walked like every other polyline, so the doodads come out
+ * evenly spaced along the curve rather than crowded where it turns -- the
+ * ellipse's reasoning, and the same ruler.
+ *
+ * The samples are the drawing as well, `outline` handing them to the gizmo, so a
+ * curve a player sees is the curve the doodads sit on.
+ */
+function bezierPoints(ends, controls) {
+  return range(CURVE_SEGMENTS + 1).map((step) =>
+    bezierAt(ends, controls, step / CURVE_SEGMENTS),
+  );
+}
+
+/** The point at parameter `t`, by the Bernstein weights. */
+function bezierAt({ start, end }, { first, second }, t) {
+  const rest = 1 - t;
+  return add(
+    add(scale(start, rest * rest * rest), scale(first, 3 * rest * rest * t)),
+    add(scale(second, 3 * rest * t * t), scale(end, t * t * t)),
+  );
+}
+
 function ellipsePoints(box) {
-  return range(ELLIPSE_SEGMENTS).map((segment) => {
-    const angle = (segment / ELLIPSE_SEGMENTS) * 2 * Math.PI;
+  return range(CURVE_SEGMENTS).map((segment) => {
+    const angle = (segment / CURVE_SEGMENTS) * 2 * Math.PI;
     const local = {
       x: (Math.cos(angle) * box.width) / 2,
       y: (Math.sin(angle) * box.height) / 2,
@@ -239,11 +392,13 @@ function segmentsOf(points, closed) {
  * The point at an arc length along the polyline, and the direction of the edge
  * carrying it.
  *
- * A step landing on a corner belongs to the edge it *starts*, which is what
- * makes a polygon at a resolution that is a multiple of its corner count divide
- * every edge evenly and face each corner's doodad along the outgoing edge. The
- * last edge takes whatever is left over, so the end of an open walk lands on
+ * A step landing on a joint belongs to the edge it *starts*, so a walk reads the
+ * direction it is about to travel in rather than the one it has finished with.
+ * The last edge takes whatever is left over, so the end of an open walk lands on
  * the final point rather than falling off it.
+ *
+ * Only the line and the ellipse are walked. A polygon's corners are worth
+ * landing on exactly, which arc length cannot promise -- see `alongEdges`.
  */
 function pointAt(segments, distance) {
   let remaining = distance;

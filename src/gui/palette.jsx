@@ -22,6 +22,12 @@
  * survived a load would be describing the previous document. `gui/file.jsx` puts
  * it away.
  *
+ * **With an array as the active layer it sets that array's doodad instead of
+ * placing one.** An array's doodads are computed, so there is nothing to place
+ * into it -- but "which doodad" is exactly the question this list answers, and
+ * answering it twice, once here and once from a selection, was two ways to say
+ * one thing. So the palette is where a doodad is chosen, whoever is asking.
+ *
  * The table itself is `gui/table.js`, which the Selection section reads too.
  */
 
@@ -30,6 +36,7 @@ import { signal } from "@preact/signals";
 
 import * as state from "../state.js";
 import { INCLUDE, EXCLUDE } from "../hideout/palette.js";
+import { sourceDoodad } from "./arrays.jsx";
 import { table, tableError, loadTable } from "./table.js";
 
 /**
@@ -44,7 +51,20 @@ const search = signal("");
 const categoryFilter = signal(new Map());
 const tagFilter = signal(new Map());
 
+/**
+ * The button, and the palette's name. Both follow the active layer: an array
+ * takes a doodad rather than being given one, and a list that says "add" while
+ * it sets is a list a player double-clicks once and then wonders about.
+ */
+const ADD = { title: "Add doodad", icon: "bi-plus-square" };
+const SET = { title: "Set array doodad", icon: "bi-pencil-square" };
+
+function purpose() {
+  return activeArray() === null ? ADD : SET;
+}
+
 export function AddDoodadButton() {
+  const { title, icon } = purpose();
   return (
     <div class="sidebar-item">
       <button
@@ -55,7 +75,7 @@ export function AddDoodadButton() {
           state.showPalette.value = !state.showPalette.value;
         }}
       >
-        <i class="bi bi-plus-square"></i> Add doodad
+        <i class={`bi ${icon}`}></i> {title}
       </button>
     </div>
   );
@@ -73,7 +93,7 @@ export function DoodadPalette() {
   return (
     <div id="doodad-sidebar">
       <div class="d-flex justify-content-between align-items-center">
-        <h2>Add doodad</h2>
+        <h2>{purpose().title}</h2>
         <button
           type="button"
           class="btn-close btn-close-white"
@@ -97,11 +117,31 @@ export function DoodadPalette() {
         filter={tagFilter}
       />
       <List />
-      <p class="text-secondary mt-1 mb-0">
-        Double-click a doodad to place it in the view. Place several and they
-        step away from each other; move the view to start again.
-      </p>
+      <Instructions />
     </div>
+  );
+}
+
+/**
+ * What a double-click does, which is not the same question in the two cases.
+ * Shift adds, as it does to a selection, so an array made of two doodads in turn
+ * is two double-clicks.
+ */
+function Instructions() {
+  if (activeArray() !== null) {
+    return (
+      <p class="text-secondary mt-1 mb-0">
+        Double-click a doodad to make this array out of it. Hold{" "}
+        <span class="shortcut">Shift</span> to add it to the ones the array
+        already uses, which it then places in turn.
+      </p>
+    );
+  }
+  return (
+    <p class="text-secondary mt-1 mb-0">
+      Double-click a doodad to place it in the view. Place several and they step
+      away from each other; move the view to start again.
+    </p>
   );
 }
 
@@ -280,7 +320,11 @@ function Category({ group }) {
  */
 function Entry({ entry }) {
   return (
-    <li class="palette-row" title={entry.id} onDblClick={() => place(entry)}>
+    <li
+      class="palette-row"
+      title={entry.id}
+      onDblClick={(event) => chose(entry, event.shiftKey)}
+    >
       <span>
         {entry.name}
         {entry.distinguisher && (
@@ -296,15 +340,18 @@ function Entry({ entry }) {
 }
 
 /**
- * Why nothing can be placed right now, or `null`.
+ * Why nothing can be chosen right now, or `null`.
  *
- * The language check is the important one. A `.hideout` names every doodad, and
- * the game rejects an import whose names disagree with its `language`, so a
- * table that disagrees with the document is a table that would write a file the
- * game refuses. English is never a fallback: it is precisely the wrong answer.
+ * The language check is the important one, and it holds for an array too: a
+ * `.hideout` names every doodad, the game rejects an import whose names disagree
+ * with its `language`, and an array writes the name it was given into every
+ * doodad it makes. English is never a fallback: it is precisely the wrong
+ * answer.
  *
- * The layer check is the mundane one, and it is here rather than at the
- * placement because a doodad placed into a hidden layer appears nowhere.
+ * The layer checks are the mundane ones, and they are here rather than at the
+ * placement because a doodad placed into a hidden layer appears nowhere. They do
+ * not apply to an array, which is being told what it is made of rather than
+ * handed a doodad -- and a hidden array is a fair thing to work on.
  */
 function refusal() {
   const loaded = table.value;
@@ -314,10 +361,11 @@ function refusal() {
     const [first] = loaded.check.reports;
     return (
       `This file's doodad names do not match the ${loaded.language} table, so ` +
-      `placing one would write a name the game rejects. It calls doodad ` +
+      `using one would write a name the game rejects. It calls doodad ` +
       `${first.hash} '${first.name}', where the table says '${first.expected}'.`
     );
   }
+  if (activeArray() !== null) return null;
 
   const layer = activeLayer();
   // Said in plain terms rather than asked of `viewport/groups.js`, which would
@@ -347,7 +395,34 @@ function activeLayer() {
   );
 }
 
-function place(entry) {
+/**
+ * The id of the active layer's array, or `null` where it has none.
+ *
+ * `editedArray` would answer the same question -- working on an array is what
+ * makes it the active layer, and the other way round -- but the palette's
+ * question is about the layer it would otherwise be placing into, so it is the
+ * active layer that is asked.
+ */
+function activeArray() {
+  // Reading the layer list subscribes a caller that renders: a detach drops a
+  // generator, which is a mutation nothing else here would hear about.
+  state.layers.value;
+  const layer = state.activeLayer.value;
+  const array = state.hideoutDocument.value?.findGenerator(layer);
+  return array ? layer : null;
+}
+
+/**
+ * A doodad chosen: placed in the view, or made the active array's, which are the
+ * same answer to the same question put by two different layers.
+ */
+function chose(entry, adding) {
   if (refusal() !== null) return;
-  state.requestPlacement(entry.hash, entry.name);
+
+  const array = activeArray();
+  if (array === null) {
+    state.requestPlacement(entry.hash, entry.name);
+    return;
+  }
+  sourceDoodad(array, entry, adding);
 }

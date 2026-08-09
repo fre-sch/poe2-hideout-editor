@@ -77,18 +77,61 @@ export function requestSelection(doodads) {
 export const showPalette = signal(false);
 
 /**
- * The id of the layer whose array is being configured, or `null`.
- *
- * One signal for two things, because they are one thing: the generator sidebar
- * is up for exactly the array whose handles are up. A gizmo is a claim that
- * something can be dragged, so handles left over an array nobody is editing
- * would be a claim about a panel that is not there -- wiki issue 0034.
+ * The id of the layer whose array is being worked on, or `null`. Its handles are
+ * up, which is an array's version of being selected -- an array's doodads cannot
+ * be, and its box is what there is to grab.
  *
  * A layer id and not a `Generator`: the document holds the parameters and the
  * viewport can ask it for them, and an id survives a regeneration the way an
  * object reference does not.
+ *
+ * The settings panel is a second signal rather than this one, because making an
+ * array the active layer raises the handles and nothing else: a box to drag is
+ * most of what a player wants, and a dozen numbers is what they ask for
+ * afterwards.
  */
 export const editedArray = signal(null);
+
+export const showArraySettings = signal(false);
+
+/**
+ * Raises an array's handles, or puts them away. The settings go with them: they
+ * are one array's, so there is nothing for them to describe once no array is
+ * being worked on.
+ */
+export function editArray(layer) {
+  editedArray.value = layer;
+  if (layer === null) showArraySettings.value = false;
+}
+
+/**
+ * The array the sidebar has just rewritten, as `{ layer }`, or `null`.
+ *
+ * `selectionRequest`'s reasoning, applied to parameters: the sidebar edits the
+ * document in place, which nothing can subscribe to, and what has to happen
+ * next -- regenerate the doodads, move the nodes drawing them -- is the
+ * viewport's. A fresh object per edit, so two edits that say the same thing are
+ * two edits.
+ *
+ * It names the layer rather than being read off `editedArray`, so that an edit
+ * reaches the doodads it is about however the panels have moved on since.
+ */
+export const arrayEdit = signal(null);
+
+export function arrayEdited(layer) {
+  arrayEdit.value = { layer };
+}
+
+/**
+ * Bumped whenever a gesture in the viewport rewrites an array's geometry.
+ *
+ * The other direction, and it carries nothing: the sidebar is showing the
+ * parameters a handle has just moved, and needs only to be told to read them
+ * again. It cannot be the same signal as `arrayEdit` -- that one asks the
+ * viewport to redraw the gizmo, which mid-drag would take the outline out from
+ * under the hand dragging it.
+ */
+export const arrayMoved = signal(0);
 
 /**
  * A doodad the palette asks for, as `{ hash, name }`, or `null`.

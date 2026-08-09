@@ -118,6 +118,11 @@ function Shortcuts() {
         handle above it to turn them.
       </li>
       <li>
+        Drag <span class="shortcut">an array's outline</span> to move it, and
+        its handles to resize, turn or bend it. They are up while the array is
+        the layer being worked on.
+      </li>
+      <li>
         Drag <span class="shortcut">middle mouse button</span> to pan.
       </li>
       <li>

@@ -25,8 +25,8 @@ function node(layerId) {
   );
 }
 
-function sync(layers, nodes, existing = new Map()) {
-  return groups.sync(new Konva.Group(), existing, layers, nodes);
+function sync(layers, nodes, existing = new Map(), generated = new Set()) {
+  return groups.sync(new Konva.Group(), existing, layers, nodes, generated);
 }
 
 describe("sync", () => {
@@ -84,6 +84,15 @@ describe("sync", () => {
     expect(current.get("walls").visible()).toBe(false);
     expect(current.get("walls").listening()).toBe(false);
   });
+
+  it("takes an array's group out of hit testing", () => {
+    const layers = [layer("walls"), layer("hedge")];
+    const current = sync(layers, [], new Map(), new Set(["hedge"]));
+
+    expect(current.get("walls").listening()).toBe(true);
+    expect(current.get("hedge").listening()).toBe(false);
+    expect(current.get("hedge").visible()).toBe(true);
+  });
 });
 
 describe("selectable", () => {
@@ -91,6 +100,15 @@ describe("selectable", () => {
     expect(groups.selectable(layer("walls"))).toBe(true);
     expect(groups.selectable(layer("walls", { locked: true }))).toBe(false);
     expect(groups.selectable(layer("walls", { visible: false }))).toBe(false);
+  });
+
+  /**
+   * An array writes its doodads again whenever a parameter changes, so one that
+   * could be dragged would move back by itself. Detach is how a player asks for
+   * them by hand.
+   */
+  it("is false for the doodads an array generates", () => {
+    expect(groups.selectable(layer("hedge"), true)).toBe(false);
   });
 
   it("is false for a node whose layer is not there at all", () => {

@@ -75,6 +75,12 @@ describe("resolution", () => {
       box: box(100, 100),
       resolution: 1,
     },
+    bezier: {
+      type: "bezier",
+      ends: { start: { x: 0, y: 0 }, end: { x: 100, y: 0 } },
+      controls: { first: { x: 0, y: 50 }, second: { x: 100, y: 50 } },
+      resolution: 1,
+    },
   };
 
   for (const [name, shape] of Object.entries(shapes)) {
@@ -135,6 +141,87 @@ describe("line", () => {
   });
 });
 
+describe("bezier", () => {
+  const ends = { start: { x: 0, y: 0 }, end: { x: 400, y: 0 } };
+
+  function curve(controls, parameters) {
+    return array({ type: "bezier", ends, controls, ...parameters });
+  }
+
+  it("puts its first and last doodads on its endpoints", () => {
+    const places = positions(
+      generator.generate(
+        curve(
+          { first: { x: 0, y: 300 }, second: { x: 400, y: 300 } },
+          { resolution: 7 },
+        ),
+      ),
+    );
+    expect(places.at(0)).toEqual(ends.start);
+    expect(places.at(-1)).toEqual(ends.end);
+  });
+
+  /**
+   * The case that decides the walk. Both controls on the start point make a
+   * curve that covers a straight line at `t³`, so stepping the parameter would
+   * pile seven doodads into the first quarter of it. Stepping the arc length
+   * spaces them evenly, which here is a number a test can name exactly.
+   */
+  it("spaces the doodads by length and not by parameter", () => {
+    const places = positions(
+      generator.generate(
+        curve({ first: { ...ends.start }, second: { ...ends.start } }, { resolution: 5 }),
+      ),
+    );
+    expect(places).toEqual([
+      { x: 0, y: 0 },
+      { x: 100, y: 0 },
+      { x: 200, y: 0 },
+      { x: 300, y: 0 },
+      { x: 400, y: 0 },
+    ]);
+  });
+
+  /** Controls a third and two thirds along are the straight line itself, which
+   * is what a shape arrives as when it is changed to a curve. */
+  it("is the line between its ends until it is bent", () => {
+    const straight = generator.generate(
+      curve(
+        { first: { x: 400 / 3, y: 0 }, second: { x: 800 / 3, y: 0 } },
+        { resolution: 5 },
+      ),
+    );
+    expect(positions(straight).map((point) => point.x)).toEqual([
+      0, 100, 200, 300, 400,
+    ]);
+  });
+
+  it("draws the curve it walks, open and sampled", () => {
+    const drawn = generator.outline(
+      curve({ first: { x: 0, y: 300 }, second: { x: 400, y: 300 } }),
+    );
+
+    expect(drawn.closed).toBe(false);
+    expect(drawn.points.at(0)).toEqual(ends.start);
+    expect(drawn.points.at(-1)).toEqual(ends.end);
+    expect(drawn.points.length).toBeGreaterThan(100);
+  });
+
+  /** An S bends both ways, which is what the second control is for. */
+  it("bends twice where the controls pull opposite ways", () => {
+    const places = positions(
+      generator.generate(
+        curve(
+          { first: { x: 0, y: 200 }, second: { x: 400, y: -200 } },
+          { resolution: 21 },
+        ),
+      ),
+    );
+    expect(Math.max(...places.map((point) => point.y))).toBeGreaterThan(20);
+    expect(Math.min(...places.map((point) => point.y))).toBeLessThan(-20);
+  });
+});
+
 describe("polygon", () => {
   /**
    * The shape fills the box, which for four corners means the box itself --
@@ -175,11 +262,8 @@ describe("polygon", () => {
   it("divides every edge evenly at a multiple of its corner count", () => {
     const square = { type: "polygon", corners: 4, box: box(24000, 24000) };
     const places = positions(generator.generate(array({ ...square, resolution: 12 })));
-    const corners = generator
-      .outline(array(square))
-      .points.map((point) => ({ x: Math.round(point.x), y: Math.round(point.y) }));
 
-    for (const corner of corners) {
+    for (const corner of cornersOf(square)) {
       expect(places).toContainEqual(corner);
     }
 
@@ -190,6 +274,119 @@ describe("polygon", () => {
       expect(step).toBeCloseTo(steps[0], 6);
     }
   });
+
+  /**
+   * The corners are the reason a polygon is a polygon, so a doodad is on one or
+   * it is not. A walk by arc length lands a hair off instead whenever the
+   * arithmetic does not come out exactly -- the shape a stretched box makes it,
+   * where the edges are of two different lengths.
+   */
+  it("lands on every corner of a stretched polygon, exactly", () => {
+    const wide = { type: "polygon", corners: 5, box: box(4000, 1000) };
+    const places = generator
+      .generate(array({ ...wide, resolution: 10 }))
+      .map((doodad) => ({ x: doodad.x, y: doodad.y }));
+
+    for (const corner of cornersOf(wide)) {
+      expect(places).toContainEqual(corner);
+    }
+  });
+
+  /**
+   * A corner belongs to two edges equally, so it faces along neither: it takes
+   * the direction the two average to, which is the tangent of the circle through
+   * it. On a square that is 45 degrees off each edge.
+   */
+  it("faces a doodad on a corner between its two edges", () => {
+    const aligned = { base: 0, increment: 0, align: true };
+    const square = array({
+      type: "polygon",
+      corners: 4,
+      box: box(1000, 1000),
+      resolution: 8,
+      rotation: aligned,
+    });
+    // Eight doodads on a square: a corner, then a middle, all the way round.
+    const facing = generator
+      .generate(square)
+      .map((doodad) => wrapped(units.toDegrees(doodad.r)));
+
+    for (let corner = 0; corner < 8; corner += 2) {
+      const edge = facing[corner + 1];
+      expect(wrapped(facing[corner] - edge)).toBeCloseTo(45, 3);
+    }
+  });
+
+  /**
+   * The other distribution: the doodads sit about the middles of the edges, so
+   * one per edge is one in the middle of each and no doodad is on a corner.
+   */
+  it("puts a doodad on every edge's middle where asked", () => {
+    const square = {
+      type: "polygon",
+      corners: 4,
+      box: box(1000, 1000),
+      distribution: generator.ON_EDGES,
+    };
+    const places = positions(generator.generate(array({ ...square, resolution: 4 })));
+
+    // In doodad units, which is where a midpoint of zero is a plain zero: the
+    // local frame negates one axis and would report it as -0.
+    expect(places).toEqual([
+      { x: 0, y: 500 },
+      { x: -500, y: 0 },
+      { x: 0, y: -500 },
+      { x: 500, y: 0 },
+    ]);
+    for (const corner of cornersOf(square)) {
+      expect(places).not.toContainEqual(corner);
+    }
+  });
+
+  /** Two per edge stay centred on its middle rather than starting at a corner. */
+  it("spreads a bigger share about the middle it is given", () => {
+    const places = positions(
+      generator.generate(
+        array({
+          type: "polygon",
+          corners: 4,
+          box: box(1000, 1000),
+          distribution: generator.ON_EDGES,
+          resolution: 8,
+        }),
+      ),
+    ).map(local);
+
+    // The first edge runs up the box's own x, so its two share the same local x
+    // and sit a quarter of the way in from each end.
+    expect(places[0]).toEqual({ x: 500, y: -250 });
+    expect(places[1]).toEqual({ x: 500, y: 250 });
+  });
+
+  /**
+   * Fewer doodads than corners is not an error and not rounded up to one: the
+   * shares are dealt out and some edges get none, which the sidebar warns about
+   * in the words of whichever distribution is on.
+   */
+  it("deals a count that does not divide out over the edges", () => {
+    const hexagon = {
+      type: "polygon",
+      corners: 6,
+      box: box(1000, 1000),
+    };
+    expect(generator.generate(array({ ...hexagon, resolution: 4 }))).toHaveLength(4);
+    expect(generator.generate(array({ ...hexagon, resolution: 8 }))).toHaveLength(8);
+  });
+
+  /** The corners as a doodad's rounded position would report them. */
+  function cornersOf(polygon) {
+    return generator
+      .outline(array(polygon))
+      .points.map((point) => ({
+        x: Math.round(point.x),
+        y: Math.round(point.y),
+      }));
+  }
 });
 
 describe("ellipse", () => {
@@ -441,6 +638,22 @@ describe("variation", () => {
 });
 
 describe("source", () => {
+  /**
+   * `source[k % length]` over an empty list is `source[NaN]`, so an array with
+   * nothing to place would evaluate to doodads with no name. It says so instead,
+   * and the sidebar keeps the last one rather than reaching this.
+   */
+  it("refuses an array with nothing to place, naming its layer", () => {
+    const empty = array({
+      type: "line",
+      ends: { start: { x: 0, y: 0 }, end: { x: 10, y: 0 } },
+      resolution: 2,
+      source: [],
+    });
+
+    expect(() => generator.generate(empty)).toThrow(/layer-2/);
+  });
+
   it("cycles the sources by index", () => {
     const sources = [
       { hash: 1, name: "One", fv: 0 },
@@ -509,6 +722,43 @@ describe("outline", () => {
 });
 
 /**
+ * The two conversions a change of type is made of. They live in this module
+ * because they are the frame change of `fromLocal` read one way and then the
+ * other, and the frames are reasoned about here only.
+ */
+describe("box and ends", () => {
+  const PLACED = {
+    center: { x: 200, y: 100 },
+    width: 100,
+    height: 40,
+    rotation: 0,
+  };
+
+  it("puts a box's ends on its own x axis, which is its width", () => {
+    expect(generator.endsOfBox(PLACED)).toEqual({
+      start: { x: 200, y: 50 },
+      end: { x: 200, y: 150 },
+    });
+  });
+
+  it("spans a box along a line, keeping its length and direction", () => {
+    const spanned = generator.boxOfEnds(generator.endsOfBox(PLACED), 40);
+
+    expect(spanned).toEqual(PLACED);
+  });
+
+  it("takes a turned box out to its ends and back unchanged", () => {
+    const turned = box(100, 40, 30);
+    const there = generator.boxOfEnds(generator.endsOfBox(turned), 40);
+
+    expect(there.center.x).toBeCloseTo(turned.center.x);
+    expect(there.center.y).toBeCloseTo(turned.center.y);
+    expect(there.width).toBeCloseTo(turned.width);
+    expect(wrapped(there.rotation)).toBeCloseTo(turned.rotation);
+  });
+});
+
+/**
  * The compatibility surface. These are not hand-computed: they are what the
  * math produced on the day it was written, recorded so that it cannot change
  * by accident. A failure here is either a bug being fixed on purpose or a
@@ -559,6 +809,27 @@ describe("golden", () => {
       rotation: { base: 90, increment: -5, align: true },
       random: { seed: 99, jitter: { x: 3, y: 1, rotation: 2 }, variation: [0, 4] },
     }),
+    bezier: array({
+      type: "bezier",
+      source: [{ hash: 11, name: "Fence", fv: 0 }],
+      ends: { start: { x: -100, y: -50 }, end: { x: 300, y: 150 } },
+      controls: { first: { x: 0, y: 200 }, second: { x: 200, y: -100 } },
+      resolution: 6,
+      rotation: { base: 0, increment: 0, align: true },
+      random: { seed: 4242, jitter: { x: 0, y: 3, rotation: 0 }, variation: [] },
+    }),
+    // The same shape by its other distribution, at two doodads to an edge: the
+    // pair are a quarter in from each end, and no corner carries one.
+    polygonEdges: array({
+      type: "polygon",
+      corners: 5,
+      distribution: generator.ON_EDGES,
+      source: [{ hash: 7, name: "Torch", fv: 3 }],
+      box: { center: { x: 0, y: 0 }, width: 400, height: 400, rotation: 0 },
+      resolution: 10,
+      rotation: { base: 90, increment: -5, align: true },
+      random: { seed: 99, jitter: { x: 3, y: 1, rotation: 2 }, variation: [0, 4] },
+    }),
   };
 
   const expected = {
@@ -586,16 +857,39 @@ describe("golden", () => {
       { hash: 2, x: 1036, y: 396, r: 56763, fv: 131 },
       { hash: 1, x: 1163, y: 539, r: 59210, fv: 1 },
     ],
+    // Moved 2026-08-09 with wiki issue 0035, deliberately: a polygon's doodads
+    // are dealt to its edges instead of walked round its perimeter, so that a
+    // corner carries one exactly rather than nearly.
     polygon: [
-      { hash: 7, x: 201, y: 123, r: 62147, fv: 0 },
-      { hash: 7, x: 63, y: 165, r: 63638, fv: 4 },
-      { hash: 7, x: -63, y: 181, r: 11064, fv: 4 },
-      { hash: 7, x: -147, y: 68, r: 12117, fv: 4 },
-      { hash: 7, x: -168, y: -41, r: 26633, fv: 4 },
-      { hash: 7, x: -80, y: -155, r: 27599, fv: 0 },
-      { hash: 7, x: 32, y: -176, r: 41060, fv: 0 },
-      { hash: 7, x: 168, y: -133, r: 41935, fv: 0 },
-      { hash: 7, x: 199, y: -17, r: 56396, fv: 4 },
+      { hash: 7, x: 201, y: 123, r: 54663, fv: 0 },
+      { hash: 7, x: -49, y: 199, r: 3646, fv: 4 },
+      { hash: 7, x: -125, y: 99, r: 11064, fv: 4 },
+      { hash: 7, x: -199, y: -2, r: 18921, fv: 4 },
+      { hash: 7, x: -124, y: -99, r: 26633, fv: 4 },
+      { hash: 7, x: -45, y: -200, r: 34761, fv: 0 },
+      { hash: 7, x: 76, y: -163, r: 41060, fv: 0 },
+      { hash: 7, x: 200, y: -122, r: 49418, fv: 0 },
+      { hash: 7, x: 199, y: 0, r: 56396, fv: 4 },
+    ],
+    bezier: [
+      { hash: 11, x: -100, y: -50, r: 61545, fv: 0 },
+      { hash: 11, x: -43, y: 31, r: 56174, fv: 0 },
+      { hash: 11, x: 50, y: 57, r: 48333, fv: 0 },
+      { hash: 11, x: 150, y: 43, r: 48333, fv: 0 },
+      { hash: 11, x: 243, y: 69, r: 56174, fv: 0 },
+      { hash: 11, x: 302, y: 149, r: 61545, fv: 0 },
+    ],
+    polygonEdges: [
+      { hash: 7, x: 139, y: 142, r: 62147, fv: 0 },
+      { hash: 7, x: 12, y: 181, r: 63638, fv: 4 },
+      { hash: 7, x: -87, y: 149, r: 11064, fv: 4 },
+      { hash: 7, x: -162, y: 48, r: 12117, fv: 4 },
+      { hash: 7, x: -162, y: -49, r: 26633, fv: 4 },
+      { hash: 7, x: -84, y: -151, r: 27599, fv: 0 },
+      { hash: 7, x: 15, y: -182, r: 41060, fv: 0 },
+      { hash: 7, x: 139, y: -142, r: 41935, fv: 0 },
+      { hash: 7, x: 199, y: -62, r: 56396, fv: 4 },
+      { hash: 7, x: 200, y: 64, r: 57479, fv: 0 },
     ],
   };
 

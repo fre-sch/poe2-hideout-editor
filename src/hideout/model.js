@@ -104,9 +104,25 @@ const GENERATOR_FIELDS = [
 const SHAPE_FIELDS = {
   grid: ["box"],
   ellipse: ["box"],
-  polygon: ["box", "corners"],
+  // `distribution` is "corners" or "edges", and a project written before it
+  // existed carries neither -- `generator.js` reads that as "corners", which is
+  // what those projects were generated with.
+  polygon: ["box", "corners", "distribution"],
   line: ["ends"],
+  bezier: ["ends", "controls"],
 };
+
+/**
+ * Whether a type's geometry is a box, as against the two shapes that are drawn
+ * end to end. Asked by the gizmo, which puts a transformer on one and handles on
+ * the other, and by the sidebar, which draws the fields of one or the other.
+ *
+ * Derived from the table above rather than listed a second time: a new shape
+ * that carries a box is then a box shape everywhere, by having said so once.
+ */
+export function carriesBox(type) {
+  return Boolean(SHAPE_FIELDS[type]?.includes("box"));
+}
 
 export class HideoutDocument {
   /**
@@ -198,6 +214,27 @@ export class HideoutDocument {
   /** The generator the layer carries, or `undefined` for an ordinary layer. */
   findGenerator(id) {
     return this.generators.find((array) => array.layer === id);
+  }
+
+  /**
+   * Swaps an array's parameters for a new set, and answers with them.
+   *
+   * They go through `Generator`, which is what makes changing a type safe: the
+   * fields of the shape being left are dropped rather than lingering, so a
+   * `line` cannot carry the `box` it used to be. The doodads are not touched --
+   * `regenerate` is a separate step, because the caller may be about to change
+   * several things.
+   */
+  replaceGenerator(parameters) {
+    const next = new Generator(parameters);
+    if (!this.findGenerator(next.layer)) {
+      throw new Error(`Layer '${next.layer}' has no generator`);
+    }
+
+    this.generators = this.generators.map((array) =>
+      array.layer === next.layer ? next : array,
+    );
+    return next;
   }
 
   /**
