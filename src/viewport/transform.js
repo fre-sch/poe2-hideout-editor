@@ -103,8 +103,10 @@ export class Transform extends EventTarget {
       // Stretching one axis is the point of having the anchors at all, so the
       // corners are free too; Shift is Konva's own way to ask for the ratio.
       keepRatio: false,
-      // The box is only ever as thick as its border, and a hideout is dense.
-      // Off, so that the empty space inside a wide selection still bands.
+      // Dragging inside the box moves the selection, but `scene.js` decides
+      // that rather than Konva. The area Konva would claim is a shape in the
+      // overlay layer, above the doodads, so it would swallow the click that
+      // takes a doodad back out of the selection.
       shouldOverdrawWholeArea: false,
       ignoreStroke: true,
     });
@@ -167,6 +169,39 @@ export class Transform extends EventTarget {
   /** Whether a node is one the box would move. */
   holds(node) {
     return this.nodes.includes(node);
+  }
+
+  /**
+   * Whether a point in screen pixels is inside the box. The box is turned with
+   * the view, so the question is asked in the box's own space, where it spans
+   * `0..width` across and `0..height` down.
+   */
+  encloses(point) {
+    if (this.nodes.length === 0) return false;
+
+    const inside = this.konva
+      .getAbsoluteTransform()
+      .copy()
+      .invert()
+      .point(point);
+    return (
+      inside.x >= 0 &&
+      inside.x <= this.konva.width() &&
+      inside.y >= 0 &&
+      inside.y <= this.konva.height()
+    );
+  }
+
+  /**
+   * Starts moving the selection from a gesture that did not land on a doodad.
+   *
+   * Konva moves a selection by dragging one of its nodes and letting the
+   * transformer carry the rest, which is what happens when a player grabs a
+   * gizmo. Any node will do to start it: a drag is a delta, not a destination,
+   * so the one that is grabbed does not jump to the pointer.
+   */
+  startDragging(event) {
+    this.nodes[0].startDrag(event);
   }
 
   /** Whether a node is one of the handles. Anchors are the box's children. */

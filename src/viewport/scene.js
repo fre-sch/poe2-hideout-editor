@@ -238,7 +238,7 @@ export class Scene {
 
   onBandStart = (event) => {
     if (event.evt.button !== SELECT_BUTTON) return;
-    if (this.manipulating(event)) return;
+    if (this.grabbedSelection(event)) return;
 
     // Keyboard shortcuts are bound to the container, not to the window, so the
     // container has to take focus for them to arrive -- wiki issue 0010.
@@ -257,19 +257,31 @@ export class Scene {
   };
 
   /**
-   * Whether the left button belongs to the box rather than to the band. There
-   * are no modes, so the answer is what the gesture started on -- wiki issue
-   * 0038.
+   * Whether the left button belongs to the selection rather than to the band,
+   * and starts the move if it does. There are no modes, so where the gesture
+   * started is the whole of the answer -- wiki issue 0038.
    *
-   * A handle always is; a doodad already selected is, because dragging one is
-   * how the whole selection is moved. Shift and Ctrl say "I am selecting"
-   * either way, which is what keeps a doodad inside the selection reachable to
-   * be taken out of it again.
+   * A handle always belongs to it, and so does anywhere inside the box, which
+   * is a rectangle of empty floor as often as not: a selection is moved by
+   * grabbing it, not by finding one of its doodads to grab. Konva offers that
+   * as `shouldOverdrawWholeArea`, and it is refused -- the area it claims is a
+   * shape above the doodads, and it would swallow the click that takes one of
+   * them back out of the selection.
+   *
+   * Shift and Ctrl say "I am selecting", which is what keeps that click
+   * working, and what leaves a band startable inside the box.
    */
-  manipulating(event) {
+  grabbedSelection(event) {
     if (this.transform.grips(event.target)) return true;
     if (event.evt.shiftKey || event.evt.ctrlKey) return false;
-    return this.transform.holds(event.target);
+    // Konva starts this one itself, and starting a second is a second drag.
+    if (this.transform.holds(event.target)) return true;
+
+    if (!this.transform.encloses(this.stage.konva.getPointerPosition())) {
+      return false;
+    }
+    this.transform.startDragging(event);
+    return true;
   }
 
   onBandMove = (event) => {

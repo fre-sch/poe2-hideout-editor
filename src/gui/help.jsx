@@ -109,10 +109,11 @@ function Shortcuts() {
         Drag <span class="shortcut">left mouse button</span> to select.
         <br />
         Hold <span class="shortcut">Shift</span> to add,{" "}
-        <span class="shortcut">Ctrl</span> to remove.
+        <span class="shortcut">Ctrl</span> to remove. Either one also selects
+        inside the box, where a plain drag would move the selection.
       </li>
       <li>
-        Drag a <span class="shortcut">selected doodad</span> to move the whole
+        Drag <span class="shortcut">inside the selection box</span> to move the
         selection. Drag the box's corners to spread the doodads out, and the
         handle above it to turn them.
       </li>
