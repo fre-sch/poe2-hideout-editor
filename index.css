@@ -97,8 +97,14 @@ main {
   min-height: 0;
   overflow-y: auto;
 }
+/* `min-width: 0` because Konva fills this with canvases of a fixed pixel width,
+   and a flex item's automatic minimum size is its content -- so opening the
+   doodad palette would push it off the right edge instead of narrowing the
+   viewport, and the ResizeObserver that shrinks the canvases would never
+   fire. */
 #viewport-container {
   flex-grow: 1;
+  min-width: 0;
   max-height: 100vh;
   position: relative;
 }
