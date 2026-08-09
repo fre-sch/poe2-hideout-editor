@@ -17,9 +17,10 @@
  */
 
 const DEFINITIONS = [
+  { hash: 60854, name: "Alpine Hideout", file: "HideoutBlankMountain_60854.svg"},
   { hash: 13526, name: "Felled Hideout", file: "felled_13526.svg" },
   { hash: 26805, name: "Shrine Hideout", file: "shrine_26805.svg" },
-  { hash: 60415, name: "Canal Hideout", file: "canal_60415.svg" },
+  { hash: 60415, name: "Canal Hideout", file: "HideoutCanal_60415.svg" },
   { hash: 12394, name: "Limestone Hideout", file: "limestone_12394.svg" },
 ];
 
