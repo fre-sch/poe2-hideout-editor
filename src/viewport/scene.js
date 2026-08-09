@@ -22,6 +22,12 @@ import { Stage } from "./stage.js";
 const SELECT_BUTTON = 0;
 
 /**
+ * How far a band may span and still be a click, in pixels. A press meant to be
+ * a click carries a pixel or two of the hand with it.
+ */
+const CLICK_SLOP = 3;
+
+/**
  * How far each placement of a run lands from the one before, in doodad units.
  * The gizmo is 6 across, so a step of 4 overlaps and still leaves every doodad
  * of a run its own edge to be grabbed by.
@@ -287,15 +293,40 @@ export class Scene {
   onBandMove = (event) => {
     const area = this.bandArea(event);
     state.band.value = area;
-    this.selection.drag(area, this.candidates);
+    this.selection.drag(area, this.candidatesIn(area));
   };
 
   onBandEnd = (event) => {
-    this.selection.drag(this.bandArea(event), this.candidates);
+    const area = this.bandArea(event);
+    this.selection.drag(area, this.candidatesIn(area));
     this.selection.end();
     state.band.value = null;
     this.endBand();
   };
+
+  /**
+   * What a band of this size may take: everything selectable, or -- for a band
+   * with no size, which is a click -- only the doodad actually under the
+   * pointer.
+   *
+   * The two gestures ask different questions. A sweep asks what is under the
+   * region, and answering it with the upright box around each doodad is the
+   * generous side to err on. A click asks which doodad is being pointed at, and
+   * the box is the wrong answer to that: a turned gizmo's box is much bigger
+   * than the drawing, and in a dense hideout several of them cover any given
+   * pixel. So a click is put to the gizmos themselves, and a player who wants
+   * the generous answer has it a few pixels of sweep away.
+   */
+  candidatesIn(area) {
+    if (area.width > CLICK_SLOP || area.height > CLICK_SLOP) {
+      return this.candidates;
+    }
+    const picked = this.stage.konva.getIntersection(
+      this.stage.konva.getPointerPosition(),
+    );
+    // Whatever is topmost may be a handle, or a doodad in a locked layer.
+    return this.candidates.includes(picked) ? [picked] : [];
+  }
 
   /**
    * The band in viewport pixels. `setPointersPositions` is what lets a drag
