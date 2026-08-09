@@ -2,6 +2,14 @@
  * The layer panel: organise a layout into parts, and say which part is being
  * worked on.
  *
+ * **The radio is that saying, and it does all of it.** It marks where new
+ * doodads land, it selects the layer's doodads, and on an array it raises the
+ * box and its handles. One control, because they are one intent -- "I am working
+ * on this layer" -- and a separate button for the selection was a second way to
+ * say a thing already said. It answers every click and not only the ones that
+ * move it, so the way back to a selection just dismissed is the radio it is
+ * already on.
+ *
  * The layers are the document's, and this is the only place they are edited. It
  * mutates them and then calls `state.layersChanged`, which is what the viewport
  * and this panel both listen to -- see `state.js` for why a mutation cannot be
@@ -17,12 +25,7 @@
  */
 
 import * as state from "../state.js";
-import {
-  AddArrayButton,
-  ArrayBadge,
-  ArrayButtons,
-  closeArray,
-} from "./arrays.jsx";
+import { AddArrayButton, ArrayBadge, ArrayButtons } from "./arrays.jsx";
 
 export default function Layers() {
   const loaded = state.hideoutDocument.value !== null;
@@ -58,11 +61,13 @@ export default function Layers() {
 }
 
 /**
- * An array's row differs in three places, and each of them is the same fact:
- * its doodads are generated. It cannot be the active layer, because a doodad
- * placed there is written over by the next regeneration; its doodads cannot be
- * selected, so the button that would ask for them is off; and it has settings
- * and a **Detach** where an ordinary layer has a lock.
+ * An array's row differs in two places, and both are the same fact: its doodads
+ * are generated. Working on it raises its box instead of selecting them, and it
+ * carries settings and a **Detach** where an ordinary layer carries a lock.
+ *
+ * It can still be the active layer, and the palette refuses to place there and
+ * says why. Making it unpickable would have made the one gesture mean two
+ * things.
  */
 function LayerRow({ layer, index, count }) {
   const array = Boolean(document_().findGenerator(layer.id));
@@ -74,14 +79,14 @@ function LayerRow({ layer, index, count }) {
         name="active-layer"
         title={
           array
-            ? "An array writes its own doodads, so nothing else can be put here"
-            : "New doodads land here"
+            ? "Work on this array: its box and handles come up"
+            : "Work on this layer: new doodads land here, and its doodads are selected"
         }
-        disabled={array}
         checked={state.activeLayer.value === layer.id}
-        onChange={() => {
-          state.activeLayer.value = layer.id;
-        }}
+        // Not `onChange`: a radio that is already on reports no change, and
+        // clicking the layer being worked on is how a selection just dismissed
+        // is asked for again.
+        onClick={() => activate(layer)}
       />
       <input
         type="text"
@@ -91,15 +96,6 @@ function LayerRow({ layer, index, count }) {
       />
       {array && <ArrayBadge />}
       <span class="text-secondary layer-count">{doodadsIn(layer).length}</span>
-      <button
-        type="button"
-        class="btn btn-sm btn-link p-0"
-        title="Select this layer's doodads"
-        disabled={array || !selectable(layer) || doodadsIn(layer).length === 0}
-        onClick={() => selectContents(layer)}
-      >
-        <i class="bi bi-cursor"></i>
-      </button>
       <Toggle
         layer={layer}
         flag="visible"
@@ -199,22 +195,31 @@ function move(layer, offset) {
 function addLayer() {
   const layer = document_().addLayer(`Layer ${state.layers.value.length + 1}`);
   document_().assign(state.selection.value, layer.id);
-  state.activeLayer.value = layer.id;
   state.layersChanged();
-}
-
-function selectContents(layer) {
-  state.requestSelection(doodadsIn(layer));
+  activate(layer);
 }
 
 /**
- * The viewport refuses to select what is hidden or locked, so the button that
- * would ask for it is off rather than quietly doing nothing. Stated here in
- * plain terms instead of imported from `viewport/groups.js`, which would bring
- * Konva into the sidebar to answer a question about two booleans.
+ * Working on a layer: it takes new doodads, and what it already holds is put in
+ * front of the player.
+ *
+ * For an ordinary layer that is its doodads, selected -- the viewport skips the
+ * hidden and the locked, so a locked layer answers with an empty selection,
+ * which is the truthful answer to "show me what I can move here". For an array
+ * it is the box and its handles, its doodads being nothing to select; the
+ * previous selection is dismissed either way, one layer at a time being the
+ * point of the control.
  */
-function selectable(layer) {
-  return layer.visible && !layer.locked;
+function activate(layer) {
+  state.activeLayer.value = layer.id;
+  if (document_().findGenerator(layer.id)) {
+    state.requestSelection([]);
+    state.editArray(layer.id);
+    return;
+  }
+
+  state.editArray(null);
+  state.requestSelection(doodadsIn(layer));
 }
 
 /**
@@ -234,7 +239,7 @@ function remove(layer) {
     state.activeLayer.value = target.id;
   }
   if (wasArray) {
-    if (state.editedArray.value === layer.id) closeArray();
+    if (state.editedArray.value === layer.id) state.editArray(null);
     state.doodadCount.value = document_().doodads.length;
   }
   state.layersChanged();

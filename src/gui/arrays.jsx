@@ -7,12 +7,11 @@
  * A generator has a dozen parameters and wants the room, and a column beside the
  * viewport is never in the way. See wiki/decisions/array-placement.md.
  *
- * **Editing is live.** Every control writes the parameters and asks the viewport
- * to regenerate, because aligning an array against doodads that are already
- * there is done by eye. **Apply** is therefore a rollback point and not a
- * deferral: opening the panel takes a snapshot, Apply replaces it, **Close &
- * discard** puts it back, and closing by the layer row's button keeps what is on
- * screen.
+ * **Editing is live, and that is the whole of it.** Every control writes the
+ * parameters and asks the viewport to regenerate, because aligning an array
+ * against doodads that are already there is done by eye. There is no Apply: it
+ * was a rollback point, and a button that commits what is already committed
+ * reads as a button that has not been pressed yet. Closing closes.
  *
  * **Every control takes the value it draws as a prop.** A component that reads a
  * signal is given a `shouldComponentUpdate` by `@preact/signals` which skips the
@@ -22,21 +21,11 @@
  */
 
 import { useEffect, useRef } from "preact/hooks";
-import { signal } from "@preact/signals";
 
 import * as state from "../state.js";
 import * as arrays from "../hideout/arrays.js";
 import * as generator from "../hideout/generator.js";
 import { loadTable, variationsOf } from "./table.js";
-
-/**
- * The parameters this panel opened with, as text, or `null`.
- *
- * Text rather than an object: it is a snapshot, so it must not be a second
- * reference to what is being edited, and comparing it against the parameters as
- * they now stand is what makes **Apply** know whether it has anything to do.
- */
-const snapshot = signal(null);
 
 const SHAPES = [
   ["grid", "Grid"],
@@ -46,7 +35,7 @@ const SHAPES = [
 ];
 
 /**
- * A new array from what is selected. It sits beside "Add layer", which is the
+ * A new array out of what is selected. It sits beside "Add layer", which is the
  * gesture it is a variant of: both make a layer out of the selection, and this
  * one keeps the numbers.
  */
@@ -57,7 +46,7 @@ export function AddArrayButton() {
       type="button"
       class="btn btn-secondary btn-sm"
       disabled={selected.length === 0}
-      title="A new layer whose doodads are generated from these ones."
+      title="A new layer whose doodads are generated from these ones, which it takes."
       onClick={addArray}
     >
       <i class="bi bi-grid-3x3"></i> Add array
@@ -79,9 +68,15 @@ export function ArrayBadge() {
  * The two buttons an array layer has where an ordinary one has its lock. The
  * lock is not one of them: an array's doodads cannot be selected in the first
  * place, so a toggle saying they cannot be selected says nothing.
+ *
+ * The settings are the granular half of working on an array. The other half is
+ * the layer's own radio, which raises the box and its handles -- most of what a
+ * player wants is to drag that box, and a dozen numbers is what they ask for
+ * afterwards.
  */
 export function ArrayButtons({ layer }) {
-  const open = state.editedArray.value === layer.id;
+  const open =
+    state.showArraySettings.value && state.editedArray.value === layer.id;
   return (
     <>
       <button
@@ -89,7 +84,7 @@ export function ArrayButtons({ layer }) {
         class={`btn btn-sm btn-link p-0 ${open ? "" : "text-secondary"}`}
         title="Array settings"
         aria-pressed={open}
-        onClick={() => (open ? closeArray() : openArray(layer.id))}
+        onClick={() => (open ? closeSettings() : openSettings(layer.id))}
       >
         <i class="bi bi-sliders"></i>
       </button>
@@ -106,7 +101,7 @@ export function ArrayButtons({ layer }) {
 }
 
 export function ArraySidebar() {
-  const layer = state.editedArray.value;
+  const layer = state.showArraySettings.value ? state.editedArray.value : null;
   const document_ = state.hideoutDocument.value;
   // Read so that the panel is redrawn when the parameters change, which happens
   // inside the document and cannot be subscribed to -- see `state.js`. Both
@@ -129,8 +124,8 @@ export function ArraySidebar() {
         <button
           type="button"
           class="btn-close btn-close-white"
-          aria-label="Close the array settings and discard them"
-          onClick={discard}
+          aria-label="Close the array settings"
+          onClick={closeSettings}
         ></button>
       </div>
       <hr />
@@ -140,7 +135,7 @@ export function ArraySidebar() {
         <Randomness parameters={parameters} />
         <Source source={parameters.source} />
       </div>
-      <Footer parameters={parameters} />
+      <Footer />
     </div>
   );
 }
@@ -444,35 +439,23 @@ function Source({ source }) {
 }
 
 /**
- * Apply commits nothing -- the doodads are already there -- it moves the point a
- * discard would go back to. So it is off until there is something new to be
- * unable to go back past.
+ * One button, because there is one thing left to do. Every change is already
+ * made, and the settings are the array -- they are what the project file keeps
+ * and what the doodads are computed from, so there is nothing here to commit.
  */
-function Footer({ parameters }) {
-  const pending = JSON.stringify(parameters) !== snapshot.value;
+function Footer() {
   return (
     <div class="array-footer">
-      <div class="d-flex gap-1">
-        <button
-          type="button"
-          class="btn btn-primary btn-sm"
-          disabled={!pending}
-          onClick={apply}
-        >
-          Apply
-        </button>
-        <button
-          type="button"
-          class="btn btn-secondary btn-sm"
-          onClick={discard}
-        >
-          Close &amp; discard
-        </button>
-      </div>
+      <button
+        type="button"
+        class="btn btn-secondary btn-sm"
+        onClick={closeSettings}
+      >
+        Close
+      </button>
       <p class="text-secondary mt-1 mb-0">
-        Every change is made as you make it. Apply keeps it; Close &amp; discard
-        puts back the settings from the last Apply, or from when this panel
-        opened.
+        Every change is made as you make it and kept. The box and its handles
+        stay up while this layer is the active one.
       </p>
     </div>
   );
@@ -645,45 +628,53 @@ function variationCount(source) {
 }
 
 /**
- * A new array layer from the selection, with its settings open.
+ * A new array layer out of the selection, with its settings open.
  *
- * The selected doodads stay where they are: they were placed by hand, the
- * array's are computed, and the player is the one who decides whether the
- * originals were a pattern or a first attempt.
+ * It takes the doodads it was made from. The array's first generation stands
+ * where they stood -- the box is fitted to them -- so leaving them there would
+ * leave every one of them under a doodad the array had just made, and a player
+ * who wanted them kept can say so with one more array or one fewer delete.
+ *
+ * The selection goes with them, because a selection box around doodads that are
+ * no longer there is a claim about nothing.
  */
 function addArray() {
   const hideout = document_();
+  const source = state.selection.value;
+  const parameters = arrays.fromSelection(source);
+
+  const taken = new Set(source);
+  hideout.doodads = hideout.doodads.filter((doodad) => !taken.has(doodad));
   const array = hideout.addArrayLayer(
     `Array ${state.layers.value.length + 1}`,
-    arrays.fromSelection(state.selection.value),
+    parameters,
   );
+
+  state.requestSelection([]);
   state.doodadCount.value = hideout.doodads.length;
+  // The nodes of the doodads it took go here, and the group of the new layer is
+  // made; the edit below is what draws the doodads it made.
   state.layersChanged();
-  openArray(array.layer);
-  // The doodads are in the document already; this is what draws them.
+  openSettings(array.layer);
   state.arrayEdited(array.layer);
 }
 
-/** Opening takes the snapshot a discard goes back to. */
-export function openArray(layer) {
-  snapshot.value = JSON.stringify(document_().findGenerator(layer));
-  state.editedArray.value = layer;
+/**
+ * Raises the settings, and the handles with them: the settings are for one
+ * array, and that array is the one being worked on.
+ */
+export function openSettings(layer) {
+  state.editArray(layer);
+  state.showArraySettings.value = true;
 }
 
-/** Closing by any button but "discard" keeps what is on screen. */
-export function closeArray() {
-  state.editedArray.value = null;
-  snapshot.value = null;
-}
-
-function apply() {
-  snapshot.value = JSON.stringify(edited());
-}
-
-function discard() {
-  const restored = document_().replaceGenerator(JSON.parse(snapshot.value));
-  closeArray();
-  state.arrayEdited(restored.layer);
+/**
+ * Puts the settings away and leaves the handles up. Closing says "not these
+ * numbers, then", not "not this array" -- which the layer list says, by making
+ * another layer the active one.
+ */
+export function closeSettings() {
+  state.showArraySettings.value = false;
 }
 
 const DETACH_WARNING =
@@ -696,7 +687,7 @@ function detach(layer) {
   }
 
   document_().detach(layer.id);
-  if (state.editedArray.value === layer.id) closeArray();
+  if (state.editedArray.value === layer.id) state.editArray(null);
   state.layersChanged();
 }
 

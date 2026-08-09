@@ -117,7 +117,7 @@ export class Scene {
   showLayers(layers) {
     this.layers = layers;
     this.generated = generatedLayers();
-    this.dropNodesOfGoneLayers(layers);
+    this.dropGoneNodes();
     this.groups = groups.sync(
       this.stage.doodads,
       this.groups,
@@ -130,24 +130,24 @@ export class Scene {
   }
 
   /**
-   * The nodes of a layer that is no longer there.
+   * The nodes of doodads that have left the document.
    *
-   * Deleting a layer hands its doodads to another one and leaves nothing to
-   * drop -- except for an array, which takes its doodads with it, and that
-   * delete happens in the sidebar. So this is where the drawing hears about
-   * them. Every other node keeps `groups.sync`'s guarantee that it has a group
-   * to be drawn in.
+   * The sidebar has two ways of taking doodads out: deleting an array layer,
+   * which takes its own with it, and making an array, which takes the ones it
+   * was made from. Neither is a delete the viewport performed, so this is where
+   * the drawing hears about them -- and afterwards every node still has a
+   * doodad in a layer, which is what `groups.sync` insists on.
    */
-  dropNodesOfGoneLayers(layers) {
-    const known = new Set(layers.map((layer) => layer.id));
-    const gone = this.nodes.filter((node) => !known.has(node.doodad.layer));
+  dropGoneNodes() {
+    const held = new Set(state.hideoutDocument.value?.doodads ?? []);
+    const gone = this.nodes.filter((node) => !held.has(node.doodad));
     if (gone.length === 0) return;
 
     this.selection.discard(gone);
     for (const node of gone) {
       node.destroy();
     }
-    this.nodes = this.nodes.filter((node) => known.has(node.doodad.layer));
+    this.nodes = this.nodes.filter((node) => held.has(node.doodad));
   }
 
   layerOf(node) {
@@ -307,9 +307,9 @@ export class Scene {
    * drawn again from parameters that may be a different object -- changing a
    * type builds new ones, see `model.replaceGenerator`.
    *
-   * The gizmo is drawn for whatever the state says is being edited rather than
-   * for the layer named here, and the two differ exactly once: **Close &
-   * discard** restores an array and closes its sidebar in one action.
+   * The gizmo is drawn for whatever the state now says is being worked on
+   * rather than for the layer named here, which is what keeps an edit that
+   * lands beside a change of layer from raising handles over the wrong array.
    */
   refreshArray(layer) {
     this.showArray(state.editedArray.value);
