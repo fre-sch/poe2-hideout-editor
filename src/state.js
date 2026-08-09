@@ -77,6 +77,20 @@ export function requestSelection(doodads) {
 export const showPalette = signal(false);
 
 /**
+ * The id of the layer whose array is being configured, or `null`.
+ *
+ * One signal for two things, because they are one thing: the generator sidebar
+ * is up for exactly the array whose handles are up. A gizmo is a claim that
+ * something can be dragged, so handles left over an array nobody is editing
+ * would be a claim about a panel that is not there -- wiki issue 0034.
+ *
+ * A layer id and not a `Generator`: the document holds the parameters and the
+ * viewport can ask it for them, and an id survives a regeneration the way an
+ * object reference does not.
+ */
+export const editedArray = signal(null);
+
+/**
  * A doodad the palette asks for, as `{ hash, name }`, or `null`.
  *
  * `selectionRequest`'s reasoning, applied to placing: where the middle of the

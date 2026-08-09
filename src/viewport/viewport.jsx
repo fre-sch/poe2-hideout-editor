@@ -26,6 +26,7 @@ export default function Viewport() {
   const hideoutType = state.hideoutType.value;
   const showLabels = state.showLabels.value;
   const showGrid = state.showGrid.value;
+  const editedArray = state.editedArray.value;
   const selectionRequest = state.selectionRequest.value;
   const placementRequest = state.placementRequest.value;
 
@@ -51,6 +52,11 @@ export default function Viewport() {
   useEffect(() => {
     scene.current.showLayers(layers);
   }, [layers]);
+  // After the layer effect too: the gizmo is drawn for a layer of the document
+  // the load effect has just put in place.
+  useEffect(() => {
+    scene.current.showArray(editedArray);
+  }, [editedArray, layers]);
   useEffect(() => {
     scene.current.showBounds(hideoutType);
   }, [hideoutType]);

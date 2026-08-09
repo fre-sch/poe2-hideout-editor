@@ -490,10 +490,21 @@ describe("outline", () => {
     ).toHaveLength(512);
   });
 
-  it("refuses to draw an outline for a grid", () => {
-    expect(() =>
-      generator.outline(array({ type: "grid", box: box(1, 1) })),
-    ).toThrow(/grid/);
+  /**
+   * A grid's doodads are a lattice and not a walk, so its outline is the one
+   * thing there is to draw: the box they are spread inside, through the same
+   * frame change everything else goes through.
+   */
+  it("draws a grid as its own box", () => {
+    const drawn = generator.outline(array({ type: "grid", box: box(100, 40) }));
+
+    expect(drawn.closed).toBe(true);
+    expect(drawn.points.map(local)).toEqual([
+      { x: -50, y: -20 },
+      { x: 50, y: -20 },
+      { x: 50, y: 20 },
+      { x: -50, y: 20 },
+    ]);
   });
 });
 

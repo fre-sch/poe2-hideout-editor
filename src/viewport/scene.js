@@ -10,6 +10,7 @@
 
 import * as state from "../state.js";
 import * as units from "../hideout/units.js";
+import * as arrays from "./arrays.js";
 import * as bounds from "./bounds.js";
 import * as doodads from "./doodads.js";
 import * as groups from "./groups.js";
@@ -60,11 +61,14 @@ export class Scene {
     this.transform.addEventListener("moving", this.refreshLabels);
     this.transform.addEventListener("changed", this.refreshLabels);
 
+    this.arrays = new arrays.Gizmo(this.stage.overlay);
+    this.arrays.addEventListener("changed", this.onArrayChanged);
+
     this.labels = new Labels((published) => {
       state.labels.value = published;
     });
 
-    this.stage.addEventListener("viewchanged", this.refreshLabels);
+    this.stage.addEventListener("viewchanged", this.onViewChanged);
     this.stage.konva.on("mousedown", this.onBandStart);
     container.addEventListener("keydown", this.onKeyDown);
   }
@@ -86,6 +90,7 @@ export class Scene {
   load(hideout) {
     this.selection.clear();
     this.transform.setNodes([]);
+    this.arrays.show(null);
     this.placement = null;
     for (const node of this.nodes) {
       node.destroy();
@@ -232,6 +237,64 @@ export class Scene {
     );
   }
 
+  // -- arrays ---------------------------------------------------------------
+
+  /**
+   * Raises the gizmo of the array in a layer, or puts it away for `null`.
+   *
+   * A layer id rather than the generator itself: which array is being edited is
+   * the sidebar's to say, and where its parameters live is the document's.
+   */
+  showArray(layer) {
+    const document_ = state.hideoutDocument.value;
+    this.arrays.show(layer === null ? null : document_?.findGenerator(layer));
+  }
+
+  /**
+   * An array's doodads brought back into step with its parameters, live.
+   *
+   * **Nodes are moved, not replaced.** Destroying and building a few hundred
+   * `Konva.Path` nodes on every frame of a drag is the shape of the cost wiki
+   * issue 0041 was about, and none of it is necessary: a regenerated doodad is
+   * the same kind of thing in a slightly different place, which is what
+   * `doodads.place` is for. Only a change in the *count* adds or destroys any,
+   * and only then does the drawing have to be told about layers again.
+   */
+  onArrayChanged = (event) => {
+    this.regenerateArray(event.detail.layer);
+  };
+
+  regenerateArray(layer) {
+    const document_ = state.hideoutDocument.value;
+    document_.regenerate(layer);
+
+    const held = this.nodes.filter((node) => node.doodad.layer === layer);
+    const wanted = document_.doodadsIn(layer);
+    reuseNodes(held, wanted);
+    if (held.length !== wanted.length) {
+      this.replaceNodesOf(layer, held, wanted);
+    }
+    this.refreshLabels();
+  }
+
+  /**
+   * The layer's node list after a regeneration changed how many doodads it
+   * holds: the surplus destroyed, the shortfall built, and `showLayers` left to
+   * put the new ones in the right group.
+   */
+  replaceNodesOf(layer, held, wanted) {
+    for (const node of held.slice(wanted.length)) {
+      node.destroy();
+    }
+    this.nodes = [
+      ...this.nodes.filter((node) => node.doodad.layer !== layer),
+      ...held.slice(0, wanted.length),
+      ...wanted.slice(held.length).map(doodads.create),
+    ];
+    state.doodadCount.value = state.hideoutDocument.value.doodads.length;
+    this.showLayers(this.layers);
+  }
+
   showLabels(enabled) {
     this.labels.setEnabled(enabled);
   }
@@ -279,6 +342,9 @@ export class Scene {
    */
   grabbedSelection(event) {
     if (this.transform.grips(event.target)) return true;
+    // An array's own handles, which Konva is already dragging by the time this
+    // runs: a band underneath one would select the hideout while it moved.
+    if (this.arrays.grips(event.target)) return true;
     if (event.evt.shiftKey || event.evt.ctrlKey) return false;
     // Konva starts this one itself, and starting a second is a second drag.
     if (this.transform.holds(event.target)) return true;
@@ -415,4 +481,21 @@ export class Scene {
   refreshLabels = () => {
     this.labels.refresh(() => this.visibleNodes(), this.stage.konva);
   };
+
+  /**
+   * The gizmos that are not drawn in screen pixels have to be told the zoom.
+   * The transformers work it out themselves -- see `viewport/transform.js`.
+   */
+  onViewChanged = () => {
+    this.arrays.viewScaled(this.stage.konva.scaleX());
+    this.refreshLabels();
+  };
+}
+
+/** Regenerated doodads onto the nodes that were drawing the previous ones. */
+function reuseNodes(nodes, doodads_) {
+  for (const [index, node] of nodes.slice(0, doodads_.length).entries()) {
+    node.doodad = doodads_[index];
+    doodads.place(node);
+  }
 }

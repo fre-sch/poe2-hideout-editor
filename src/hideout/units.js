@@ -83,6 +83,20 @@ export function toStage({ x, y }) {
 
 // Its own inverse, by construction. Rounded because a stage position is a
 // float and the file's grid is integer.
-export function fromStage({ x, y }) {
-  return { x: Math.round(y), y: Math.round(x) };
+export function fromStage(point) {
+  const { x, y } = fromStageExact(point);
+  return { x: Math.round(x), y: Math.round(y) };
+}
+
+/**
+ * The same swap without the rounding, for geometry that is not a doodad.
+ *
+ * A doodad sits on the file's integer grid, and `fromStage` is what puts it
+ * there. A generator's box does not: its geometry is unrounded by decision and
+ * the rounding happens once, where a `Doodad` is created -- see
+ * wiki/decisions/array-placement.md. Rounding the box as well would move an
+ * array's centre a little on every drag step and never move it back.
+ */
+export function fromStageExact({ x, y }) {
+  return { x: y, y: x };
 }
