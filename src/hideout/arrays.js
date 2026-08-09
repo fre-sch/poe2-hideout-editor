@@ -9,6 +9,7 @@
  */
 
 import * as generator from "./generator.js";
+import * as model from "./model.js";
 
 /**
  * Room for a shape fitted to something with no size of its own -- one doodad,
@@ -107,14 +108,39 @@ export function withType(parameters, type) {
 
 /**
  * A `Generator` carries the geometry of its own type and no other -- see
- * `model.js` -- so the shape being left is the shape there is to convert.
+ * `model.js` -- so the shape being left is the shape there is to convert. There
+ * are two of them: a box, and a pair of ends.
+ *
+ * A curve arrives straight. Its controls sit a third and two thirds of the way
+ * along the line between its ends, which is the Bézier that *is* that line, so a
+ * shape becoming a curve does not move a doodad until the player bends it.
  */
 function geometryFor(parameters, type) {
-  if (type === "line") return { ends: generator.endsOfBox(parameters.box) };
-  if (parameters.type === "line") {
-    return { box: generator.boxOfEnds(parameters.ends, LINE_HEIGHT) };
+  if (model.carriesBox(type)) {
+    return { box: parameters.box ?? boxOfEnds(parameters.ends) };
   }
-  return { box: parameters.box };
+
+  const ends = parameters.ends ?? generator.endsOfBox(parameters.box);
+  if (type === "line") return { ends };
+  return { ends, controls: parameters.controls ?? straightControls(ends) };
+}
+
+function boxOfEnds(ends) {
+  return generator.boxOfEnds(ends, LINE_HEIGHT);
+}
+
+function straightControls({ start, end }) {
+  return {
+    first: along(start, end, 1 / 3),
+    second: along(start, end, 2 / 3),
+  };
+}
+
+function along(start, end, fraction) {
+  return {
+    x: start.x + (end.x - start.x) * fraction,
+    y: start.y + (end.y - start.y) * fraction,
+  };
 }
 
 function resolutionFor(parameters, type) {

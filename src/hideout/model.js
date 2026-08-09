@@ -109,7 +109,20 @@ const SHAPE_FIELDS = {
   // what those projects were generated with.
   polygon: ["box", "corners", "distribution"],
   line: ["ends"],
+  bezier: ["ends", "controls"],
 };
+
+/**
+ * Whether a type's geometry is a box, as against the two shapes that are drawn
+ * end to end. Asked by the gizmo, which puts a transformer on one and handles on
+ * the other, and by the sidebar, which draws the fields of one or the other.
+ *
+ * Derived from the table above rather than listed a second time: a new shape
+ * that carries a box is then a box shape everywhere, by having said so once.
+ */
+export function carriesBox(type) {
+  return Boolean(SHAPE_FIELDS[type]?.includes("box"));
+}
 
 export class HideoutDocument {
   /**

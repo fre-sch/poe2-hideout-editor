@@ -9,10 +9,11 @@
  * ## The parameters
  *
  *     layer       the layer id the doodads are written into
- *     type        "grid" | "ellipse" | "polygon" | "line"
+ *     type        "grid" | "ellipse" | "polygon" | "line" | "bezier"
  *     source      [{hash, name, fv}], cycled by index
- *     box           {center, width, height, rotation} every type but "line"
- *     ends          {start, end}                      "line"
+ *     box           {center, width, height, rotation} the shapes that fill a box
+ *     ends          {start, end}                      "line", "bezier"
+ *     controls      {first, second}                   "bezier"
  *     corners       integer                           "polygon"
  *     distribution  "corners" | "edges"               "polygon"
  *     resolution  {x, y} for a grid, a number otherwise
@@ -33,9 +34,9 @@
  *
  * ## Where the points go
  *
- * The grid is a lattice at cell centres. A line and an ellipse are polylines
- * walked at equal arc length, which is why the ellipse comes out evenly spaced
- * rather than crowded at its pointy ends. A polygon is dealt to its edges
+ * The grid is a lattice at cell centres. A line, an ellipse and a Bézier are
+ * polylines walked at equal arc length, which is why the curves come out evenly
+ * spaced rather than crowded where they turn. A polygon is dealt to its edges
  * instead, so that a doodad lands *on* a corner rather than near one -- see
  * `alongEdges`.
  *
@@ -48,11 +49,11 @@ import * as units from "./units.js";
 import * as variation from "./variation.js";
 
 /**
- * How finely an ellipse is measured, not how many doodads it carries. A curve
- * with no closed-form arc length is walked by sampling it; 512 segments is
- * accurate to parts per million.
+ * How finely a curve is measured, not how many doodads it carries. A curve with
+ * no closed-form arc length is walked by sampling it; 512 segments is accurate
+ * to parts per million, for the ellipse and the Bézier alike.
  */
-const ELLIPSE_SEGMENTS = 512;
+const CURVE_SEGMENTS = 512;
 
 /** A step this close to the end of an edge starts the next one. See `pointAt`. */
 const EPSILON = 1e-9;
@@ -90,6 +91,11 @@ export function outline(generator) {
       return {
         points: polygonCorners(generator.box, generator.corners),
         closed: true,
+      };
+    case "bezier":
+      return {
+        points: bezierPoints(generator.ends, generator.controls),
+        closed: false,
       };
     case "ellipse":
       return { points: ellipsePoints(generator.box), closed: true };
@@ -284,9 +290,36 @@ function boxCorners(box) {
   ].map((local) => fromLocal(local, box));
 }
 
+/**
+ * A cubic Bézier as a polyline, open, both ends included.
+ *
+ * Cubic and not quadratic: one control point per end is what draws an S, and a
+ * path along a hideout wall bends twice as often as it bends once. It is
+ * sampled and then walked like every other polyline, so the doodads come out
+ * evenly spaced along the curve rather than crowded where it turns -- the
+ * ellipse's reasoning, and the same ruler.
+ *
+ * The samples are the drawing as well, `outline` handing them to the gizmo, so a
+ * curve a player sees is the curve the doodads sit on.
+ */
+function bezierPoints(ends, controls) {
+  return range(CURVE_SEGMENTS + 1).map((step) =>
+    bezierAt(ends, controls, step / CURVE_SEGMENTS),
+  );
+}
+
+/** The point at parameter `t`, by the Bernstein weights. */
+function bezierAt({ start, end }, { first, second }, t) {
+  const rest = 1 - t;
+  return add(
+    add(scale(start, rest * rest * rest), scale(first, 3 * rest * rest * t)),
+    add(scale(second, 3 * rest * t * t), scale(end, t * t * t)),
+  );
+}
+
 function ellipsePoints(box) {
-  return range(ELLIPSE_SEGMENTS).map((segment) => {
-    const angle = (segment / ELLIPSE_SEGMENTS) * 2 * Math.PI;
+  return range(CURVE_SEGMENTS).map((segment) => {
+    const angle = (segment / CURVE_SEGMENTS) * 2 * Math.PI;
     const local = {
       x: (Math.cos(angle) * box.width) / 2,
       y: (Math.sin(angle) * box.height) / 2,

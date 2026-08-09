@@ -75,6 +75,12 @@ describe("resolution", () => {
       box: box(100, 100),
       resolution: 1,
     },
+    bezier: {
+      type: "bezier",
+      ends: { start: { x: 0, y: 0 }, end: { x: 100, y: 0 } },
+      controls: { first: { x: 0, y: 50 }, second: { x: 100, y: 50 } },
+      resolution: 1,
+    },
   };
 
   for (const [name, shape] of Object.entries(shapes)) {
@@ -132,6 +138,87 @@ describe("line", () => {
     for (const step of steps) {
       expect(step).toBeCloseTo(steps[0], 6);
     }
+  });
+});
+
+describe("bezier", () => {
+  const ends = { start: { x: 0, y: 0 }, end: { x: 400, y: 0 } };
+
+  function curve(controls, parameters) {
+    return array({ type: "bezier", ends, controls, ...parameters });
+  }
+
+  it("puts its first and last doodads on its endpoints", () => {
+    const places = positions(
+      generator.generate(
+        curve(
+          { first: { x: 0, y: 300 }, second: { x: 400, y: 300 } },
+          { resolution: 7 },
+        ),
+      ),
+    );
+    expect(places.at(0)).toEqual(ends.start);
+    expect(places.at(-1)).toEqual(ends.end);
+  });
+
+  /**
+   * The case that decides the walk. Both controls on the start point make a
+   * curve that covers a straight line at `t³`, so stepping the parameter would
+   * pile seven doodads into the first quarter of it. Stepping the arc length
+   * spaces them evenly, which here is a number a test can name exactly.
+   */
+  it("spaces the doodads by length and not by parameter", () => {
+    const places = positions(
+      generator.generate(
+        curve({ first: { ...ends.start }, second: { ...ends.start } }, { resolution: 5 }),
+      ),
+    );
+    expect(places).toEqual([
+      { x: 0, y: 0 },
+      { x: 100, y: 0 },
+      { x: 200, y: 0 },
+      { x: 300, y: 0 },
+      { x: 400, y: 0 },
+    ]);
+  });
+
+  /** Controls a third and two thirds along are the straight line itself, which
+   * is what a shape arrives as when it is changed to a curve. */
+  it("is the line between its ends until it is bent", () => {
+    const straight = generator.generate(
+      curve(
+        { first: { x: 400 / 3, y: 0 }, second: { x: 800 / 3, y: 0 } },
+        { resolution: 5 },
+      ),
+    );
+    expect(positions(straight).map((point) => point.x)).toEqual([
+      0, 100, 200, 300, 400,
+    ]);
+  });
+
+  it("draws the curve it walks, open and sampled", () => {
+    const drawn = generator.outline(
+      curve({ first: { x: 0, y: 300 }, second: { x: 400, y: 300 } }),
+    );
+
+    expect(drawn.closed).toBe(false);
+    expect(drawn.points.at(0)).toEqual(ends.start);
+    expect(drawn.points.at(-1)).toEqual(ends.end);
+    expect(drawn.points.length).toBeGreaterThan(100);
+  });
+
+  /** An S bends both ways, which is what the second control is for. */
+  it("bends twice where the controls pull opposite ways", () => {
+    const places = positions(
+      generator.generate(
+        curve(
+          { first: { x: 0, y: 200 }, second: { x: 400, y: -200 } },
+          { resolution: 21 },
+        ),
+      ),
+    );
+    expect(Math.max(...places.map((point) => point.y))).toBeGreaterThan(20);
+    expect(Math.min(...places.map((point) => point.y))).toBeLessThan(-20);
   });
 });
 
@@ -706,6 +793,15 @@ describe("golden", () => {
       rotation: { base: 90, increment: -5, align: true },
       random: { seed: 99, jitter: { x: 3, y: 1, rotation: 2 }, variation: [0, 4] },
     }),
+    bezier: array({
+      type: "bezier",
+      source: [{ hash: 11, name: "Fence", fv: 0 }],
+      ends: { start: { x: -100, y: -50 }, end: { x: 300, y: 150 } },
+      controls: { first: { x: 0, y: 200 }, second: { x: 200, y: -100 } },
+      resolution: 6,
+      rotation: { base: 0, increment: 0, align: true },
+      random: { seed: 4242, jitter: { x: 0, y: 3, rotation: 0 }, variation: [] },
+    }),
     // The same shape by its other distribution, at two doodads to an edge: the
     // pair are a quarter in from each end, and no corner carries one.
     polygonEdges: array({
@@ -758,6 +854,14 @@ describe("golden", () => {
       { hash: 7, x: 76, y: -163, r: 41060, fv: 0 },
       { hash: 7, x: 200, y: -122, r: 49418, fv: 0 },
       { hash: 7, x: 199, y: 0, r: 56396, fv: 4 },
+    ],
+    bezier: [
+      { hash: 11, x: -100, y: -50, r: 61545, fv: 0 },
+      { hash: 11, x: -43, y: 31, r: 56174, fv: 0 },
+      { hash: 11, x: 50, y: 57, r: 48333, fv: 0 },
+      { hash: 11, x: 150, y: 43, r: 48333, fv: 0 },
+      { hash: 11, x: 243, y: 69, r: 56174, fv: 0 },
+      { hash: 11, x: 302, y: 149, r: 61545, fv: 0 },
     ],
     polygonEdges: [
       { hash: 7, x: 139, y: 142, r: 62147, fv: 0 },

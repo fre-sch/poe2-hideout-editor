@@ -13,6 +13,7 @@
 import { describe, expect, it } from "vitest";
 
 import * as arrays from "../src/hideout/arrays.js";
+import * as generator from "../src/hideout/generator.js";
 import { Doodad, Generator } from "../src/hideout/model.js";
 
 function doodad(x, y, fv = 0) {
@@ -110,6 +111,47 @@ describe("withType", () => {
   it("gives a polygon corners to be made of", () => {
     expect(arrays.withType(GRID, "polygon").corners).toBeGreaterThanOrEqual(3);
   });
+
+  /**
+   * A curve arrives as the line it replaces: its controls a third and two
+   * thirds along, which is the Bézier that is that line. So changing to a curve
+   * does not move a doodad until the player bends it.
+   */
+  it("starts a curve straight, along the ends it is given", () => {
+    const curve = new Generator(arrays.withType(GRID, "bezier"));
+    const line = new Generator(arrays.withType(GRID, "line"));
+
+    expect(curve.ends).toEqual(line.ends);
+    // A third and two thirds of the way from one end to the other.
+    expect(curve.controls.first.x).toBe(200);
+    expect(curve.controls.first.y).toBeCloseTo(50 + 100 / 3, 9);
+    expect(curve.controls.second.x).toBe(200);
+    expect(curve.controls.second.y).toBeCloseTo(50 + 200 / 3, 9);
+    expect(positionsOf(curve)).toEqual(positionsOf(line));
+  });
+
+  it("keeps a curve's ends when it becomes a line, and drops its controls", () => {
+    const curve = arrays.withType(GRID, "bezier");
+    const line = new Generator(arrays.withType(curve, "line"));
+
+    expect(line.ends).toEqual(curve.ends);
+    expect("controls" in line).toBe(false);
+  });
+
+  /** A curve has no thickness, so a box made of one is spanned like a line's. */
+  it("spans a box over a curve by its ends", () => {
+    const curve = arrays.withType(GRID, "bezier");
+    const grid = new Generator(arrays.withType(curve, "grid"));
+
+    expect(grid.box.center).toEqual(GRID.box.center);
+    expect(grid.box.width).toBe(GRID.box.width);
+  });
+
+  function positionsOf(parameters) {
+    return generator
+      .generate({ ...parameters, resolution: 5 })
+      .map((doodad) => ({ x: doodad.x, y: doodad.y }));
+  }
 
   it("changes nothing when the type is the one it already has", () => {
     expect(arrays.withType(GRID, "grid")).toBe(GRID);

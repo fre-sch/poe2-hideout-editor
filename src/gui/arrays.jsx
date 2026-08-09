@@ -25,6 +25,7 @@ import { useEffect, useRef } from "preact/hooks";
 import * as state from "../state.js";
 import * as arrays from "../hideout/arrays.js";
 import * as generator from "../hideout/generator.js";
+import * as model from "../hideout/model.js";
 import { loadTable, variationsOf } from "./table.js";
 
 const SHAPES = [
@@ -32,6 +33,7 @@ const SHAPES = [
   ["ellipse", "Ellipse"],
   ["polygon", "Polygon"],
   ["line", "Line"],
+  ["bezier", "Curve"],
 ];
 
 const DISTRIBUTIONS = [
@@ -157,10 +159,13 @@ function Shape({ parameters }) {
         options={SHAPES}
         onChange={changeType}
       />
-      {parameters.type === "line" ? (
-        <Ends ends={parameters.ends} />
-      ) : (
+      {model.carriesBox(parameters.type) ? (
         <Box box={parameters.box} />
+      ) : (
+        <Ends ends={parameters.ends} />
+      )}
+      {parameters.type === "bezier" && (
+        <Controls controls={parameters.controls} />
       )}
       {parameters.type === "polygon" && <Polygon parameters={parameters} />}
       <Resolution parameters={parameters} />
@@ -231,29 +236,53 @@ function Box({ box }) {
 function Ends({ ends }) {
   return (
     <>
+      <PointFields label="Start" field="ends" name="start" at={ends.start} />
+      <PointFields label="End" field="ends" name="end" at={ends.end} />
+    </>
+  );
+}
+
+/**
+ * A curve's two controls: where it leaves its start for, and where it arrives at
+ * its end from. They are far easier dragged than typed -- the viewport draws one
+ * on a leash from each end -- and they are here because everything else is.
+ */
+function Controls({ controls }) {
+  return (
+    <>
+      <PointFields
+        label="Control 1"
+        field="controls"
+        name="first"
+        at={controls.first}
+      />
+      <PointFields
+        label="Control 2"
+        field="controls"
+        name="second"
+        at={controls.second}
+      />
+    </>
+  );
+}
+
+/**
+ * The two numbers of one named point of the geometry. `field` and `name` are
+ * where it lives in the parameters, which is what lets one component draw four
+ * points instead of four components drawing one each.
+ */
+function PointFields({ label, field, name, at }) {
+  return (
+    <>
       <NumberField
-        label="Start x"
-        value={ends.start.x}
-        onChange={(x) =>
-          update({ ends: { ...ends, start: { ...ends.start, x } } })
-        }
+        label={`${label} x`}
+        value={at.x}
+        onChange={(x) => updatePoint(field, name, { x })}
       />
       <NumberField
-        label="Start y"
-        value={ends.start.y}
-        onChange={(y) =>
-          update({ ends: { ...ends, start: { ...ends.start, y } } })
-        }
-      />
-      <NumberField
-        label="End x"
-        value={ends.end.x}
-        onChange={(x) => update({ ends: { ...ends, end: { ...ends.end, x } } })}
-      />
-      <NumberField
-        label="End y"
-        value={ends.end.y}
-        onChange={(y) => update({ ends: { ...ends, end: { ...ends.end, y } } })}
+        label={`${label} y`}
+        value={at.y}
+        onChange={(y) => updatePoint(field, name, { y })}
       />
     </>
   );
@@ -625,6 +654,12 @@ function updateArray(layer, changes) {
 
 function updateBox(changes) {
   update({ box: { ...edited().box, ...changes } });
+}
+
+/** One coordinate of one named point: `ends.start.x`, and its three siblings. */
+function updatePoint(field, name, changes) {
+  const held = edited()[field];
+  update({ [field]: { ...held, [name]: { ...held[name], ...changes } } });
 }
 
 function updateRotation(changes) {

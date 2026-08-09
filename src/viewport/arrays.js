@@ -19,9 +19,14 @@
  * selection's box does -- see there, and wiki issue 0041 for what the plain one
  * costs on a pan.
  *
- * Three of the four shapes carry a box. A line carries two ends instead, and gets
- * a handle on each: a rotate-and-scale box around two points is a way of asking
- * for the same two points less directly.
+ * Three shapes carry a box. A line and a Bézier carry ends instead and get a
+ * handle on each point they hold -- two, or four with the curve's controls: a
+ * rotate-and-scale box around two points is a way of asking for the same two
+ * points less directly.
+ *
+ * Which handles are up is read off the parameters and not off the type. A handle
+ * exists for a point the parameters carry, so a line has two and a curve four by
+ * saying so once, in `POINTS`.
  *
  * A gizmo is never serialized. What is drawn here exists while the generator
  * sidebar is open and nowhere else.
@@ -30,11 +35,32 @@
 import Konva from "konva";
 
 import * as generator from "../hideout/generator.js";
+import * as model from "../hideout/model.js";
 import * as units from "../hideout/units.js";
 import { Box } from "./transform.js";
 
 const COLOR = "#FF66FF";
 const HANDLE_FILL = "#301030";
+
+/**
+ * The points a shape can be dragged by, in handle order: where each one lives in
+ * the parameters, and whether it is on the shape or pulling at it.
+ *
+ * A point the parameters do not carry has no handle, so this one table is what
+ * makes a line two-handled and a Bézier four-handled.
+ */
+const POINTS = [
+  { field: "ends", key: "start", control: false },
+  { field: "ends", key: "end", control: false },
+  { field: "controls", key: "first", control: true },
+  { field: "controls", key: "second", control: true },
+];
+
+/** Which end each control belongs to, for the leash drawn between them. */
+const LEASHES = [
+  { from: 0, to: 2 },
+  { from: 1, to: 3 },
+];
 
 /**
  * The endpoint handles and the outline's grab area, in screen pixels.
@@ -45,6 +71,7 @@ const HANDLE_FILL = "#301030";
  * hideout it belongs to.
  */
 const HANDLE_RADIUS = 6;
+const CONTROL_RADIUS = 4;
 const GRAB_WIDTH = 14;
 
 /**
@@ -76,8 +103,16 @@ export class Gizmo extends EventTarget {
     // border, and the outline draws the shape -- and it listens to nothing, so
     // that a box lying over another layer's doodads still lets them be clicked.
     this.boxRect = new Konva.Rect({ listening: false });
-    this.ends = [endHandle(), endHandle()];
-    this.shapes.add(this.boxRect, this.outline, ...this.ends);
+    this.points = POINTS.map((point) => pointHandle(point.control));
+    // Under the handles and over the outline, and listening to nothing: a leash
+    // is a line between two handles and never a thing to grab.
+    this.leashes = LEASHES.map(() => leashLine());
+    this.shapes.add(
+      this.boxRect,
+      this.outline,
+      ...this.leashes,
+      ...this.points,
+    );
     layer.add(this.shapes);
 
     this.handles = new Box({ visible: false });
@@ -86,8 +121,8 @@ export class Gizmo extends EventTarget {
     this.outline.on("dragstart", this.startMoving);
     this.outline.on("dragmove", this.moving);
     this.outline.on("dragend", this.stopMoving);
-    for (const [index, handle] of this.ends.entries()) {
-      handle.on("dragmove", () => this.endMoved(index, handle));
+    for (const [index, handle] of this.points.entries()) {
+      handle.on("dragmove", () => this.pointMoved(index, handle));
       handle.on("dragend", this.redraw);
     }
     this.handles.on("transform", this.transforming);
@@ -105,7 +140,7 @@ export class Gizmo extends EventTarget {
   }
 
   hasBox() {
-    return Boolean(this.array) && this.array.type !== "line";
+    return Boolean(this.array) && model.carriesBox(this.array.type);
   }
 
   /**
@@ -131,7 +166,7 @@ export class Gizmo extends EventTarget {
 
     this.drawOutline();
     this.drawBoxRect();
-    this.drawEnds();
+    this.drawPoints();
     this.scaleToZoom();
   };
 
@@ -149,16 +184,30 @@ export class Gizmo extends EventTarget {
     this.handles.forceUpdate();
   }
 
-  drawEnds() {
-    const line = this.array.type === "line";
-    for (const handle of this.ends) {
-      handle.visible(line);
+  /**
+   * A handle over every point the parameters carry, and none over a point they
+   * do not. A grid holds no `ends`, so its four handles are simply absent.
+   */
+  drawPoints() {
+    for (const [index, handle] of this.points.entries()) {
+      const at = pointOf(this.array, index);
+      handle.visible(Boolean(at));
+      if (at) handle.position(units.toStage(at));
     }
-    if (!line) return;
+    this.drawLeashes();
+  }
 
-    const ends = this.array.ends;
-    this.ends[0].position(units.toStage(ends.start));
-    this.ends[1].position(units.toStage(ends.end));
+  /** The line from each end to the control pulling at it, where there is one. */
+  drawLeashes() {
+    for (const [index, leash] of this.leashes.entries()) {
+      const ends = LEASHES[index];
+      const from = pointOf(this.array, ends.from);
+      const to = pointOf(this.array, ends.to);
+      leash.visible(Boolean(from && to));
+      if (from && to) {
+        leash.points(stagePoints({ points: [from, to] }));
+      }
+    }
   }
 
   /**
@@ -175,7 +224,7 @@ export class Gizmo extends EventTarget {
 
   scaleToZoom() {
     this.outline.hitStrokeWidth(GRAB_WIDTH / this.zoom);
-    for (const handle of this.ends) {
+    for (const handle of this.points) {
       handle.scale({ x: 1 / this.zoom, y: 1 / this.zoom });
     }
   }
@@ -201,22 +250,23 @@ export class Gizmo extends EventTarget {
   startMoving = () => {
     this.origin = this.hasBox()
       ? { center: { ...this.array.box.center } }
-      : {
-          start: { ...this.array.ends.start },
-          end: { ...this.array.ends.end },
-        };
+      : { points: POINTS.map((_, index) => pointOf(this.array, index)) };
   };
 
+  /**
+   * A shape drawn end to end moves by every point it carries, controls
+   * included: a curve dragged by its middle is the same curve somewhere else,
+   * and a control left behind would flatten it as it went.
+   */
   moving = () => {
     const moved = units.fromStageExact(this.outline.position());
     if (this.hasBox()) {
       const center = displaced(this.origin.center, moved);
       this.array.box = { ...this.array.box, center };
     } else {
-      this.array.ends = {
-        start: displaced(this.origin.start, moved),
-        end: displaced(this.origin.end, moved),
-      };
+      for (const [index, at] of this.origin.points.entries()) {
+        if (at) setPoint(this.array, index, displaced(at, moved));
+      }
     }
     // The handles hold the rectangle and not the outline, so it has to be
     // carried along by hand.
@@ -229,14 +279,12 @@ export class Gizmo extends EventTarget {
     this.redraw();
   };
 
-  /** One end of a line, dragged: the handle is where the endpoint now is. */
-  endMoved(index, handle) {
-    const at = units.fromStageExact(handle.position());
-    const ends = { ...this.array.ends };
-    ends[index === 0 ? "start" : "end"] = at;
-    this.array.ends = ends;
+  /** One point dragged: the parameters say what the handle now says. */
+  pointMoved(index, handle) {
+    setPoint(this.array, index, units.fromStageExact(handle.position()));
 
     this.drawOutline();
+    this.drawLeashes();
     this.changed();
   }
 
@@ -325,14 +373,50 @@ function displaced(point, by) {
   return { x: point.x + by.x, y: point.y + by.y };
 }
 
-function endHandle() {
+/**
+ * The point handle `index` is over, or `undefined` where this shape has none.
+ * A grid carries no `ends` at all, and only a Bézier carries `controls`.
+ */
+function pointOf(array, index) {
+  const { field, key } = POINTS[index];
+  return array?.[field]?.[key];
+}
+
+/** The same point, written back. The whole record is replaced, not its field:
+ * `moving` reads what a gesture started from, and a shared object would be
+ * edited under it. */
+function setPoint(array, index, at) {
+  const { field, key } = POINTS[index];
+  array[field] = { ...array[field], [key]: at };
+}
+
+/**
+ * A handle. A control is drawn smaller and filled, so that "on the shape" and
+ * "pulling at the shape" are told apart at a glance rather than by dragging one
+ * and seeing what happens.
+ */
+function pointHandle(control) {
   return new Konva.Circle({
-    radius: HANDLE_RADIUS,
-    fill: HANDLE_FILL,
+    radius: control ? CONTROL_RADIUS : HANDLE_RADIUS,
+    fill: control ? COLOR : HANDLE_FILL,
     stroke: COLOR,
     strokeWidth: 1,
     strokeScaleEnabled: false,
     draggable: true,
+    visible: false,
+    perfectDrawEnabled: false,
+    shadowForStrokeEnabled: false,
+  });
+}
+
+/** Dashed, thin and deaf: it says which control belongs to which end. */
+function leashLine() {
+  return new Konva.Line({
+    stroke: COLOR,
+    strokeWidth: 1,
+    dash: [4, 4],
+    strokeScaleEnabled: false,
+    listening: false,
     visible: false,
     perfectDrawEnabled: false,
     shadowForStrokeEnabled: false,
