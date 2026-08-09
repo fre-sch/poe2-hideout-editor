@@ -97,6 +97,36 @@ main {
   min-height: 0;
   overflow-y: auto;
 }
+
+/* The selection rows: a name that takes what is left, and two buttons that keep
+   their size. Capped and scrollable rather than sized to the twenty rows it may
+   hold, so a big selection does not push the layer list off the sidebar. */
+.selection-list {
+  max-height: 14rem;
+  overflow-y: auto;
+}
+.selection-row {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-bottom: 0.15rem;
+}
+/* The buttons are the point of the row, so the name is what gives way: it
+   truncates instead of wrapping the buttons onto a second line. */
+.selection-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* Numbers of one and two digits on the same button must not change its width, or
+   a column of them jitters as variations are cycled. */
+.selection-row .btn {
+  --bs-btn-padding-x: 0.4rem;
+  --bs-btn-padding-y: 0;
+  min-width: 2.2rem;
+}
 /* `min-width: 0` because Konva fills this with canvases of a fixed pixel width,
    and a flex item's automatic minimum size is its content -- so opening the
    doodad palette would push it off the right edge instead of narrowing the

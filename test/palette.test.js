@@ -262,6 +262,24 @@ describe("the generated tables", () => {
     expect(marked.length).toBeLessThan(palette.entries.length);
   });
 
+  /**
+   * What the palette row and the Selection section's variation button both read.
+   * Every doodad has at least one variation -- being drawn at all takes one art
+   * file -- and the ones with a choice to make are a minority, which is why the
+   * row shows the count only where it is above one.
+   */
+  it("counts the variations of every doodad, and more than one for some", () => {
+    const palette = new Palette(table("English"));
+    const counts = palette.entries.map((entry) => entry.variations);
+
+    expect(counts.every((count) => count >= 1)).toBe(true);
+    expect(counts.filter((count) => count > 1).length).toBeGreaterThan(0);
+    expect(
+      palette.find(3521191973).variations,
+      "Maraketh Chest, the sample the fv split was measured from",
+    ).toBe(12);
+  });
+
   /** The blacklist of `scripts/doodad_palette.py`, seen from this end. */
   it("offers nothing the game marks as not for use", () => {
     const palette = new Palette(table("English"));
