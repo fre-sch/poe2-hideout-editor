@@ -48,6 +48,18 @@ export function layersChanged() {
 export const selection = signal([]);
 
 /**
+ * Republishes the selection after a doodad in it was edited in place.
+ *
+ * `layersChanged`'s reasoning, applied to the selection: editing a doodad's `fv`
+ * mutates the document, which nothing can subscribe to, and signals compare by
+ * reference. The viewport is not told, and needs no telling -- every doodad draws
+ * as the same gizmo whatever its variation says, wiki issue 0042.
+ */
+export function selectionChanged() {
+  selection.value = [...selection.value];
+}
+
+/**
  * A selection the sidebar asks for, as `Doodad` objects, or `null`.
  *
  * The other direction of `selection`: what is selected is the viewport's to

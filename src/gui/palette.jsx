@@ -18,31 +18,19 @@
  * decided.
  *
  * **Loading a file closes it.** A new document may be in another language, which
- * invalidates both the table and the check below; a palette that survived a load
- * would be describing the previous document. `gui/file.jsx` puts it away.
+ * invalidates both the table and the check it was loaded with; a palette that
+ * survived a load would be describing the previous document. `gui/file.jsx` puts
+ * it away.
+ *
+ * The table itself is `gui/table.js`, which the Selection section reads too.
  */
 
 import { useEffect } from "preact/hooks";
 import { signal } from "@preact/signals";
 
 import * as state from "../state.js";
-import { Palette, INCLUDE, EXCLUDE } from "../hideout/palette.js";
-
-/**
- * The table for the document's language, once it has been fetched and checked,
- * or `null` while there is none.
- *
- * `{ document, language, palette, check }`, where `check` is what
- * `disagreements` found against the document. It is computed once, when the
- * table arrives, rather than per render: it walks every doodad in the hideout,
- * and what it walks does not change while the palette is up -- a doodad placed
- * from the table is named by the table and cannot disagree with it.
- *
- * The document is remembered beside the language because two documents can
- * share one: the check belongs to the file it was run against.
- */
-const table = signal(null);
-const tableError = signal(null);
+import { INCLUDE, EXCLUDE } from "../hideout/palette.js";
+import { table, tableError, loadTable } from "./table.js";
 
 /**
  * What the player is looking for. Kept across openings, because closing the
@@ -55,9 +43,6 @@ const tableError = signal(null);
 const search = signal("");
 const categoryFilter = signal(new Map());
 const tagFilter = signal(new Map());
-
-/** Cached per language: ten files, and a player loads one or two of them. */
-const FETCHED = new Map();
 
 export function AddDoodadButton() {
   return (
@@ -286,6 +271,12 @@ function Category({ group }) {
  * The hideout is the only thing the data supports saying about what a player
  * owns: no table names an MTX pack. It reads under the name, where a row that
  * has none simply has one line.
+ *
+ * The variation count is shown where there is a choice to make and nowhere else,
+ * so `(12)` means "this one varies" rather than "this row has a number on it".
+ * Most doodads have exactly one, and a thousand rows reading `(1)` would say
+ * only that the editor can count. Which variation is chosen is the Selection
+ * section's business -- a placed doodad arrives as the first one.
  */
 function Entry({ entry }) {
   return (
@@ -294,6 +285,9 @@ function Entry({ entry }) {
         {entry.name}
         {entry.distinguisher && (
           <span class="palette-mark"> {entry.distinguisher}</span>
+        )}
+        {entry.variations > 1 && (
+          <span class="palette-mark"> ({entry.variations})</span>
         )}
       </span>
       {entry.hideout && <span class="palette-hideout">{entry.hideout}</span>}
@@ -356,55 +350,4 @@ function activeLayer() {
 function place(entry) {
   if (refusal() !== null) return;
   state.requestPlacement(entry.hash, entry.name);
-}
-
-// -- the table ---------------------------------------------------------------
-
-/**
- * Fetches the table for a language and checks it against the document.
- *
- * The generated files are static assets rather than source, the same as the
- * bounds outlines, so they are fetched and not imported -- one file per
- * language, and a player opens one of them.
- *
- * The check is the point of doing it here: the table is only usable once it has
- * agreed with the hundreds of names the game itself wrote into the document.
- */
-async function loadTable(document_) {
-  if (table.value?.document === document_) return;
-
-  const language = document_.header.language;
-  table.value = null;
-  tableError.value = null;
-  try {
-    const palette = new Palette(await fetchLanguage(language));
-    table.value = {
-      document: document_,
-      language,
-      palette,
-      check: palette.disagreements(document_.doodads),
-    };
-  } catch (error) {
-    tableError.value = error;
-  }
-}
-
-async function fetchLanguage(language) {
-  if (!language) throw new Error("This file names no language.");
-  if (!FETCHED.has(language)) {
-    FETCHED.set(language, fetchJson(language));
-  }
-  return FETCHED.get(language);
-}
-
-async function fetchJson(language) {
-  const url = `${import.meta.env.BASE_URL}doodads/${encodeURIComponent(language)}.json`;
-  const response = await fetch(url);
-  if (!response.ok) {
-    throw new Error(
-      `No doodad names for the language '${language}': ` +
-        `${response.status} ${response.statusText}.`,
-    );
-  }
-  return response.json();
 }
