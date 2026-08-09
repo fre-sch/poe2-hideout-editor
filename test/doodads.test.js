@@ -103,6 +103,21 @@ describe("apply", () => {
     expect(turned.r).toBe(58301);
   });
 
+  /**
+   * The last word on a scale, whatever left one on the node. Konva stops firing
+   * `transform` at its own minimum box size, so the step-by-step undo below
+   * cannot be the only place this happens.
+   */
+  it("draws a scaled node at the size the gizmo is drawn", () => {
+    const node = doodads.create(doodad({ x: 1, y: 2 }));
+    const drawn = node.scaleX();
+
+    node.scale({ x: drawn * 4, y: drawn * 4 });
+    doodads.apply(node);
+
+    expect(node.scale()).toEqual({ x: drawn, y: drawn });
+  });
+
   it("keeps hash and fv out of it", () => {
     const kept = doodad({ x: 1, y: 2, fv: 128 });
     const node = doodads.create(kept);

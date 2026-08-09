@@ -13,7 +13,9 @@
  * lies about what will be saved. What the anchors are good for is the spacing:
  * `unscaleNodes` keeps the positions the transformer worked out and puts the
  * scale and the rotation back, which turns a corner drag into "spread this
- * arrangement out" -- something the game's own editor cannot do at all.
+ * arrangement out" -- something the game's own editor cannot do at all. The
+ * price of measuring spacing that way is that spacing multiplies, so `bounded`
+ * is what stops a squeeze from reaching zero and staying there.
  *
  * **The handles need nothing done about the zoom.** `Konva.Transformer`
  * overrides `getAbsoluteTransform` to return its own transform, so it measures
@@ -29,6 +31,38 @@ import * as doodads from "./doodads.js";
 
 const ROTATION_SNAPS = [0, 45, 90, 135, 180, 225, 270, 315];
 const ROTATION_SNAP_TOLERANCE = 6;
+
+/**
+ * How small the box may be squeezed, in screen pixels.
+ *
+ * Not a matter of taste. The box measures how far apart the doodads are, and a
+ * resize multiplies that distance -- so doodads squeezed onto one point are
+ * doodads no later stretch can ever separate again, because every factor of
+ * zero is zero. There is no undo to get out of it with.
+ *
+ * Konva's own floor is one pixel and is no help: it is the point where the box
+ * has already collapsed, and it is reached by asking for it rather than by
+ * arriving there.
+ */
+const MINIMUM_BOX = 24;
+
+/**
+ * The box a resize step may have: what it asked for, unless that is a collapse.
+ *
+ * A box already under the floor -- everything is, at a far enough zoom out --
+ * may still be grown, or nothing under the floor could ever be resized at all.
+ * Signs are dropped because `flipEnabled` is off but a step may still ask for a
+ * negative width on its way past zero.
+ */
+export function bounded(was, wants) {
+  if (collapsing(was.width, wants.width)) return was;
+  if (collapsing(was.height, wants.height)) return was;
+  return wants;
+}
+
+function collapsing(was, wants) {
+  return Math.abs(wants) < MINIMUM_BOX && Math.abs(wants) < Math.abs(was);
+}
 
 /**
  * Dispatches `moving` while a gesture is under way, and `changed` once it has
@@ -52,6 +86,7 @@ export class Transform extends EventTarget {
       // Off, so that the empty space inside a wide selection still bands.
       shouldOverdrawWholeArea: false,
       ignoreStroke: true,
+      boundBoxFunc: bounded,
     });
     layer.add(this.konva);
 

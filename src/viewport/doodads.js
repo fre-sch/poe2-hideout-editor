@@ -101,9 +101,15 @@ export function apply(node) {
   place(node);
 }
 
+/**
+ * The node drawn exactly as its doodad says: where, which way, and the size the
+ * gizmo is drawn at. The scale is in here because a doodad has none -- whatever
+ * put one on the node, `apply` is the end of it.
+ */
 export function place(node) {
   node.position(units.toStage(node.doodad));
   node.rotation(facing(node.doodad));
+  node.scale({ x: GIZMO.scale, y: GIZMO.scale });
 }
 
 /** The way the gizmo has to be turned to face the way the doodad faces. */
