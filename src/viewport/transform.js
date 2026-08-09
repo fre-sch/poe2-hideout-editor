@@ -42,31 +42,47 @@ const ROTATION_SNAP_TOLERANCE = 6;
  *
  * Konva's own floor is one pixel and is no help: it is the point where the box
  * has already collapsed, and it is reached by asking for it rather than by
- * arriving there.
+ * arriving there. Twenty-four is a box still worth grabbing an anchor of.
  */
 const MINIMUM_BOX = 24;
 
 /**
- * The box a resize step may have: what it asked for, unless that is a collapse.
+ * Where an anchor may be dragged to, in the box's own space: no nearer the side
+ * it is pulling against than the floor.
  *
- * A box already under the floor -- everything is, at a far enough zoom out --
- * may still be grown, or nothing under the floor could ever be resized at all.
+ * The floor is held here, on the anchor, and not on the box `boundBoxFunc`
+ * offers. By the time that is called Konva has already dealt with the flip --
+ * it rewrites `_movingAnchorName` from `left` to `right` on the way past zero
+ * -- so refusing the box there leaves the transformer holding an anchor the
+ * player is not dragging. An anchor that never crosses is a flip that never
+ * happens, and `flipEnabled` never comes into it.
  *
- * A negative side is a collapse whatever its size, and not a small one: it is
- * a box dragged out the far side of zero, and the doodads went through the
- * same point on the way. `flipEnabled` is off, so Konva keeps the sign off the
- * nodes' own scale, but the box swings through zero regardless -- and it is the
- * zero that does the damage, not the mirroring. Comparing how big a side is
- * rather than what it is misses a drag fast enough to jump the floor.
+ * A box already under the floor -- every box is, at a far enough zoom out --
+ * may still be grown but not shrunk, rather than being forced open to the
+ * floor. Nothing is served by refusing to resize the hideout at the zoom that
+ * shows all of it.
  */
-export function bounded(was, wants) {
-  if (collapsing(was.width, wants.width)) return was;
-  if (collapsing(was.height, wants.height)) return was;
-  return wants;
+export function clamped(anchor, box, point) {
+  return {
+    x: horizontally(anchor, box.width, point.x),
+    y: vertically(anchor, box.height, point.y),
+  };
 }
 
-function collapsing(was, wants) {
-  return wants < MINIMUM_BOX && wants < was;
+function horizontally(anchor, width, x) {
+  if (anchor.includes("left")) return Math.min(x, width - floor(width));
+  if (anchor.includes("right")) return Math.max(x, floor(width));
+  return x;
+}
+
+function vertically(anchor, height, y) {
+  if (anchor.includes("top")) return Math.min(y, height - floor(height));
+  if (anchor.includes("bottom")) return Math.max(y, floor(height));
+  return y;
+}
+
+function floor(size) {
+  return Math.min(MINIMUM_BOX, size);
 }
 
 /**
@@ -91,9 +107,11 @@ export class Transform extends EventTarget {
       // Off, so that the empty space inside a wide selection still bands.
       shouldOverdrawWholeArea: false,
       ignoreStroke: true,
-      boundBoxFunc: bounded,
     });
     layer.add(this.konva);
+    // Set here rather than above because it needs the transformer it belongs
+    // to, and Konva calls it with no receiver of its own.
+    this.konva.anchorDragBoundFunc((_was, wants) => this.insideBox(wants));
 
     this.nodes = [];
     this.step = null;
@@ -120,6 +138,28 @@ export class Transform extends EventTarget {
     }
     this.konva.nodes(nodes);
     this.konva.visible(nodes.length > 0);
+  }
+
+  /**
+   * An anchor position, in screen pixels, brought back inside the floor.
+   *
+   * The box is turned with the view, so "nearer the opposite side" is a
+   * question in the box's own space and the point has to be asked there. The
+   * transformer's `getAbsoluteTransform` is that space -- it returns its own
+   * transform and nothing above it, which is also why the box is in screen
+   * pixels to begin with.
+   *
+   * The rotate handle is left alone. It is dragged around the outside of the
+   * box, where nothing it does is a collapse.
+   */
+  insideBox(point) {
+    const anchor = this.konva.getActiveAnchor();
+    if (anchor === "rotater") return point;
+
+    const space = this.konva.getAbsoluteTransform();
+    const box = { width: this.konva.width(), height: this.konva.height() };
+    const inside = clamped(anchor, box, space.copy().invert().point(point));
+    return space.point(inside);
   }
 
   /** Whether a node is one the box would move. */
