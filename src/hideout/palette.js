@@ -122,10 +122,10 @@ export class Palette {
  * The entries, with the category translated and the tags left as keys: a
  * category is read by the player and a tag is matched against a toggle.
  *
- * A name is not unique -- 34 English names cover 74 doodads, seven of them
- * `Warp Rune` -- so an entry sharing its name carries a `distinguisher`, the
- * last segment of its metadata id. Only the ones that share, because 1719 rows
- * of metadata id is noise obscuring the 34 places it is the answer.
+ * A name is not unique -- three English names cover twelve doodads, seven of
+ * them `Warp Rune` -- so an entry sharing its name carries a `distinguisher`,
+ * the last segment of its metadata id. Only the ones that share, because a
+ * metadata id on every row is noise obscuring the few places it is the answer.
  */
 function readEntries(data) {
   const entries = Object.entries(data.doodads).map(([hash, doodad]) => ({

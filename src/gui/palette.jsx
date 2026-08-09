@@ -249,7 +249,7 @@ function List() {
   }
 
   // Said once for the whole list rather than per row: it is one answer, and
-  // there are 1719 rows to ask it of.
+  // there are a thousand rows to ask it of.
   const refused = refusal() === null ? "" : "palette-refused";
   return (
     <div class={`palette-list ${refused}`}>

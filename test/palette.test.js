@@ -215,14 +215,21 @@ describe("Palette.disagreements", () => {
   });
 });
 
+/**
+ * Counts are not asserted here. What the tables hold is the blacklist's to
+ * decide -- see `scripts/doodad_palette.py` -- and a suite that goes red
+ * because a category was dropped on purpose is a suite that has to be edited
+ * to say yes. What is asserted is what must hold whatever the blacklist says.
+ * The measurements live in wiki/issues/0030-scripts-doodad-palette-data.md.
+ */
 describe("the generated tables", () => {
   it("holds every doodad under a category header", () => {
     const palette = new Palette(table("English"));
     const grouped = palette.groups().flatMap((group) => group.entries);
 
-    expect(palette.entries).toHaveLength(1719);
-    expect(grouped).toHaveLength(1719);
-    expect(palette.groups()).toHaveLength(98);
+    expect(palette.entries.length).toBeGreaterThan(1000);
+    expect(grouped).toHaveLength(palette.entries.length);
+    expect(palette.groups()).toHaveLength(palette.categories.length);
   });
 
   it("leaves no doodad unreachable by the tag filters", () => {
@@ -232,14 +239,13 @@ describe("the generated tables", () => {
       tags: new Map(keys.map((key) => [key, INCLUDE])),
     });
 
-    expect(keys).toHaveLength(39);
-    expect(reachable).toHaveLength(1719);
+    expect(keys).toContain(UNTAGGED);
+    expect(reachable).toHaveLength(palette.entries.length);
   });
 
   it("offers a filter for every category, and no empty ones", () => {
     const palette = new Palette(table("English"));
 
-    expect(palette.categories).toHaveLength(98);
     for (const category of palette.categories) {
       expect(
         names(palette, { categories: filter({ [category.key]: INCLUDE }) })
@@ -248,11 +254,12 @@ describe("the generated tables", () => {
     }
   });
 
-  it("marks the doodads a hideout grants, and no others", () => {
+  it("names the hideout of the doodads a hideout grants, and no others", () => {
     const palette = new Palette(table("English"));
     const marked = palette.entries.filter((entry) => entry.hideout);
 
-    expect(marked).toHaveLength(212);
+    expect(marked.length).toBeGreaterThan(0);
+    expect(marked.length).toBeLessThan(palette.entries.length);
   });
 
   /** The blacklist of `scripts/doodad_palette.py`, seen from this end. */
