@@ -115,7 +115,9 @@ export class Transform extends EventTarget {
 
     this.nodes = [];
     this.step = null;
+    this.pinned = null;
     this.konva.on("dragmove", this.moving);
+    this.konva.on("transformstart", this.begin);
     this.konva.on("transform", this.transforming);
     this.konva.on("dragend", this.commit);
     this.konva.on("transformend", this.commit);
@@ -172,6 +174,61 @@ export class Transform extends EventTarget {
     return node.getParent() === this.konva;
   }
 
+  /**
+   * The anchor is read once here and remembered for the gesture. Konva swaps
+   * the one it is holding around when a box is dragged past itself -- `left`
+   * becomes `right` -- and which corner is standing still must not swap with
+   * it.
+   */
+  begin = () => {
+    this.step = null;
+    this.pinned = null;
+    if (!this.resizing()) return;
+
+    const anchor = this.konva.getActiveAnchor();
+    this.pinned = { anchor, at: this.corner(anchor) };
+  };
+
+  /**
+   * The corner a resize turns about: the one across the box from the anchor
+   * being dragged, in screen pixels.
+   *
+   * A side anchor leaves one axis alone, and that axis's coordinate here is
+   * whichever end of it -- the end that does not move is not worth choosing
+   * between.
+   */
+  corner(anchor) {
+    return this.konva.getAbsoluteTransform().point({
+      x: anchor.includes("left") ? this.konva.width() : 0,
+      y: anchor.includes("top") ? this.konva.height() : 0,
+    });
+  }
+
+  /**
+   * Puts the far corner back where the resize started.
+   *
+   * Konva holds the far edge of the *box* still, and the box is the doodads'
+   * spread plus one gizmo: the doodad nearest that edge sits half a gizmo
+   * inside it, so scaling its position by `k` lands its edge `(1 - k)` half
+   * gizmos outside where it was. The far edge drifts, by less than the dragged
+   * one moves, which is the whole of the effect -- and it accumulates over a
+   * drag, since nothing puts it back.
+   *
+   * The selection is moved rigidly, so nothing about the spacing this step
+   * worked out changes.
+   */
+  repin() {
+    const drifted = this.corner(this.pinned.anchor);
+    const across = this.pinned.at.x - drifted.x;
+    const down = this.pinned.at.y - drifted.y;
+    if (across === 0 && down === 0) return;
+
+    for (const node of this.konva.nodes()) {
+      const at = node.absolutePosition();
+      node.absolutePosition({ x: at.x + across, y: at.y + down });
+    }
+  }
+
   moving = () => {
     this.dispatchEvent(new CustomEvent("moving"));
   };
@@ -186,11 +243,21 @@ export class Transform extends EventTarget {
     if (event.evt && event.evt === this.step) return;
     this.step = event.evt;
 
-    if (this.resizing()) this.unscaleNodes();
+    // Unscale first: the box is measured off the nodes, so the corner cannot be
+    // read until they are the size they are going to be.
+    if (this.pinned) {
+      this.unscaleNodes();
+      this.repin();
+    }
     this.moving();
   };
 
-  /** Which gesture the anchors are running: the rotate handle, or the rest. */
+  /**
+   * Which gesture the anchors are running: the rotate handle, or the rest.
+   * Asked once, at the start, and remembered as `pinned` -- Konva swaps the
+   * anchor it is holding around mid-gesture, and the answer must not swap
+   * with it.
+   */
   resizing() {
     const anchor = this.konva.getActiveAnchor();
     return Boolean(anchor) && anchor !== "rotater";
@@ -213,6 +280,7 @@ export class Transform extends EventTarget {
   }
 
   commit = () => {
+    this.pinned = null;
     for (const node of this.konva.nodes()) {
       doodads.apply(node);
     }
