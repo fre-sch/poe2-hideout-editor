@@ -205,10 +205,55 @@ export class HideoutDocument {
    */
   addArrayLayer(name, parameters) {
     const layer = this.addLayer(name);
-    const array = new Generator({ ...parameters, layer: layer.id });
+    return this.addGenerator({ ...parameters, layer: layer.id });
+  }
+
+  /**
+   * Gives a layer that has none a generator, and places the doodads it says.
+   * The parameters name their own layer, being what a `Generator` carries.
+   */
+  addGenerator(parameters) {
+    const array = new Generator(parameters);
     this.generators = [...this.generators, array];
-    this.regenerate(layer.id);
+    this.regenerate(array.layer);
     return array;
+  }
+
+  /**
+   * A copy of a layer, placed directly after it, and answered with.
+   *
+   * **A layer is copied by what makes it.** An ordinary layer is its doodads, so
+   * they are copied one for one. An array is its parameters, so those are copied
+   * and the doodads computed from them again -- copying the doodads instead
+   * would give a layer that looks the same and has forgotten how it got there,
+   * which is a detach nobody asked for.
+   *
+   * The copy is deep, because two arrays are two arrays: a shared `box` object
+   * would let a handle dragged on one move the other.
+   */
+  duplicateLayer(id) {
+    const source = this.findLayer(id);
+    if (!source) throw new Error(`No layer '${id}' to duplicate`);
+
+    const copy = this.addLayer(`${source.name} copy`);
+    copy.visible = source.visible;
+    copy.locked = source.locked;
+    const after = this.layers.indexOf(source) + 1;
+    this.moveLayer(copy.id, after - (this.layers.length - 1));
+
+    const array = this.findGenerator(id);
+    if (array) {
+      this.addGenerator({ ...structuredClone(array), layer: copy.id });
+      return copy;
+    }
+
+    this.doodads = [
+      ...this.doodads,
+      ...this.doodadsIn(id).map(
+        (doodad) => new Doodad(doodad.name, doodad.toFields(), copy.id),
+      ),
+    ];
+    return copy;
   }
 
   /** The generator the layer carries, or `undefined` for an ordinary layer. */

@@ -106,6 +106,12 @@ function LayerActions() {
         onClick={() => move(layer, 1)}
       />
       <ActionButton
+        icon="bi-copy"
+        title="Duplicate this layer"
+        disabled={layer === null}
+        onClick={() => duplicate(layer)}
+      />
+      <ActionButton
         icon="bi-trash"
         extra="text-danger"
         title="Delete this layer"
@@ -236,6 +242,22 @@ function addLayer() {
   document_().assign(state.selection.value, layer.id);
   state.layersChanged();
   activate(layer);
+}
+
+/**
+ * A copy of a layer, which becomes the layer being worked on: a copy is made in
+ * order to work on it, and it lands exactly on the original, so the one thing
+ * wanted next is to drag it off.
+ *
+ * What "a copy" means differs by what the layer is, and that is the document's
+ * answer -- see `model.duplicateLayer`. Here it is one gesture either way, which
+ * is the bar's pattern: a slot whose meaning follows the layer.
+ */
+function duplicate(layer) {
+  const copy = document_().duplicateLayer(layer.id);
+  state.doodadCount.value = document_().doodads.length;
+  state.layersChanged();
+  activate(copy);
 }
 
 /**
