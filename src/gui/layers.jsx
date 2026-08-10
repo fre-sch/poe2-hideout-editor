@@ -10,6 +10,13 @@
  * move it, so the way back to a selection just dismissed is the radio it is
  * already on.
  *
+ * **So the actions that act on a layer are drawn once, under the list.** A row
+ * carries what it is and how it stands -- its name, its tally, its two flags --
+ * and those are a reading as much as a control, which belongs to the thing being
+ * read. Moving, deleting and filling a layer are answered by the bar, which acts
+ * on the layer the radio names. A copy of them in every row asks again, six
+ * times over, what the radio has already answered once.
+ *
  * The layers are the document's, and this is the only place they are edited. It
  * mutates them and then calls `state.layersChanged`, which is what the viewport
  * and this panel both listen to -- see `state.js` for why a mutation cannot be
@@ -26,6 +33,7 @@
 
 import * as state from "../state.js";
 import { AddArrayButton, ArrayBadge, ArrayButtons } from "./arrays.jsx";
+import { ActionButton, SelectionBadge } from "./buttons.jsx";
 import { AddDoodadButton } from "./palette.jsx";
 
 export default function Layers() {
@@ -40,37 +48,96 @@ export default function Layers() {
         the export; a locked one exports like any other.
       </p>
       <ul class="list-unstyled mb-2 layer-list">
-        {layers.map((layer, index) => (
-          <LayerRow layer={layer} index={index} count={layers.length} />
+        {layers.map((layer) => (
+          <LayerRow layer={layer} />
         ))}
       </ul>
-      <div class="d-flex gap-1 flex-wrap">
+      <LayerActions />
+      <div class="d-flex gap-1 flex-nowrap">
         <button
           type="button"
-          class="btn btn-secondary btn-sm"
+          class="btn btn-secondary btn-sm text-nowrap"
           disabled={!loaded}
+          title={addLayerTitle(selected)}
           onClick={addLayer}
         >
           <i class="bi bi-plus-lg"></i> Add layer
-          {selected > 0 && ` with ${selected} selected`}
+          <SelectionBadge count={selected} />
         </button>
         <AddArrayButton />
-        <AddDoodadButton />
       </div>
     </details>
   );
 }
 
+function addLayerTitle(selected) {
+  if (selected === 0) return "A new empty layer.";
+  return `A new layer holding the ${selected} selected doodads.`;
+}
+
 /**
- * An array's row differs in two places, and both are the same fact: its doodads
- * are generated. Working on it raises its box instead of selecting them, and it
- * carries settings and a **Detach** where an ordinary layer carries a lock.
+ * The actions that act on a layer, once, acting on the layer the radio names.
+ *
+ * A slot that does not apply is disabled and not hidden. A hidden slot takes its
+ * width with it and the rest slide over, so the delete button would sit
+ * somewhere else depending on which layer is active -- and a delete button that
+ * moves is a delete button pressed by accident. Disabled, the places stay
+ * learnable and the `title` says why the slot is off.
+ */
+function LayerActions() {
+  const layers = state.layers.value;
+  const index = layers.findIndex(
+    (layer) => layer.id === state.activeLayer.value,
+  );
+  const layer = index === -1 ? null : layers[index];
+  return (
+    <div class="d-flex gap-1 flex-nowrap align-items-center mb-2 layer-actions">
+      <AddDoodadButton />
+      <ActionButton
+        icon="bi-arrow-up"
+        title="Move this layer up"
+        disabled={layer === null || index === 0}
+        onClick={() => move(layer, -1)}
+      />
+      <ActionButton
+        icon="bi-arrow-down"
+        title="Move this layer down"
+        disabled={layer === null || index === layers.length - 1}
+        onClick={() => move(layer, 1)}
+      />
+      <ActionButton
+        icon="bi-trash"
+        extra="text-danger"
+        title="Delete this layer"
+        disabled={layer === null || layers.length < 2}
+        onClick={() => remove(layer)}
+      />
+      <div class="vr mx-1"></div>
+      <ArrayButtons layer={arrayOf(layer)} />
+    </div>
+  );
+}
+
+/** The layer if it carries a generator, and null for the bar to disable by. */
+function arrayOf(layer) {
+  if (layer === null) return null;
+  return document_().findGenerator(layer.id) ? layer : null;
+}
+
+/**
+ * What a layer is and how it stands: which one is being worked on, its name, its
+ * tally, and its two flags. What is done to it is the bar's, below.
+ *
+ * An array's row differs in one place, and it is the fact that its doodads are
+ * generated: it carries the badge and no lock, an array's doodads being
+ * unselectable in the first place, so a toggle saying they cannot be selected
+ * says nothing.
  *
  * It can still be the active layer, and the palette refuses to place there and
  * says why. Making it unpickable would have made the one gesture mean two
  * things.
  */
-function LayerRow({ layer, index, count }) {
+function LayerRow({ layer }) {
   const array = Boolean(document_().findGenerator(layer.id));
   return (
     <li class="layer-row">
@@ -104,9 +171,7 @@ function LayerRow({ layer, index, count }) {
         off="bi-eye-slash"
         title="Visible"
       />
-      {array ? (
-        <ArrayButtons layer={layer} />
-      ) : (
+      {array ? null : (
         <Toggle
           layer={layer}
           flag="locked"
@@ -115,33 +180,6 @@ function LayerRow({ layer, index, count }) {
           title="Locked"
         />
       )}
-      <button
-        type="button"
-        class="btn btn-sm btn-link p-0"
-        title="Move up"
-        disabled={index === 0}
-        onClick={() => move(layer, -1)}
-      >
-        <i class="bi bi-arrow-up"></i>
-      </button>
-      <button
-        type="button"
-        class="btn btn-sm btn-link p-0"
-        title="Move down"
-        disabled={index === count - 1}
-        onClick={() => move(layer, 1)}
-      >
-        <i class="bi bi-arrow-down"></i>
-      </button>
-      <button
-        type="button"
-        class="btn btn-sm btn-link p-0 text-danger"
-        title="Delete layer"
-        disabled={count < 2}
-        onClick={() => remove(layer)}
-      >
-        <i class="bi bi-trash"></i>
-      </button>
     </li>
   );
 }

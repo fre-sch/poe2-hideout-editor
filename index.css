@@ -201,6 +201,18 @@ details[open] .details-summary-extra {
   text-align: right;
 }
 
+/* The one bar of actions on the layer being worked on, ruled off from the list
+   it acts on. */
+.layer-actions {
+  border-top: 1px solid #222;
+  padding-top: 0.3rem;
+}
+/* Bootstrap takes the pointer events off a disabled button, and the tooltip
+   with them -- and the tooltip is where a disabled slot says why it is off. */
+.layer-actions .btn:disabled {
+  pointer-events: auto;
+}
+
 .grid-2 {
   display: grid;
   grid-template: auto / min-content auto;
