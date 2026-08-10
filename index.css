@@ -2,7 +2,7 @@
    integrity hashes. This file is the project's own CSS, loaded after them. */
 
 :root {
-  --bs-body-font-size: 0.8rem;
+  --bs-body-font-size: 0.9rem;
   --bs-body-font-family: sans-serif;
 }
 p {
@@ -294,6 +294,9 @@ details[open] .details-summary-extra {
   min-height: 0;
   overflow-y: auto;
 }
+.palette-category > ul {
+  margin-left: 0.5rem;
+}
 .palette-heading {
   font-size: 0.85rem;
   font-weight: bold;
@@ -306,6 +309,7 @@ details[open] .details-summary-extra {
   flex-direction: column;
   line-height: 1.2;
   margin-bottom: 0.15rem;
+  user-select: none;
 }
 .palette-row:hover {
   background-color: var(--bs-secondary-bg);

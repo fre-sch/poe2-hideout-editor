@@ -74,7 +74,7 @@ export function AddDoodadButton() {
   return (
     <button
       type="button"
-      class="btn btn-primary btn-sm text-nowrap"
+      class="btn btn-secondary btn-sm text-nowrap"
       disabled={state.hideoutDocument.value === null}
       onClick={() => {
         state.showPalette.value = !state.showPalette.value;
@@ -334,10 +334,10 @@ function Entry({ entry }) {
         {entry.distinguisher && (
           <span class="palette-mark"> {entry.distinguisher}</span>
         )}
-        {entry.variations > 1 && (
-          <span class="palette-mark"> ({entry.variations})</span>
-        )}
       </span>
+      {entry.variations > 1 && (
+        <span class="palette-mark">{entry.variations} variants</span>
+      )}
       {entry.hideout && <span class="palette-hideout">{entry.hideout}</span>}
     </li>
   );
