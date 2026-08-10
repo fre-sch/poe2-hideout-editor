@@ -2,3 +2,5 @@
 .env
 *.hideout
 test.svg
+node_modules/
+dist/
