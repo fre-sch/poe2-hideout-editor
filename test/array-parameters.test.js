@@ -51,9 +51,24 @@ describe("fromSelection", () => {
     const made = arrays.fromSelection([doodad(0, 0, 3), doodad(10, 10)]);
 
     expect(made.source).toEqual([
-      { hash: 3230065491, name: "Stash", fv: 3 },
-      { hash: 3230065491, name: "Stash", fv: 0 },
+      { hash: 3230065491, name: "Stash", fv: 3, variation: [] },
+      { hash: 3230065491, name: "Stash", fv: 0, variation: [] },
     ]);
+  });
+
+  /** Chosen variations are the doodad's own, and it starts with the one it is. */
+  it("chooses no variations, so every doodad keeps the one it was", () => {
+    const made = arrays.fromSelection([doodad(0, 0, 3)]);
+
+    expect(made.source[0].variation).toEqual([]);
+    expect(generator.generate({ ...made, layer: "layer-2" })[0].fv).toBe(3);
+  });
+
+  it("walks the source in turn and its variations at random", () => {
+    expect(arrays.fromSelection([doodad(0, 0)]).pick).toEqual({
+      source: generator.CYCLE,
+      variation: generator.RANDOM,
+    });
   });
 
   it("is a generator the document accepts as it stands", () => {
@@ -62,7 +77,6 @@ describe("fromSelection", () => {
 
     expect(array.type).toBe("grid");
     expect(array.resolution).toEqual({ x: 3, y: 3 });
-    expect(array.random.variation).toEqual([]);
     expect(Number.isInteger(array.random.seed)).toBe(true);
   });
 });

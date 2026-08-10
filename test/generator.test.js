@@ -28,7 +28,7 @@ function array(parameters) {
     layer: "layer-2",
     source: [STASH],
     rotation: { base: 0, increment: 0, align: false },
-    random: { seed: 1, jitter: { x: 0, y: 0, rotation: 0 }, variation: [] },
+    random: { seed: 1, jitter: { x: 0, y: 0, rotation: 0 } },
     ...parameters,
   };
 }
@@ -170,7 +170,10 @@ describe("bezier", () => {
   it("spaces the doodads by length and not by parameter", () => {
     const places = positions(
       generator.generate(
-        curve({ first: { ...ends.start }, second: { ...ends.start } }, { resolution: 5 }),
+        curve(
+          { first: { ...ends.start }, second: { ...ends.start } },
+          { resolution: 5 },
+        ),
       ),
     );
     expect(places).toEqual([
@@ -252,7 +255,12 @@ describe("polygon", () => {
   /** The box a triangle stays regular in, and the apex fills its top edge. */
   it("points a triangle up, with an edge along the bottom", () => {
     const doodads = generator.generate(
-      array({ type: "polygon", corners: 3, box: box(1732, 1500), resolution: 3 }),
+      array({
+        type: "polygon",
+        corners: 3,
+        box: box(1732, 1500),
+        resolution: 3,
+      }),
     );
     const corners = doodads.map(local);
     expect(corners.filter((corner) => corner.y > 0)).toHaveLength(1);
@@ -261,7 +269,9 @@ describe("polygon", () => {
 
   it("divides every edge evenly at a multiple of its corner count", () => {
     const square = { type: "polygon", corners: 4, box: box(24000, 24000) };
-    const places = positions(generator.generate(array({ ...square, resolution: 12 })));
+    const places = positions(
+      generator.generate(array({ ...square, resolution: 12 })),
+    );
 
     for (const corner of cornersOf(square)) {
       expect(places).toContainEqual(corner);
@@ -328,7 +338,9 @@ describe("polygon", () => {
       box: box(1000, 1000),
       distribution: generator.ON_EDGES,
     };
-    const places = positions(generator.generate(array({ ...square, resolution: 4 })));
+    const places = positions(
+      generator.generate(array({ ...square, resolution: 4 })),
+    );
 
     // In doodad units, which is where a midpoint of zero is a plain zero: the
     // local frame negates one axis and would report it as -0.
@@ -374,18 +386,20 @@ describe("polygon", () => {
       corners: 6,
       box: box(1000, 1000),
     };
-    expect(generator.generate(array({ ...hexagon, resolution: 4 }))).toHaveLength(4);
-    expect(generator.generate(array({ ...hexagon, resolution: 8 }))).toHaveLength(8);
+    expect(
+      generator.generate(array({ ...hexagon, resolution: 4 })),
+    ).toHaveLength(4);
+    expect(
+      generator.generate(array({ ...hexagon, resolution: 8 })),
+    ).toHaveLength(8);
   });
 
   /** The corners as a doodad's rounded position would report them. */
   function cornersOf(polygon) {
-    return generator
-      .outline(array(polygon))
-      .points.map((point) => ({
-        x: Math.round(point.x),
-        y: Math.round(point.y),
-      }));
+    return generator.outline(array(polygon)).points.map((point) => ({
+      x: Math.round(point.x),
+      y: Math.round(point.y),
+    }));
   }
 });
 
@@ -419,7 +433,10 @@ describe("ellipse", () => {
     });
     return angles
       .slice(1)
-      .map((angle, index) => arcLength(radii, angle) - arcLength(radii, angles[index]));
+      .map(
+        (angle, index) =>
+          arcLength(radii, angle) - arcLength(radii, angles[index]),
+      );
   }
 
   it("spaces a circle's doodads evenly", () => {
@@ -454,7 +471,11 @@ describe("grid", () => {
 
   it("follows the box's rotation and not the world's axes", () => {
     const doodads = generator.generate(
-      array({ type: "grid", box: box(1000, 500, 90), resolution: { x: 2, y: 1 } }),
+      array({
+        type: "grid",
+        box: box(1000, 500, 90),
+        resolution: { x: 2, y: 1 },
+      }),
     );
     expect(positions(doodads)).toEqual([
       { x: -250, y: 0 },
@@ -498,7 +519,12 @@ describe("rotation", () => {
   it("leaves a grid's rotation to the box, aligned or not", () => {
     const aligned = { base: 20, increment: 0, align: true };
     const doodads = generator.generate(
-      array({ type: "grid", box: box(100, 100, 45), resolution: { x: 2, y: 1 }, rotation: aligned }),
+      array({
+        type: "grid",
+        box: box(100, 100, 45),
+        resolution: { x: 2, y: 1 },
+        rotation: aligned,
+      }),
     );
     expect(degrees(doodads).map(Math.round)).toEqual([20, 20]);
   });
@@ -513,7 +539,6 @@ describe("randomness", () => {
     random: {
       seed: 2463534242,
       jitter: { x: 30, y: 30, rotation: 20 },
-      variation: [],
     },
   };
 
@@ -564,7 +589,7 @@ describe("randomness", () => {
 
     it("leaves the variations of doodads 0 to 39 alone", () => {
       const varied = {
-        random: { ...jittering.random, variation: [0, 1, 2, 3, 4, 5] },
+        source: [{ ...STASH, variation: [0, 1, 2, 3, 4, 5] }],
       };
       expect(fieldsAt(41, varied).map((fields) => fields.fv)).toEqual(
         fieldsAt(40, varied).map((fields) => fields.fv),
@@ -576,7 +601,10 @@ describe("randomness", () => {
     const magnitude = { x: 30, y: 12, rotation: 20 };
     const parameters = { ...jittering, resolution: 50 };
     const jittered = generator.generate(
-      array({ ...parameters, random: { ...jittering.random, jitter: magnitude } }),
+      array({
+        ...parameters,
+        random: { ...jittering.random, jitter: magnitude },
+      }),
     );
     const still = generator.generate(
       array({
@@ -601,14 +629,15 @@ describe("randomness", () => {
 describe("variation", () => {
   const mirroredSource = { hash: 4, name: "Maraketh Chest", fv: 128 + 3 };
 
-  function generated(source, indices) {
+  function generated(source, indices, pick) {
     return generator.generate(
       array({
         type: "line",
-        source: [source],
+        source: [{ ...source, variation: indices }],
+        pick,
         ends: { start: { x: 0, y: 0 }, end: { x: 1000, y: 0 } },
         resolution: 30,
-        random: { seed: 4242, jitter: { x: 0, y: 0, rotation: 0 }, variation: indices },
+        random: { seed: 4242, jitter: { x: 0, y: 0, rotation: 0 } },
       }),
     );
   }
@@ -634,6 +663,107 @@ describe("variation", () => {
     for (const doodad of generated(mirroredSource, [])) {
       expect(doodad.fv).toBe(mirroredSource.fv);
     }
+  });
+
+  /**
+   * Wiki issue 0051. The list is the doodad's, so two doodads with different art
+   * are drawn as their own variations and never as each other's -- which is the
+   * file the game rejected.
+   */
+  it("draws each source doodad as its own variations", () => {
+    const doodads = generator.generate(
+      array({
+        type: "line",
+        source: [
+          { hash: 1, name: "Torch", fv: 0, variation: [0, 1, 2, 3, 4] },
+          { hash: 2, name: "Brazier", fv: 0, variation: [1] },
+        ],
+        ends: { start: { x: 0, y: 0 }, end: { x: 1000, y: 0 } },
+        resolution: 30,
+      }),
+    );
+
+    for (const doodad of doodads) {
+      const allowed = doodad.hash === 1 ? [0, 1, 2, 3, 4] : [1];
+      expect(allowed).toContain(variation.of(doodad.fv));
+    }
+  });
+
+  it("takes them in turn, per doodad, when told to", () => {
+    const chosen = generated(STASH, [0, 1, 2], {
+      variation: generator.CYCLE,
+    }).map((doodad) => variation.of(doodad.fv));
+
+    expect(chosen.slice(0, 7)).toEqual([0, 1, 2, 0, 1, 2, 0]);
+  });
+
+  /**
+   * A cycled variation counts that doodad's own placements, so alternating
+   * doodads each walk their list from the start rather than sharing one count.
+   */
+  it("counts each doodad's own turns when the source alternates", () => {
+    const doodads = generator.generate(
+      array({
+        type: "line",
+        source: [
+          { hash: 1, name: "Torch", fv: 0, variation: [0, 1] },
+          { hash: 2, name: "Brazier", fv: 0, variation: [3, 4, 5] },
+        ],
+        pick: { source: generator.CYCLE, variation: generator.CYCLE },
+        ends: { start: { x: 0, y: 0 }, end: { x: 1000, y: 0 } },
+        resolution: 6,
+      }),
+    );
+
+    expect(doodads.map((doodad) => variation.of(doodad.fv))).toEqual([
+      0, 3, 1, 4, 0, 5,
+    ]);
+  });
+});
+
+/**
+ * Which doodad of the source a place is made of. In turn is what an array has
+ * always done, and is the default; at random follows the seed, the same as the
+ * jitter.
+ */
+describe("picking the source", () => {
+  const two = [
+    { hash: 1, name: "Torch", fv: 0 },
+    { hash: 2, name: "Brazier", fv: 0 },
+  ];
+
+  function hashes(pick, seed = 4242) {
+    return generator
+      .generate(
+        array({
+          type: "line",
+          source: two,
+          pick,
+          ends: { start: { x: 0, y: 0 }, end: { x: 1000, y: 0 } },
+          resolution: 20,
+          random: { seed, jitter: { x: 0, y: 0, rotation: 0 } },
+        }),
+      )
+      .map((doodad) => doodad.hash);
+  }
+
+  it("alternates them in turn, which is what it does by default", () => {
+    expect(hashes(undefined).slice(0, 4)).toEqual([1, 2, 1, 2]);
+    expect(hashes({ source: generator.CYCLE })).toEqual(hashes(undefined));
+  });
+
+  it("shuffles them for the seed, and repeats itself for the same one", () => {
+    const shuffled = hashes({ source: generator.RANDOM });
+
+    expect(shuffled).not.toEqual(hashes(undefined));
+    expect(shuffled).toEqual(hashes({ source: generator.RANDOM }));
+    expect(new Set(shuffled)).toEqual(new Set([1, 2]));
+  });
+
+  it("shuffles them differently for another seed", () => {
+    expect(hashes({ source: generator.RANDOM }, 99)).not.toEqual(
+      hashes({ source: generator.RANDOM }),
+    );
   });
 });
 
@@ -696,7 +826,9 @@ describe("outline", () => {
     });
 
     expect(
-      generator.outline(array({ type: "polygon", corners: 6, box: box(100, 100) })),
+      generator.outline(
+        array({ type: "polygon", corners: 6, box: box(100, 100) }),
+      ),
     ).toMatchObject({ closed: true });
     expect(
       generator.outline(array({ type: "ellipse", box: box(100, 100) })).points,
@@ -771,11 +903,7 @@ describe("golden", () => {
       box: { center: { x: 400, y: 300 }, width: 120, height: 80, rotation: 30 },
       resolution: { x: 3, y: 2 },
       rotation: { base: 10, increment: 15, align: false },
-      random: {
-        seed: 2463534242,
-        jitter: { x: 2, y: 2, rotation: 5 },
-        variation: [],
-      },
+      random: { seed: 2463534242, jitter: { x: 2, y: 2, rotation: 5 } },
     }),
     line: array({
       type: "line",
@@ -783,31 +911,32 @@ describe("golden", () => {
       ends: { start: { x: -100, y: -50 }, end: { x: 300, y: 150 } },
       resolution: 5,
       rotation: { base: 0, increment: 30, align: true },
-      random: { seed: 7, jitter: { x: 0, y: 4, rotation: 0 }, variation: [] },
+      random: { seed: 7, jitter: { x: 0, y: 4, rotation: 0 } },
     }),
     ellipse: array({
       type: "ellipse",
       source: [
-        { hash: 1, name: "One", fv: 0 },
-        { hash: 2, name: "Two", fv: 128 },
+        { hash: 1, name: "One", fv: 0, variation: [1, 2, 3] },
+        { hash: 2, name: "Two", fv: 128, variation: [1, 2, 3] },
       ],
-      box: { center: { x: 1000, y: 500 }, width: 600, height: 200, rotation: 45 },
+      box: {
+        center: { x: 1000, y: 500 },
+        width: 600,
+        height: 200,
+        rotation: 45,
+      },
       resolution: 7,
       rotation: { base: 0, increment: 0, align: true },
-      random: {
-        seed: 12345,
-        jitter: { x: 0, y: 0, rotation: 0 },
-        variation: [1, 2, 3],
-      },
+      random: { seed: 12345, jitter: { x: 0, y: 0, rotation: 0 } },
     }),
     polygon: array({
       type: "polygon",
       corners: 5,
-      source: [{ hash: 7, name: "Torch", fv: 3 }],
+      source: [{ hash: 7, name: "Torch", fv: 3, variation: [0, 4] }],
       box: { center: { x: 0, y: 0 }, width: 400, height: 400, rotation: 0 },
       resolution: 9,
       rotation: { base: 90, increment: -5, align: true },
-      random: { seed: 99, jitter: { x: 3, y: 1, rotation: 2 }, variation: [0, 4] },
+      random: { seed: 99, jitter: { x: 3, y: 1, rotation: 2 } },
     }),
     bezier: array({
       type: "bezier",
@@ -816,7 +945,7 @@ describe("golden", () => {
       controls: { first: { x: 0, y: 200 }, second: { x: 200, y: -100 } },
       resolution: 6,
       rotation: { base: 0, increment: 0, align: true },
-      random: { seed: 4242, jitter: { x: 0, y: 3, rotation: 0 }, variation: [] },
+      random: { seed: 4242, jitter: { x: 0, y: 3, rotation: 0 } },
     }),
     // The same shape by its other distribution, at two doodads to an edge: the
     // pair are a quarter in from each end, and no corner carries one.
@@ -824,11 +953,11 @@ describe("golden", () => {
       type: "polygon",
       corners: 5,
       distribution: generator.ON_EDGES,
-      source: [{ hash: 7, name: "Torch", fv: 3 }],
+      source: [{ hash: 7, name: "Torch", fv: 3, variation: [0, 4] }],
       box: { center: { x: 0, y: 0 }, width: 400, height: 400, rotation: 0 },
       resolution: 10,
       rotation: { base: 90, increment: -5, align: true },
-      random: { seed: 99, jitter: { x: 3, y: 1, rotation: 2 }, variation: [0, 4] },
+      random: { seed: 99, jitter: { x: 3, y: 1, rotation: 2 } },
     }),
   };
 

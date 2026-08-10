@@ -10,7 +10,8 @@
  *
  *     layer       the layer id the doodads are written into
  *     type        "grid" | "ellipse" | "polygon" | "line" | "bezier"
- *     source      [{hash, name, fv}], cycled by index
+ *     source      [{hash, name, fv, variation: [index, ...]}]
+ *     pick        {source: "cycle" | "random", variation: same}
  *     box           {center, width, height, rotation} the shapes that fill a box
  *     ends          {start, end}                      "line", "bezier"
  *     controls      {first, second}                   "bezier"
@@ -18,7 +19,20 @@
  *     distribution  "corners" | "edges"               "polygon"
  *     resolution  {x, y} for a grid, a number otherwise
  *     rotation    {base, increment, align}
- *     random      {seed, jitter: {x, y, rotation}, variation: [index, ...]}
+ *     random      {seed, jitter: {x, y, rotation}}
+ *
+ * ## Which doodad, and which of its variations
+ *
+ * Two lists are walked per placement and `pick` says how each is walked.
+ * `CYCLE` takes them in turn -- the source by placement index, a variation by
+ * how many times that doodad has been placed already, so one doodad with two
+ * variations alternates them. `RANDOM` is the seeded hash below, the same one
+ * the jitter uses, so an array is reproducible and rolling the seed reshuffles
+ * it.
+ *
+ * A source doodad with no variations chosen keeps its own `fv`, mirror and all.
+ * An empty list is "leave it alone" and not "none", which is what an array does
+ * until a player says otherwise.
  *
  * ## Frames
  *
@@ -62,6 +76,25 @@ const EPSILON = 1e-9;
 export const ON_CORNERS = "corners";
 export const ON_EDGES = "edges";
 
+/**
+ * How a list is walked. The defaults are what an array did before either was a
+ * choice: the source in turn, the variations at random.
+ */
+export const CYCLE = "cycle";
+export const RANDOM = "random";
+
+/**
+ * How an array walks its two lists, said in full: the defaults are stated here
+ * and nowhere else, so the sidebar's switches and the arithmetic cannot disagree
+ * about what a generator with no `pick` does.
+ */
+export function pickOf(parameters) {
+  return {
+    source: parameters.pick?.source === RANDOM ? RANDOM : CYCLE,
+    variation: parameters.pick?.variation === CYCLE ? CYCLE : RANDOM,
+  };
+}
+
 const DEGREE = Math.PI / 180;
 
 /**
@@ -76,9 +109,21 @@ export function generate(generator) {
   if (!generator.source?.length) {
     throw new Error(`Array '${generator.layer}' has no doodad to place`);
   }
-  return placements(generator).map((placement, index) =>
-    doodadAt(generator, index, placement),
-  );
+
+  // The defaults settled once, so that nothing below has to ask what a missing
+  // `pick` means.
+  const array = { ...generator, pick: pickOf(generator) };
+
+  // How many times each source doodad has been placed, which is what a cycled
+  // variation counts on. It is kept here rather than worked out per placement
+  // because a randomly picked source has no formula for it.
+  const uses = new Map();
+  return placements(array).map((placement, index) => {
+    const at = sourceIndexAt(array, index);
+    const use = uses.get(at) ?? 0;
+    uses.set(at, use + 1);
+    return doodadAt(array, index, placement, at, use);
+  });
 }
 
 /**
@@ -422,8 +467,8 @@ function pointAt(segments, distance) {
  * where a `Doodad` is created; a parameter that is rounded on every apply
  * drifts.
  */
-function doodadAt(generator, index, placement) {
-  const source = generator.source[index % generator.source.length];
+function doodadAt(generator, index, placement, at, use) {
+  const source = generator.source[at];
   const point = jittered(placement, index, generator.random);
   return new Doodad(
     source.name,
@@ -432,10 +477,17 @@ function doodadAt(generator, index, placement) {
       x: round(point.x),
       y: round(point.y),
       r: units.fromDegrees(facing(generator, index, placement)),
-      fv: variationAt(source.fv, generator, index),
+      fv: variationAt(source, generator, index, use),
     },
     generator.layer,
   );
+}
+
+/** Which source doodad a placement is made of: the next one, or any of them. */
+function sourceIndexAt(generator, index) {
+  const count = generator.source.length;
+  if (generator.pick.source === CYCLE) return index % count;
+  return hash(generator.random?.seed, index, CHANNEL.source) % count;
 }
 
 /** `tangent + base + index * increment`, then jitter. */
@@ -469,15 +521,23 @@ function jittered(placement, index, random) {
   );
 }
 
-function variationAt(fv, generator, index) {
-  const indices = generator.random?.variation;
-  if (!indices?.length) return fv;
-  return variation.withIndex(
-    fv,
-    indices[
-      hash(generator.random.seed, index, CHANNEL.variation) % indices.length
-    ],
-  );
+/**
+ * Which variation of the doodad this placement is, keeping its mirror: the next
+ * one it has not used, or any of the ones it was given.
+ *
+ * `use` counts the placements of this source doodad before this one, so a cycle
+ * is the doodad's own sequence and not the array's -- two doodads alternating
+ * each still take their variations 1, 2, 3.
+ */
+function variationAt(source, generator, index, use) {
+  const indices = source.variation;
+  if (!indices?.length) return source.fv;
+
+  const at =
+    generator.pick.variation === CYCLE
+      ? use
+      : hash(generator.random?.seed, index, CHANNEL.variation);
+  return variation.withIndex(source.fv, indices[at % indices.length]);
 }
 
 /**
@@ -492,7 +552,7 @@ function noise(random, index, channel) {
   return (value * 2 - 1) * magnitude;
 }
 
-const CHANNEL = { x: 1, y: 2, rotation: 3, variation: 4 };
+const CHANNEL = { x: 1, y: 2, rotation: 3, variation: 4, source: 5 };
 
 /**
  * A hash of `(seed, index, channel)`, not a stream.
