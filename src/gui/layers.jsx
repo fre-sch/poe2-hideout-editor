@@ -26,9 +26,13 @@
  * the proxy for: deleting doodads publishes it, and reading it here is what
  * brings the panel back after a delete.
  *
- * The panel shows before a file is loaded, holding an empty list. It is the
- * section the sidebar's height goes to, and a section that appears halfway
- * down on load moves everything under it.
+ * The panel shows before a file is loaded, holding an empty list. It is what the
+ * sidebar's leftover height goes to, and a panel that appears halfway down on
+ * load moves everything under it.
+ *
+ * It is a tab rather than a section of its own, sharing the place with the
+ * selection -- see `tabs.jsx` for what the two have in common and why the list
+ * had to stop moving.
  */
 
 import * as state from "../state.js";
@@ -41,8 +45,7 @@ export default function Layers() {
   const layers = state.layers.value;
   const selected = state.selection.value.length;
   return (
-    <details class="sidebar-item sidebar-item-grow" open>
-      <summary>Layers</summary>
+    <>
       <p class="text-secondary mb-1">
         Exported in this order, first at the top. A hidden layer is left out of
         the export; a locked one exports like any other.
@@ -66,7 +69,7 @@ export default function Layers() {
         </button>
         <AddArrayButton />
       </div>
-    </details>
+    </>
   );
 }
 

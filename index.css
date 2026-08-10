@@ -88,44 +88,46 @@ details[open] .details-summary-extra {
   margin-bottom: 0.2rem;
 }
 
-/* Takes the leftover height. `min-height: 0` because a flex item refuses to
-   shrink past its content without it, and the list inside must be the part
-   that scrolls. Closed, the <details> shows only its summary and has no
-   leftover height to take. */
-.sidebar-item-grow[open] {
+/* The layers and the selection, tabbed: the section that takes the leftover
+   height, and the panel inside it takes that height in turn. `min-height: 0` on
+   the panel because a flex item refuses to shrink past its content without it,
+   and the list inside must be the part that scrolls. */
+.sidebar-tabs {
   display: flex;
   flex-direction: column;
   flex: 1 1 auto;
   min-height: 8rem;
 }
-
-/* A <details> element's content is wrapped in a ::details-content box, so that
-   box is the flex item and everything the panel holds is inside it. The height
-   has to be passed down through it, or the list below is laid out in a block of
-   its own content's height and has nothing to scroll within.
-
-   Browsers that do not wrap -- the pseudo-element is recent -- put the list
-   straight into the flex column above and ignore this rule, which is why the
-   list carries its own `flex` and `min-height` besides. */
-.sidebar-item-grow[open]::details-content {
+.sidebar-tabs > .tab-panel {
   display: flex;
   flex-direction: column;
   flex: 1 1 auto;
   min-height: 0;
 }
-.layer-list {
+/* The sidebar's type is small, and a tab bar at Bootstrap's default size would
+   be the loudest thing on it. */
+.sidebar-tabs .nav-link {
+  padding: 0.1rem 0.7rem;
+  font-weight: bold;
+  font-size: 0.9rem;
+}
+/* Bootstrap takes the pointer events off a disabled button, and the tooltip
+   with them -- and the tooltip is where the disabled tab says why it is off.
+   Same as the layer actions bar, below. */
+.sidebar-tabs .nav-link:disabled {
+  pointer-events: auto;
+}
+
+/* Both lists take what their panel leaves them, and scroll. */
+.layer-list,
+.selection-list {
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
 }
 
 /* The selection rows: a name that takes what is left, and two buttons that keep
-   their size. Capped and scrollable rather than sized to the twenty rows it may
-   hold, so a big selection does not push the layer list off the sidebar. */
-.selection-list {
-  max-height: 14rem;
-  overflow-y: auto;
-}
+   their size. */
 .selection-row {
   display: flex;
   align-items: center;

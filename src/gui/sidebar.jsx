@@ -7,8 +7,7 @@
 
 import File from "./file.jsx";
 import Hideout from "./hideout.jsx";
-import Layers from "./layers.jsx";
-import Selection from "./selection.jsx";
+import Tabs from "./tabs.jsx";
 import View from "./view.jsx";
 import { HelpButton } from "./help.jsx";
 
@@ -19,13 +18,9 @@ export default function Sidebar() {
       <hr />
       <File />
       <Hideout />
-      {/* Above the layer list, which is the section that takes whatever height
-          is left: a selection is read and clicked while it is being made, and
-          the bottom of a long sidebar is not where a player is looking. It
-          renders nothing at all with nothing selected, so it costs the sections
-          below it no room until it has something to say. */}
-      <Selection />
-      <Layers />
+      {/* The layers and the selection, tabbed: see `tabs.jsx`. One section, and
+          the section that takes whatever height the fixed ones leave. */}
+      <Tabs />
       <View />
       <div class="text-center">
         <HelpButton />
