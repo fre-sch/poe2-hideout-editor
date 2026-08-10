@@ -22,18 +22,15 @@ import * as state from "../state.js";
 
 export function HelpButton() {
   return (
-    <div class="sidebar-item">
-      <button
-        type="button"
-        class="btn btn-secondary btn-sm"
-        onClick={() => {
-          state.showHelp.value = true;
-        }}
-      >
-        <i class="bi bi-question-circle"></i> Show help{" "}
-        <span class="shortcut">h</span>
-      </button>
-    </div>
+    <button
+      type="button"
+      class="btn btn-link btn-sm"
+      onClick={() => {
+        state.showHelp.value = true;
+      }}
+    >
+      Help
+    </button>
   );
 }
 

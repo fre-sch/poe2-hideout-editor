@@ -23,8 +23,16 @@ export default function Hideout() {
 
   const header = state.hideoutDocument.value.header;
   return (
-    <details class="sidebar-item" open>
-      <summary>Hideout</summary>
+    <details class="sidebar-item">
+      <summary>
+        Hideout
+        <span class="details-summary-extra">
+          &nbsp;
+          <span class="text-body">{header.hideout_name}</span>
+          &nbsp;
+          <DoodadCount />
+        </span>
+      </summary>
       <div class="grid-2">
         <div class="text-secondary">File:</div>
         <div style="line-break: anywhere">{state.fileName.value}</div>

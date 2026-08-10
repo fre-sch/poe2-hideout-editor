@@ -65,9 +65,10 @@ export function AddArrayButton() {
 /** What a layer row says instead of "this many doodads I am holding". */
 export function ArrayBadge() {
   return (
-    <span class="badge text-bg-info" title="This layer's doodads are generated">
-      array
-    </span>
+    <i
+      class="bi bi-grid-3x3 text-info"
+      title="This layer's doodads are generated"
+    ></i>
   );
 }
 

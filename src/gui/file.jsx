@@ -25,8 +25,14 @@ import { HideoutDocument } from "../hideout/model.js";
 export default function File() {
   const loaded = state.hideoutDocument.value !== null;
   return (
-    <details class="sidebar-item" open>
-      <summary>File</summary>
+    <details class="sidebar-item" open={!loaded}>
+      <summary>
+        File
+        <span class="details-summary-extra">
+          &nbsp;
+          <span class="text-body">{state.fileName.value}</span>
+        </span>
+      </summary>
       <div class="d-flex gap-1 mb-1">
         <label class="btn btn-primary btn-sm" role="button">
           <i class="bi bi-folder2-open"></i> Load

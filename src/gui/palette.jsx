@@ -56,28 +56,32 @@ const tagFilter = signal(new Map());
  * takes a doodad rather than being given one, and a list that says "add" while
  * it sets is a list a player double-clicks once and then wonders about.
  */
-const ADD = { title: "Add doodad", icon: "bi-plus-square" };
+const ADD = { title: "Add doodad", icon: "bi-plus-lg" };
 const SET = { title: "Set array doodad", icon: "bi-pencil-square" };
 
 function purpose() {
   return activeArray() === null ? ADD : SET;
 }
 
+/**
+ * It sits in the Layers section, beside "Add layer" and "Add array". Where a
+ * doodad lands is the active layer's business, and the layer being worked on is
+ * one line above the button -- with an array active this button sets that
+ * array's doodad, which is the same reading.
+ */
 export function AddDoodadButton() {
   const { title, icon } = purpose();
   return (
-    <div class="sidebar-item">
-      <button
-        type="button"
-        class="btn btn-primary btn-sm"
-        disabled={state.hideoutDocument.value === null}
-        onClick={() => {
-          state.showPalette.value = !state.showPalette.value;
-        }}
-      >
-        <i class={`bi ${icon}`}></i> {title}
-      </button>
-    </div>
+    <button
+      type="button"
+      class="btn btn-primary btn-sm"
+      disabled={state.hideoutDocument.value === null}
+      onClick={() => {
+        state.showPalette.value = !state.showPalette.value;
+      }}
+    >
+      <i class={`bi ${icon}`}></i> {title}
+    </button>
   );
 }
 

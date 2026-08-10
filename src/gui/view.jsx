@@ -10,7 +10,7 @@ import * as state from "../state.js";
 
 export default function View() {
   return (
-    <details class="sidebar-item" open>
+    <details class="sidebar-item d-flex gap-2" open>
       <summary>View</summary>
       <Flag id="show-labels" flag={state.showLabels} label="Show labels" />
       <Flag id="show-grid" flag={state.showGrid} label="Show grid" />

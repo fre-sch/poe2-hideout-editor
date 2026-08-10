@@ -10,7 +10,6 @@ import Hideout from "./hideout.jsx";
 import Layers from "./layers.jsx";
 import Selection from "./selection.jsx";
 import View from "./view.jsx";
-import { AddDoodadButton } from "./palette.jsx";
 import { HelpButton } from "./help.jsx";
 
 export default function Sidebar() {
@@ -20,7 +19,6 @@ export default function Sidebar() {
       <hr />
       <File />
       <Hideout />
-      <AddDoodadButton />
       {/* Above the layer list, which is the section that takes whatever height
           is left: a selection is read and clicked while it is being made, and
           the bottom of a long sidebar is not where a player is looking. It
@@ -29,8 +27,9 @@ export default function Sidebar() {
       <Selection />
       <Layers />
       <View />
-      <HelpButton />
       <div class="text-center">
+        <HelpButton />
+        <br />
         <a href="https://github.com/fre-sch/poe2-hideout-editor/issues">
           Report problem or add suggestion
         </a>

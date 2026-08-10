@@ -33,6 +33,27 @@ main {
   justify-content: space-between;
   align-items: stretch;
 }
+details.d-flex {
+  display: initial !important;
+}
+details.d-flex[open]::details-content {
+  display: flex;
+}
+details.gap-1, details.gap-2, details.gap-3 {
+  gap: initial !important;
+}
+details.gap-1[open]::details-content {
+  gap: 0.25rem;
+}
+details.gap-2[open]::details-content {
+  gap: 0.5rem;
+}
+details.gap-3[open]::details-content {
+  gap: 1rem;
+}
+details[open] .details-summary-extra {
+  display: none;
+}
 /* A column so that the layer list can take the height the other sections
    leave. It still scrolls, for the window too short to hold even those. */
 #sidebar {
@@ -56,11 +77,11 @@ main {
   margin: 0.5rem 0;
 }
 .sidebar-item {
-  padding-bottom: 0.7rem;
-  margin-bottom: 0.7rem;
+  padding-bottom: 0.4rem;
+  margin-bottom: 0.4rem;
   border-bottom: 1px solid #222;
 }
-.sidebar-item > summary{
+.sidebar-item > summary {
   font-weight: bold;
   font-size: 0.9rem;
   color: var(--bs-secondary);

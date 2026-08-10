@@ -26,6 +26,7 @@
 
 import * as state from "../state.js";
 import { AddArrayButton, ArrayBadge, ArrayButtons } from "./arrays.jsx";
+import { AddDoodadButton } from "./palette.jsx";
 
 export default function Layers() {
   const loaded = state.hideoutDocument.value !== null;
@@ -36,8 +37,7 @@ export default function Layers() {
       <summary>Layers</summary>
       <p class="text-secondary mb-1">
         Exported in this order, first at the top. A hidden layer is left out of
-        the export; a locked one exports like any other. The project file keeps
-        them all.
+        the export; a locked one exports like any other.
       </p>
       <ul class="list-unstyled mb-2 layer-list">
         {layers.map((layer, index) => (
@@ -55,6 +55,7 @@ export default function Layers() {
           {selected > 0 && ` with ${selected} selected`}
         </button>
         <AddArrayButton />
+        <AddDoodadButton />
       </div>
     </details>
   );
