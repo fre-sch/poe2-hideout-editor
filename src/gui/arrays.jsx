@@ -1,6 +1,6 @@
 /**
- * Arrays, as the sidebar sees them: the button that makes one, the controls a
- * layer row grows when it carries one, and the column that configures it.
+ * Arrays, as the sidebar sees them: the button that makes one, the two slots
+ * they add to the layer actions bar, and the column that configures it.
  *
  * **A second sidebar on the right, not a floating panel.** The palette's
  * reasoning, which it arrived at the hard way -- see the head of `palette.jsx`.
@@ -26,6 +26,7 @@ import * as state from "../state.js";
 import * as arrays from "../hideout/arrays.js";
 import * as generator from "../hideout/generator.js";
 import * as model from "../hideout/model.js";
+import { ActionButton, SelectionBadge } from "./buttons.jsx";
 import { loadTable, variationsOf } from "./table.js";
 
 const SHAPES = [
@@ -53,11 +54,11 @@ export function AddArrayButton() {
       type="button"
       class="btn btn-secondary btn-sm"
       disabled={selected.length === 0}
-      title="A new layer whose doodads are generated from these ones, which it takes."
+      title={`A new layer whose doodads are generated from the ${selected.length} selected ones, which it takes.`}
       onClick={addArray}
     >
       <i class="bi bi-grid-3x3"></i> Add array
-      {selected.length > 0 && ` from ${selected.length} selected`}
+      <SelectionBadge count={selected.length} />
     </button>
   );
 }
@@ -73,40 +74,50 @@ export function ArrayBadge() {
 }
 
 /**
- * The two buttons an array layer has where an ordinary one has its lock. The
- * lock is not one of them: an array's doodads cannot be selected in the first
- * place, so a toggle saying they cannot be selected says nothing.
+ * The array half of the layer actions bar: the two slots that only an array
+ * answers. The lock is not one of them and never was -- an array's doodads
+ * cannot be selected in the first place, so a toggle saying they cannot be
+ * selected says nothing.
+ *
+ * `layer` is null when the layer being worked on is not an array, and then both
+ * slots are drawn disabled rather than dropped. They hold their places in the
+ * bar; see `LayerActions` in `layers.jsx` for why the places matter.
  *
  * The settings are the granular half of working on an array. The other half is
  * the layer's own radio, which raises the box and its handles -- most of what a
  * player wants is to drag that box, and a dozen numbers is what they ask for
  * afterwards.
  */
-export function ArrayButtons({ layer }) {
+export function ArrayButtons({ layer = null }) {
   const open =
-    state.showArraySettings.value && state.editedArray.value === layer.id;
+    layer !== null &&
+    state.showArraySettings.value &&
+    state.editedArray.value === layer.id;
   return (
     <>
-      <button
-        type="button"
-        class={`btn btn-sm btn-link p-0 ${open ? "" : "text-secondary"}`}
-        title="Array settings"
-        aria-pressed={open}
+      <ActionButton
+        icon="bi-sliders"
+        extra={open ? "" : "text-secondary"}
+        title={layer === null ? NOT_AN_ARRAY : "Array settings"}
+        pressed={open}
+        disabled={layer === null}
         onClick={() => (open ? closeSettings() : openSettings(layer.id))}
-      >
-        <i class="bi bi-sliders"></i>
-      </button>
-      <button
-        type="button"
-        class="btn btn-sm btn-link p-0"
-        title="Detach: keep the doodads, drop the array"
+      />
+      <ActionButton
+        icon="bi-scissors"
+        title={
+          layer === null
+            ? NOT_AN_ARRAY
+            : "Detach: keep the doodads, drop the array"
+        }
+        disabled={layer === null}
         onClick={() => detach(layer)}
-      >
-        <i class="bi bi-scissors"></i>
-      </button>
+      />
     </>
   );
 }
+
+const NOT_AN_ARRAY = "The layer being worked on is not an array";
 
 export function ArraySidebar() {
   const layer = state.showArraySettings.value ? state.editedArray.value : null;

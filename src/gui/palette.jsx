@@ -64,17 +64,17 @@ function purpose() {
 }
 
 /**
- * It sits in the Layers section, beside "Add layer" and "Add array". Where a
- * doodad lands is the active layer's business, and the layer being worked on is
- * one line above the button -- with an array active this button sets that
- * array's doodad, which is the same reading.
+ * The first slot of the layer actions bar. Where a doodad lands is the active
+ * layer's business, and the layer being worked on is the list right above --
+ * with an array active this button sets that array's doodad, which is the same
+ * reading, and is why the bar is built of slots whose meaning follows the layer.
  */
 export function AddDoodadButton() {
   const { title, icon } = purpose();
   return (
     <button
       type="button"
-      class="btn btn-primary btn-sm"
+      class="btn btn-primary btn-sm text-nowrap"
       disabled={state.hideoutDocument.value === null}
       onClick={() => {
         state.showPalette.value = !state.showPalette.value;
