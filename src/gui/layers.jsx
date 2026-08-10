@@ -52,7 +52,13 @@ export default function Layers() {
       </p>
       <ul class="list-unstyled mb-2 layer-list">
         {layers.map((layer) => (
-          <LayerRow layer={layer} />
+          <LayerRow
+            layer={layer}
+            name={layer.name}
+            visible={layer.visible}
+            locked={layer.locked}
+            array={isArray(layer)}
+          />
         ))}
       </ul>
       <LayerActions />
@@ -138,10 +144,15 @@ function LayerActions() {
   );
 }
 
+/** Whether a layer carries a generator, which is what makes it an array. */
+function isArray(layer) {
+  return Boolean(document_().findGenerator(layer.id));
+}
+
 /** The layer if it carries a generator, and null for the bar to disable by. */
 function arrayOf(layer) {
   if (layer === null) return null;
-  return document_().findGenerator(layer.id) ? layer : null;
+  return isArray(layer) ? layer : null;
 }
 
 /**
@@ -156,9 +167,21 @@ function arrayOf(layer) {
  * It can still be the active layer, and the palette refuses to place there and
  * says why. Making it unpickable would have made the one gesture mean two
  * things.
+ *
+ * **Everything the row draws is passed as well as the layer it came off**, and
+ * it has to be. A component that reads a signal gets a
+ * `shouldComponentUpdate` from `@preact/signals` which skips the render when no
+ * prop changed by reference and no signal it read has changed -- and this one
+ * reads three. Toggling a flag changes neither of those things: it is written
+ * into the layer object the row already holds, so the eye stayed open on a
+ * hidden layer until something else redrew the row. Wiki issues 0050 and, for
+ * the same lesson on the selection row, 0042. Whether the layer is an array is
+ * passed for the same reason: detaching one leaves the layer object alone.
+ *
+ * So a row is a function of the values it draws. The layer is what the controls
+ * edit, the rest is what they show.
  */
-function LayerRow({ layer }) {
-  const array = Boolean(document_().findGenerator(layer.id));
+function LayerRow({ layer, name, visible, locked, array }) {
   return (
     <li class="layer-row">
       <input
@@ -179,7 +202,7 @@ function LayerRow({ layer }) {
       <input
         type="text"
         class="form-control form-control-sm"
-        value={layer.name}
+        value={name}
         onInput={(event) => rename(layer, event.currentTarget.value)}
       />
       {array && <ArrayBadge />}
@@ -187,6 +210,7 @@ function LayerRow({ layer }) {
       <Toggle
         layer={layer}
         flag="visible"
+        enabled={visible}
         on="bi-eye"
         off="bi-eye-slash"
         title="Visible"
@@ -195,6 +219,7 @@ function LayerRow({ layer }) {
         <Toggle
           layer={layer}
           flag="locked"
+          enabled={locked}
           on="bi-lock"
           off="bi-unlock"
           title="Locked"
@@ -204,8 +229,14 @@ function LayerRow({ layer }) {
   );
 }
 
-/** The two flags, which differ only in which icon says which way round. */
-function Toggle({ layer, flag, on, off, title }) {
+/**
+ * The two flags, which differ only in which icon says which way round.
+ *
+ * `flag` is what is written and `enabled` is what is drawn, which reads like one
+ * thing said twice and is not: the value has to arrive as a prop for the row
+ * above to redraw at all. See `LayerRow`.
+ */
+function Toggle({ layer, flag, enabled, on, off, title }) {
   return (
     <button
       type="button"
@@ -216,7 +247,7 @@ function Toggle({ layer, flag, on, off, title }) {
         state.layersChanged();
       }}
     >
-      <i class={`bi ${layer[flag] ? on : off}`}></i>
+      <i class={`bi ${enabled ? on : off}`}></i>
     </button>
   );
 }
