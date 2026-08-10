@@ -57,7 +57,7 @@ const tagFilter = signal(new Map());
  * it sets is a list a player double-clicks once and then wonders about.
  */
 const ADD = { title: "Add doodad", icon: "bi-plus-lg" };
-const SET = { title: "Set array doodad", icon: "bi-pencil-square" };
+const SET = { title: "Set doodad(s)", icon: "bi-pencil-square" };
 
 function purpose() {
   return activeArray() === null ? ADD : SET;
