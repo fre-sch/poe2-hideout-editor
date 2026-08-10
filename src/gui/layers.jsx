@@ -83,6 +83,16 @@ function addLayerTitle(selected) {
  * somewhere else depending on which layer is active -- and a delete button that
  * moves is a delete button pressed by accident. Disabled, the places stay
  * learnable and the `title` says why the slot is off.
+ *
+ * **The slots are grouped by what they act on**, in two `btn-group`s: the four
+ * any layer answers, and the two only an array answers. Seven buttons at one
+ * spacing read as seven unrelated buttons; grouped, the gap falls where the
+ * meaning divides and the halves are read before any icon is. That gap is also
+ * why there is no rule between them any more -- two groups say what a rule
+ * between two runs of buttons was there to say.
+ *
+ * Add doodad stays outside both. It places a doodad in the layer rather than
+ * acting on the layer, and it is the palette's.
  */
 function LayerActions() {
   const layers = state.layers.value;
@@ -93,32 +103,33 @@ function LayerActions() {
   return (
     <div class="d-flex gap-1 flex-nowrap align-items-center mb-2 layer-actions">
       <AddDoodadButton />
-      <ActionButton
-        icon="bi-arrow-up"
-        title="Move this layer up"
-        disabled={layer === null || index === 0}
-        onClick={() => move(layer, -1)}
-      />
-      <ActionButton
-        icon="bi-arrow-down"
-        title="Move this layer down"
-        disabled={layer === null || index === layers.length - 1}
-        onClick={() => move(layer, 1)}
-      />
-      <ActionButton
-        icon="bi-copy"
-        title="Duplicate this layer"
-        disabled={layer === null}
-        onClick={() => duplicate(layer)}
-      />
-      <ActionButton
-        icon="bi-trash"
-        extra="text-danger"
-        title="Delete this layer"
-        disabled={layer === null || layers.length < 2}
-        onClick={() => remove(layer)}
-      />
-      <div class="vr mx-1"></div>
+      <div class="btn-group" role="group" aria-label="This layer">
+        <ActionButton
+          icon="bi-arrow-up"
+          title="Move this layer up"
+          disabled={layer === null || index === 0}
+          onClick={() => move(layer, -1)}
+        />
+        <ActionButton
+          icon="bi-arrow-down"
+          title="Move this layer down"
+          disabled={layer === null || index === layers.length - 1}
+          onClick={() => move(layer, 1)}
+        />
+        <ActionButton
+          icon="bi-copy"
+          title="Duplicate this layer"
+          disabled={layer === null}
+          onClick={() => duplicate(layer)}
+        />
+        <ActionButton
+          icon="bi-trash"
+          extra="text-danger"
+          title="Delete this layer"
+          disabled={layer === null || layers.length < 2}
+          onClick={() => remove(layer)}
+        />
+      </div>
       <ArrayButtons layer={arrayOf(layer)} />
     </div>
   );

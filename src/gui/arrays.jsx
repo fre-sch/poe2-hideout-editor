@@ -81,7 +81,9 @@ export function ArrayBadge() {
  *
  * `layer` is null when the layer being worked on is not an array, and then both
  * slots are drawn disabled rather than dropped. They hold their places in the
- * bar; see `LayerActions` in `layers.jsx` for why the places matter.
+ * bar; see `LayerActions` in `layers.jsx` for why the places matter, and why
+ * they are a group of their own -- they are the half of the bar that only an
+ * array answers, which is a thing the bar can show rather than explain.
  *
  * The settings are the granular half of working on an array. The other half is
  * the layer's own radio, which raises the box and its handles -- most of what a
@@ -94,7 +96,7 @@ export function ArrayButtons({ layer = null }) {
     state.showArraySettings.value &&
     state.editedArray.value === layer.id;
   return (
-    <>
+    <div class="btn-group" role="group" aria-label="This array">
       <ActionButton
         icon="bi-sliders"
         extra={open ? "" : "text-secondary"}
@@ -113,7 +115,7 @@ export function ArrayButtons({ layer = null }) {
         disabled={layer === null}
         onClick={() => detach(layer)}
       />
-    </>
+    </div>
   );
 }
 
