@@ -117,7 +117,7 @@ export class Scene {
   showLayers(layers) {
     this.layers = layers;
     this.generated = generatedLayers();
-    this.dropGoneNodes();
+    this.syncNodes();
     this.groups = groups.sync(
       this.stage.doodads,
       this.groups,
@@ -130,16 +130,24 @@ export class Scene {
   }
 
   /**
-   * The nodes of doodads that have left the document.
+   * The drawing brought into step with the document's doodads, whichever way it
+   * has moved: the ones that have left destroyed, the ones that have arrived
+   * drawn.
    *
-   * The sidebar has two ways of taking doodads out: deleting an array layer,
-   * which takes its own with it, and making an array, which takes the ones it
-   * was made from. Neither is a delete the viewport performed, so this is where
-   * the drawing hears about them -- and afterwards every node still has a
-   * doodad in a layer, which is what `groups.sync` insists on.
+   * Neither direction is a gesture the viewport performed. The sidebar takes
+   * doodads out -- deleting an array layer, which takes its own with it, and
+   * making an array, which takes the ones it was made from -- and puts them in,
+   * duplicating a layer. So this is where the drawing hears about them, and
+   * afterwards every node has a doodad in a layer, which is what `groups.sync`
+   * insists on.
    */
-  dropGoneNodes() {
-    const held = new Set(state.hideoutDocument.value?.doodads ?? []);
+  syncNodes() {
+    const held = state.hideoutDocument.value?.doodads ?? [];
+    this.dropGoneNodes(new Set(held));
+    this.drawNewNodes(held);
+  }
+
+  dropGoneNodes(held) {
     const gone = this.nodes.filter((node) => !held.has(node.doodad));
     if (gone.length === 0) return;
 
@@ -148,6 +156,14 @@ export class Scene {
       node.destroy();
     }
     this.nodes = this.nodes.filter((node) => held.has(node.doodad));
+  }
+
+  drawNewNodes(held) {
+    const drawn = new Set(this.nodes.map((node) => node.doodad));
+    const added = held.filter((doodad) => !drawn.has(doodad));
+    if (added.length === 0) return;
+
+    this.nodes = [...this.nodes, ...added.map(doodads.create)];
   }
 
   layerOf(node) {

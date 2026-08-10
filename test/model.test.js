@@ -217,6 +217,73 @@ describe("array layers", () => {
   });
 });
 
+describe("duplicateLayer", () => {
+  it("copies an ordinary layer's doodads as doodads of their own", () => {
+    const document_ = HideoutDocument.fromText(SHRINE);
+    const copy = document_.duplicateLayer("default");
+
+    const copied = document_.doodadsIn(copy.id);
+    expect(names(copied)).toEqual(["Stash", "Maraketh Incense Burner"]);
+    expect(copied[0].x).toBe(392);
+
+    copied[0].x = 100;
+    expect(document_.doodadsIn("default")[0].x).toBe(392);
+  });
+
+  it("copies an array's parameters and generates from them", () => {
+    const document_ = HideoutDocument.fromText(SHRINE);
+    const array = document_.addArrayLayer("Braziers", GRID);
+    const copy = document_.duplicateLayer(array.layer);
+
+    const copied = document_.findGenerator(copy.id);
+    expect(copied.type).toBe("grid");
+    expect(copied.box).toEqual(array.box);
+    expect(document_.doodadsIn(copy.id)).toHaveLength(6);
+  });
+
+  it("gives the copy of an array parameters of its own, all the way down", () => {
+    // A shared `box` would let a handle dragged on one array move the other.
+    const document_ = HideoutDocument.fromText(SHRINE);
+    const array = document_.addArrayLayer("Braziers", GRID);
+    const copy = document_.duplicateLayer(array.layer);
+
+    const copied = document_.findGenerator(copy.id);
+    copied.box.center.x = 900;
+    copied.source[0].name = "Something else";
+
+    expect(array.box.center.x).toBe(400);
+    expect(array.source[0].name).toBe("Stash");
+  });
+
+  it("places the copy directly after the layer it copied", () => {
+    const document_ = HideoutDocument.fromText(SHRINE);
+    const garden = document_.addLayer("Garden");
+    const copy = document_.duplicateLayer("default");
+
+    expect(document_.layers.map((layer) => layer.id)).toEqual([
+      "default",
+      copy.id,
+      garden.id,
+    ]);
+  });
+
+  it("copies the flags, a hidden layer's copy being hidden too", () => {
+    const document_ = HideoutDocument.fromText(SHRINE);
+    document_.findLayer("default").visible = false;
+    document_.findLayer("default").locked = true;
+    const copy = document_.duplicateLayer("default");
+
+    expect(copy.visible).toBe(false);
+    expect(copy.locked).toBe(true);
+  });
+
+  it("refuses a layer that does not exist", () => {
+    const document_ = HideoutDocument.fromText(SHRINE);
+
+    expect(() => document_.duplicateLayer("nowhere")).toThrow(/nowhere/);
+  });
+});
+
 describe("replaceGenerator", () => {
   it("swaps the parameters, keeping the layer and its place", () => {
     const document_ = HideoutDocument.fromText(SHRINE);
