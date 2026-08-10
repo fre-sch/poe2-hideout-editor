@@ -29,6 +29,7 @@ export default function Viewport() {
   const editedArray = state.editedArray.value;
   const arrayEdit = state.arrayEdit.value;
   const selectionRequest = state.selectionRequest.value;
+  const hoveredDoodad = state.hoveredDoodad.value;
   const placementRequest = state.placementRequest.value;
 
   useEffect(() => {
@@ -80,6 +81,11 @@ export default function Viewport() {
     if (selectionRequest === null) return;
     scene.current.selectDoodads(selectionRequest);
   }, [selectionRequest]);
+  // `null` is a value here and not "nothing asked for": it is the pointer having
+  // left the row, and putting the doodad back is the whole of it.
+  useEffect(() => {
+    scene.current.highlightDoodad(hoveredDoodad);
+  }, [hoveredDoodad]);
   // A fresh object per request, for the same reason: the palette placing the
   // same doodad twice is two placements.
   useEffect(() => {

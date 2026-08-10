@@ -133,6 +133,12 @@ details[open] .details-summary-extra {
   gap: 0.25rem;
   margin-bottom: 0.15rem;
 }
+/* The doodad this row names is coloured on the canvas while the pointer is
+   here, so the row marks itself too: both ends of the highlight are visible, and
+   which row the canvas is answering is never in doubt. */
+.selection-row:hover {
+  background-color: var(--bs-secondary-bg);
+}
 /* The buttons are the point of the row, so the name is what gives way: it
    truncates instead of wrapping the buttons onto a second line. */
 .selection-name {

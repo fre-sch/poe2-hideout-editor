@@ -36,6 +36,11 @@ export default function Selection() {
     if (document_ && anySelected) loadTable(document_);
   }, [document_, anySelected]);
 
+  // The pointer can leave a row by the row being taken away -- the tab switched,
+  // the selection dropped -- and `mouseleave` is not fired for that. Nothing
+  // else would ever put the highlight back.
+  useEffect(() => () => (state.hoveredDoodad.value = null), []);
+
   return (
     <>
       <ul class="selection-list list-unstyled mb-0">
@@ -68,7 +73,11 @@ export default function Selection() {
  */
 function Row({ doodad, fv }) {
   return (
-    <li class="selection-row">
+    <li
+      class="selection-row"
+      onMouseEnter={() => (state.hoveredDoodad.value = doodad)}
+      onMouseLeave={() => (state.hoveredDoodad.value = null)}
+    >
       <span class="selection-name" title={doodad.name}>
         {doodad.name}
       </span>
