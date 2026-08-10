@@ -8,8 +8,11 @@
  * the only place either can be read or changed. Wiki issue 0042.
  *
  * Twenty rows at most. A band across a hideout selects hundreds, and the
- * twenty-first row is not what the player is looking at; the count in the summary
- * is what says how many there really are.
+ * twenty-first row is not what the player is looking at; the count on the tab is
+ * what says how many there really are.
+ *
+ * It is drawn only when something is selected, its tab being disabled otherwise
+ * -- see `tabs.jsx`.
  */
 
 import { useEffect } from "preact/hooks";
@@ -33,10 +36,8 @@ export default function Selection() {
     if (document_ && anySelected) loadTable(document_);
   }, [document_, anySelected]);
 
-  if (selected.length === 0) return null;
   return (
-    <details class="sidebar-item" open>
-      <summary>Selection ({selected.length})</summary>
+    <>
       <ul class="selection-list list-unstyled mb-0">
         {selected.slice(0, LIMIT).map((doodad) => (
           <Row doodad={doodad} fv={doodad.fv} />
@@ -47,7 +48,7 @@ export default function Selection() {
           plus {selected.length - LIMIT} more doodads
         </p>
       )}
-    </details>
+    </>
   );
 }
 
