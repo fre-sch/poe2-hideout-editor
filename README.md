@@ -1,8 +1,27 @@
 # poe2-hideout-editor
 
-Edit PoE2 `.hideout` files visually in browser.
+Edit PoE2 `.hideout` files visually in your browser.
 
-Very much only a *scratch-your-own-itch*-project at this time.
+https://fre-sch.github.io/poe2-hideout-editor/
+
+Very much a *scratch-your-own-itch*-project at this time.
+
+## Features
+
+### Layers!
+
+Group and organize your hideout decorations into layers. Delete them, duplicate
+them.
+
+### Generators!
+
+Generate arrays of decorations from grids, circles, polygons, and paths.
+Randomize the decorations and variations!
+
+### Doodad Palette!
+
+Pick hideout decorations from a palette. No guarantees they'll survive
+importing, though. Make sure to only place decorations you own.
 
 ## Development
 
@@ -12,8 +31,6 @@ Very much only a *scratch-your-own-itch*-project at this time.
     npm test         # vitest
     npm run format   # prettier over src/
 
-A Preact application on a 2D canvas, rewritten from an earlier 3D one. The
-application under `src/` is the whole of it; the 3D predecessor is gone.
 
 ## Wishful thinking
 
