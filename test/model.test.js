@@ -61,9 +61,9 @@ describe("layers", () => {
     expect(document_.layers.map((layer) => layer.name)).toEqual([
       "Shrine Hideout",
     ]);
-    expect(document_.doodads.every((doodad) => doodad.layer === "default")).toBe(
-      true,
-    );
+    expect(
+      document_.doodads.every((doodad) => doodad.layer === "default"),
+    ).toBe(true);
   });
 
   it("orders doodads by layer, then by the order they are held in", () => {
@@ -156,6 +156,49 @@ describe("Generator", () => {
 
   it("refuses a type it does not know", () => {
     expect(() => new Generator({ ...GRID, type: "spiral" })).toThrow(/spiral/);
+  });
+
+  /**
+   * Wiki issue 0051: variations were one list for the whole array. A project
+   * written then must generate what it generated, which is those indices for
+   * every doodad of the source -- and there must be one place they come from
+   * afterwards.
+   */
+  describe("a project written before variations were per doodad", () => {
+    const shared = {
+      ...GRID,
+      source: [
+        { hash: 1, name: "Torch", fv: 0 },
+        { hash: 2, name: "Brazier", fv: 128 },
+      ],
+      random: {
+        seed: 7,
+        jitter: { x: 0, y: 0, rotation: 0 },
+        variation: [1, 2],
+      },
+    };
+
+    it("hands the shared list to every source doodad", () => {
+      const array = new Generator(shared);
+
+      expect(array.source.map((entry) => entry.variation)).toEqual([
+        [1, 2],
+        [1, 2],
+      ]);
+    });
+
+    it("leaves no second place for a variation to come from", () => {
+      expect("variation" in new Generator(shared).random).toBe(false);
+    });
+
+    it("leaves a doodad that has its own list alone", () => {
+      const array = new Generator({
+        ...shared,
+        source: [{ hash: 1, name: "Torch", fv: 0, variation: [4] }],
+      });
+
+      expect(array.source[0].variation).toEqual([4]);
+    });
   });
 });
 
@@ -319,9 +362,9 @@ describe("replaceGenerator", () => {
   it("refuses a layer that carries no generator", () => {
     const document_ = HideoutDocument.fromText(SHRINE);
 
-    expect(() => document_.replaceGenerator({ ...GRID, layer: "default" })).toThrow(
-      /no generator/,
-    );
+    expect(() =>
+      document_.replaceGenerator({ ...GRID, layer: "default" }),
+    ).toThrow(/no generator/);
   });
 });
 

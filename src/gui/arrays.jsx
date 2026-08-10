@@ -154,7 +154,10 @@ export function ArraySidebar() {
         <Shape parameters={parameters} />
         <Rotation rotation={parameters.rotation} type={parameters.type} />
         <Randomness parameters={parameters} />
-        <Source source={parameters.source} />
+        <Source
+          source={parameters.source}
+          pick={generator.pickOf(parameters)}
+        />
       </div>
       <Footer />
     </div>
@@ -431,10 +434,6 @@ function Randomness({ parameters }) {
         min={0}
         onChange={(rotation) => updateJitter({ rotation })}
       />
-      <Variations
-        chosen={random.variation ?? []}
-        count={variationCount(parameters.source)}
-      />
       <div class="d-flex justify-content-between align-items-center gap-1">
         <span class="text-secondary">Seed {random.seed}</span>
         <button
@@ -450,70 +449,91 @@ function Randomness({ parameters }) {
 }
 
 /**
- * Which variations a doodad may be drawn as, chosen from the ones it has.
+ * Which variations this doodad may be drawn as, chosen from the ones it has.
  *
- * An empty set is not "none": it is "leave the source alone", which is what an
- * array does until a player says otherwise. The generator is handed the indices
- * and never the table -- it is framework-free, and the table is fetched.
+ * An empty set is not "none": it is "leave this doodad alone", and it is drawn
+ * as the variation it was added with. The generator is handed the indices and
+ * never the table -- it is framework-free, and the table is fetched.
  */
-function Variations({ chosen, count }) {
+function Variations({ index, chosen, count }) {
   if (count < 2)
-    return <p class="text-secondary mb-1">{noVariations(count)}</p>;
+    return <p class="text-secondary small mb-0">{noVariations(count)}</p>;
   return (
-    <div class="mb-1">
-      <div class="text-secondary">Variations, chosen at random</div>
-      <div class="d-flex flex-wrap gap-1">
-        {range(count).map((index) => (
-          <VariationButton
-            index={index}
-            on={chosen.includes(index)}
-            chosen={chosen}
-          />
-        ))}
-      </div>
+    <div class="d-flex flex-wrap gap-1">
+      {range(count).map((at) => (
+        <VariationButton
+          index={index}
+          at={at}
+          on={chosen.includes(at)}
+          chosen={chosen}
+        />
+      ))}
     </div>
   );
 }
 
 function noVariations(count) {
-  if (count === 1) return "These doodads have one variation to choose from.";
-  return "The doodad table does not know one of these doodads, so how many variations they share is unknown.";
+  if (count === 1) return "One variation.";
+  return "The doodad table does not know this one, so its variations are unknown.";
 }
 
-function VariationButton({ index, on, chosen }) {
+function VariationButton({ index, at, on, chosen }) {
   return (
     <button
       type="button"
       class={`btn btn-sm ${on ? "btn-primary" : "btn-outline-secondary"}`}
       aria-pressed={on}
-      onClick={() => toggleVariation(chosen, index)}
+      title={`Variation ${at + 1}`}
+      onClick={() => toggleVariation(index, chosen, at)}
     >
-      {index + 1}
+      {at + 1}
     </button>
   );
 }
 
 /**
- * What the array is made of, cycled: doodad `k` is `source[k % length]`. The
- * names are listed because a source is chosen once and read many times, and
- * "three doodads" is not an answer to which three.
+ * What the array is made of, and how it is walked. The names are listed because
+ * a source is chosen once and read many times, and "three doodads" is not an
+ * answer to which three.
+ *
+ * The two switches are the whole of "how": in turn is `source[k % length]`, the
+ * array's original and only behaviour, and at random is the seed. They are two
+ * switches and not one because the two lists are two questions -- a shuffled bag
+ * of one doodad's variations is as reasonable as a strict alternation of two
+ * doodads.
  *
  * Adding is the palette's -- which doodad is the question it exists to answer,
  * for an array exactly as for the floor. Taking one back out is here, because
  * *which of these* is a question only this list can put. The last one cannot go:
  * an array with nothing to place is not an emptier array, it is a broken one.
  */
-function Source({ source }) {
+function Source({ source, pick }) {
   return (
     <details class="sidebar-item" open>
       <summary>Source ({source.length})</summary>
       <ul class="list-unstyled mb-1 array-source">
         {source.map((entry, index) => (
-          <SourceRow entry={entry} index={index} only={source.length === 1} />
+          <SourceRow
+            entry={entry}
+            index={index}
+            only={source.length === 1}
+            chosen={entry.variation ?? []}
+          />
         ))}
       </ul>
+      <PickSwitch
+        label="Doodads"
+        value={pick.source}
+        title="Which doodad each place along the shape is made of"
+        onChange={(source_) => updatePick({ source: source_ })}
+      />
+      <PickSwitch
+        label="Variations"
+        value={pick.variation}
+        title="Which of a doodad's chosen variations it is drawn as"
+        onChange={(variation) => updatePick({ variation })}
+      />
       <p class="text-secondary mb-0">
-        Used in turn: the first doodad, then the second, and round again.
         Double-click one in <strong>Set array doodad</strong> to change this,
         and hold <span class="shortcut">Shift</span> there to add another.
       </p>
@@ -521,25 +541,84 @@ function Source({ source }) {
   );
 }
 
-function SourceRow({ entry, index, only }) {
+/**
+ * In turn or at random, for one of the two lists an array walks.
+ *
+ * Both live here rather than under Randomness, because both are answers to
+ * "what is placed", and one of the two answers is not random at all. The seed
+ * they follow when they are is the Randomness section's, which is where a
+ * player goes to shuffle them.
+ */
+function PickSwitch({ label, value, title, onChange }) {
   return (
-    <li class="array-source-row">
-      <span class="array-source-name" title={entry.name}>
-        {entry.name}
+    <div class="d-flex justify-content-between align-items-center mb-1">
+      <span class="text-secondary" title={title}>
+        {label}
       </span>
-      <button
-        type="button"
-        class="btn btn-sm btn-link p-0 text-danger"
-        title={
-          only
-            ? "An array needs something to place, so the last one stays"
-            : "Take this doodad out of the source"
-        }
-        disabled={only}
-        onClick={() => removeSource(index)}
-      >
-        <i class="bi bi-x-lg"></i>
-      </button>
+      <div class="btn-group" role="group" aria-label={title}>
+        <PickButton
+          label="In turn"
+          mode={generator.CYCLE}
+          value={value}
+          onChange={onChange}
+        />
+        <PickButton
+          label="At random"
+          mode={generator.RANDOM}
+          value={value}
+          onChange={onChange}
+        />
+      </div>
+    </div>
+  );
+}
+
+function PickButton({ label, mode, value, onChange }) {
+  const on = value === mode;
+  return (
+    <button
+      type="button"
+      class={`btn btn-sm ${on ? "btn-primary" : "btn-outline-secondary"}`}
+      aria-pressed={on}
+      onClick={() => onChange(mode)}
+    >
+      {label}
+    </button>
+  );
+}
+
+/**
+ * One doodad of the source: what it is, the variations it may be drawn as, and
+ * the button that takes it out.
+ *
+ * The variations are the row's because they are the doodad's -- a torch and a
+ * brazier have their own art and their own count of it, and one list for the
+ * array meant the indices of whichever doodad had the fewest. It also meant an
+ * array could place a variation a doodad does not have, which the game rejects:
+ * wiki issue 0051.
+ */
+function SourceRow({ entry, index, only, chosen }) {
+  return (
+    <li class="mb-1">
+      <div class="array-source-row">
+        <span class="array-source-name" title={entry.name}>
+          {entry.name}
+        </span>
+        <button
+          type="button"
+          class="btn btn-sm btn-link p-0 text-danger"
+          title={
+            only
+              ? "An array needs something to place, so the last one stays"
+              : "Take this doodad out of the source"
+          }
+          disabled={only}
+          onClick={() => removeSource(index)}
+        >
+          <i class="bi bi-x-lg"></i>
+        </button>
+      </div>
+      <Variations index={index} chosen={chosen} count={variationsOf(entry)} />
     </li>
   );
 }
@@ -719,22 +798,26 @@ function rollSeed() {
   updateRandom({ seed: generator.randomSeed() });
 }
 
-function toggleVariation(chosen, index) {
-  const next = chosen.includes(index)
-    ? chosen.filter((other) => other !== index)
-    : [...chosen, index].sort((first, second) => first - second);
-  updateRandom({ variation: next });
+function updatePick(changes) {
+  update({ pick: { ...generator.pickOf(edited()), ...changes } });
 }
 
-/**
- * The doodad an array is made of, as the palette says it: a double-click makes
- * it the whole source, and Shift adds it to the cycle -- the editor's Shift,
- * which adds to a selection.
- *
- * It arrives as the first variation, the same as a placed doodad does. Which
- * variations the array uses is the Randomness section's question, and it is
- * asked of the table rather than of one row.
- */
+/** One variation on or off, for one doodad of the source. */
+function toggleVariation(index, chosen, at) {
+  const next = chosen.includes(at)
+    ? chosen.filter((other) => other !== at)
+    : [...chosen, at].sort((first, second) => first - second);
+  updateSource(index, { variation: next });
+}
+
+function updateSource(index, changes) {
+  update({
+    source: edited().source.map((entry, other) =>
+      other === index ? { ...entry, ...changes } : entry,
+    ),
+  });
+}
+
 /**
  * One doodad out of the source. The doodads that were being made from it are not
  * where they were: the cycle is shorter, so every index after the gap takes the
@@ -746,29 +829,29 @@ function removeSource(index) {
   update({ source: source.filter((_, other) => other !== index) });
 }
 
+/**
+ * The doodad an array is made of, as the palette says it: a double-click makes
+ * it the whole source, and Shift adds it to the cycle -- the editor's Shift,
+ * which adds to a selection.
+ *
+ * It arrives as the first variation and chooses none, the same as a placed
+ * doodad does. Which of its variations the array may draw it as is its own row's
+ * question, asked of the table.
+ */
 export function sourceDoodad(layer, { hash, name }, adding) {
   const array = document_().findGenerator(layer);
-  const entry = { hash: Number(hash), name, fv: FIRST_VARIATION };
+  const entry = {
+    hash: Number(hash),
+    name,
+    fv: FIRST_VARIATION,
+    variation: [],
+  };
   updateArray(layer, {
     source: adding ? [...array.source, entry] : [entry],
   });
 }
 
 const FIRST_VARIATION = 0;
-
-/**
- * How many variations every doodad of the source has, or `0` where the table
- * cannot say for one of them.
- *
- * The smallest count and not the largest: the set of indices is used for every
- * doodad in turn, so an index only one of them has is an index the others cannot
- * be drawn as. Zero for the unknown falls out of the same `min`, which is the
- * honest answer -- a doodad the table does not know may have any number.
- */
-function variationCount(source) {
-  if (source.length === 0) return 0;
-  return Math.min(...source.map((entry) => variationsOf(entry)));
-}
 
 /**
  * A new array layer out of the selection, with its settings open.

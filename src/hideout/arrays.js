@@ -28,6 +28,15 @@ const DEFAULT_CORNERS = 6;
 const DEFAULT_RESOLUTION = { x: 3, y: 3 };
 
 /**
+ * The source in turn and the variations at random, which is what an array did
+ * before either was a choice.
+ */
+const DEFAULT_PICK = {
+  source: generator.CYCLE,
+  variation: generator.RANDOM,
+};
+
+/**
  * A new array made from a selection: those doodads are the source, cycled, and
  * the shape is the box they occupy.
  *
@@ -39,20 +48,29 @@ export function fromSelection(doodads) {
   return {
     type: "grid",
     source: doodads.map(sourceOf),
+    pick: { ...DEFAULT_PICK },
     box: boxAround(doodads),
     resolution: { ...DEFAULT_RESOLUTION },
     rotation: { base: 0, increment: 0, align: false },
     random: {
       seed: generator.randomSeed(),
       jitter: { x: 0, y: 0, rotation: 0 },
-      variation: [],
     },
   };
 }
 
-/** What the generator keeps of a doodad: what it is, and which variation. */
+/**
+ * What the generator keeps of a doodad: what it is, which variation it was
+ * placed as, and which variations it may be drawn as -- none to begin with,
+ * which means the one it came with. See `generator.js`.
+ */
 function sourceOf(doodad) {
-  return { hash: doodad.hash, name: doodad.name, fv: doodad.fv };
+  return {
+    hash: doodad.hash,
+    name: doodad.name,
+    fv: doodad.fv,
+    variation: [],
+  };
 }
 
 /**

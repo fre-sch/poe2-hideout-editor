@@ -88,6 +88,7 @@ export class Generator {
     for (const field of [...GENERATOR_FIELDS, ...shape]) {
       this[field] = parameters[field];
     }
+    sharedVariationsToSource(this);
   }
 }
 
@@ -95,10 +96,35 @@ const GENERATOR_FIELDS = [
   "layer",
   "type",
   "source",
+  "pick",
   "resolution",
   "rotation",
   "random",
 ];
+
+/**
+ * A project written before variations were the source doodad's carries one list
+ * for the whole array, in `random.variation`. It is read as what it was already
+ * doing -- those indices, for every doodad of the source -- and dropped, so that
+ * a variation comes from one place and the count that bounds it is the doodad's
+ * own. Wiki issue 0051.
+ *
+ * An entry that already has a list keeps it, which is what makes this safe to
+ * run on every `Generator` rather than only on a file being read.
+ */
+function sharedVariationsToSource(generator) {
+  const shared = generator.random?.variation;
+  if (!shared) return;
+
+  const { variation, ...random } = generator.random;
+  generator.random = random;
+  if (shared.length === 0) return;
+
+  generator.source = generator.source.map((entry) => ({
+    variation: [...shared],
+    ...entry,
+  }));
+}
 
 /** The geometry each type carries, beside the fields all of them carry. */
 const SHAPE_FIELDS = {
