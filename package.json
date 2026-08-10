@@ -1,6 +1,6 @@
 {
   "name": "poe2-hideout-editor",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
   "type": "module",
   "description": "Edit Path of Exile 2 .hideout files visually in the browser.",
