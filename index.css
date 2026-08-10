@@ -107,9 +107,8 @@ details[open] .details-summary-extra {
 /* The sidebar's type is small, and a tab bar at Bootstrap's default size would
    be the loudest thing on it. */
 .sidebar-tabs .nav-link {
-  padding: 0.1rem 0.7rem;
-  font-weight: bold;
-  font-size: 0.9rem;
+  --bs-nav-link-padding-y: 0.1rem;
+  --bs-nav-link-padding-x: 0.7rem;
 }
 /* Bootstrap takes the pointer events off a disabled button, and the tooltip
    with them -- and the tooltip is where the disabled tab says why it is off.
