@@ -191,6 +191,47 @@ describe("setSelected", () => {
   });
 });
 
+/**
+ * The three states overlap -- the highlighted doodad is one of the selected
+ * ones -- so what matters is that neither setter forgets what the other said.
+ */
+describe("setHighlighted", () => {
+  it("outdraws selected, and hands the node back to it", () => {
+    const node = doodads.create(doodad({ x: 0, y: 0 }));
+    doodads.setSelected(node, true);
+    const selected = node.fill();
+
+    doodads.setHighlighted(node, true);
+    expect(node.fill()).not.toBe(selected);
+    expect(node.strokeWidth()).toBeGreaterThan(1);
+
+    doodads.setHighlighted(node, false);
+    expect(node.fill()).toBe(selected);
+    expect(node.strokeWidth()).toBe(1);
+  });
+
+  it("keeps the highlight through a change of selection", () => {
+    const node = doodads.create(doodad({ x: 0, y: 0 }));
+    doodads.setHighlighted(node, true);
+    const highlighted = node.fill();
+
+    doodads.setSelected(node, true);
+    expect(node.fill()).toBe(highlighted);
+
+    doodads.setSelected(node, false);
+    expect(node.fill()).toBe(highlighted);
+  });
+
+  it("puts an unselected node back to normal", () => {
+    const node = doodads.create(doodad({ x: 0, y: 0 }));
+    const normal = node.fill();
+
+    doodads.setHighlighted(node, true);
+    doodads.setHighlighted(node, false);
+    expect(node.fill()).toBe(normal);
+  });
+});
+
 describe("boundingRectangle", () => {
   it("has nothing to frame when nothing is selected", () => {
     expect(doodads.boundingRectangle([])).toBeNull();

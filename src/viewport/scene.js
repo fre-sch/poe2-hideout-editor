@@ -50,6 +50,7 @@ export class Scene {
     this.outline = null;
     this.outlineRequest = 0;
     this.placement = null;
+    this.highlighted = null;
 
     // Selecting happens in screen pixels: the band is a screen gesture, and
     // `getClientRect` measures a node where the player sees it, however the
@@ -93,6 +94,7 @@ export class Scene {
     this.transform.setNodes([]);
     this.arrays.show(null);
     this.placement = null;
+    this.highlighted = null;
     for (const node of this.nodes) {
       node.destroy();
     }
@@ -220,6 +222,26 @@ export class Scene {
     this.selection.set(
       this.selectableNodes().filter((node) => wanted.has(node.doodad)),
     );
+  }
+
+  /**
+   * Colours the doodad the sidebar is pointing at, and puts back the one it was
+   * pointing at before.
+   *
+   * The previous node is only put back if it is still drawn: a doodad can be
+   * deleted while its row is under the pointer, and a destroyed node is not the
+   * scene's to colour any more. It is also why the highlight is looked up afresh
+   * every time rather than remembered as a doodad.
+   */
+  highlightDoodad(doodad) {
+    const node = this.nodes.find((drawn) => drawn.doodad === doodad) ?? null;
+    if (node === this.highlighted) return;
+
+    if (this.highlighted !== null && this.nodes.includes(this.highlighted)) {
+      doodads.setHighlighted(this.highlighted, false);
+    }
+    this.highlighted = node;
+    if (node !== null) doodads.setHighlighted(node, true);
   }
 
   /**

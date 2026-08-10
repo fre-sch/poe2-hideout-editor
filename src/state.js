@@ -60,6 +60,19 @@ export function selectionChanged() {
 }
 
 /**
+ * The one `Doodad` the sidebar is pointing at, or `null`.
+ *
+ * Every doodad draws as the same gizmo, so a row of the selection list is a name
+ * with nothing on the canvas to tie it to -- and the variation and mirror
+ * buttons on that row are aimed at a doodad. The viewport colours whichever
+ * doodad this names, which is the tie.
+ *
+ * A doodad and not a node: which nodes exist is the viewport's, and the sidebar
+ * has the doodad in its hand already.
+ */
+export const hoveredDoodad = signal(null);
+
+/**
  * A selection the sidebar asks for, as `Doodad` objects, or `null`.
  *
  * The other direction of `selection`: what is selected is the viewport's to

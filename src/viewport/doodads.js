@@ -51,11 +51,23 @@ const GIZMO_ROTATION = -90;
  * The gizmo's own fill and stroke are ignored: a doodad has to change colour
  * when it is selected, so the colours belong to the editor. Everything else
  * about the drawing comes from the file.
+ *
+ * The highlighted colours are for the one doodad the sidebar is pointing at, and
+ * they are the loudest of the three. It is looked for in a field of selected
+ * doodads that all draw as the same gizmo, so the difference has to carry across
+ * a whole hideout at a glance -- which is also why it is the one state that
+ * thickens the outline.
  */
 const COLOR_NORMAL = "#008080";
 const COLOR_SELECTED = "#C0C000";
+const COLOR_HIGHLIGHTED = "#FF6000";
 const OUTLINE = "#00FFFF";
 const OUTLINE_SELECTED = "#FFFF00";
+const OUTLINE_HIGHLIGHTED = "#FFFFFF";
+
+/** Screen pixels, see `create`. */
+const STROKE = 1;
+const STROKE_HIGHLIGHTED = 3;
 
 const GIZMO = readGizmo(gizmoSource);
 
@@ -74,7 +86,7 @@ export function create(doodad) {
     // One screen pixel at any zoom. The gizmo's own stroke width is a width in
     // the drawing, and an outline that thins out as you zoom out is not what it
     // is there for.
-    strokeWidth: 1,
+    strokeWidth: STROKE,
     strokeScaleEnabled: false,
     // A hideout runs to hundreds of nodes and none of them casts a shadow.
     perfectDrawEnabled: false,
@@ -82,6 +94,8 @@ export function create(doodad) {
   });
   node.getSelfRect = gizmoSelfRect;
   node.doodad = doodad;
+  node.selected = false;
+  node.highlighted = false;
   place(node);
   return node;
 }
@@ -167,8 +181,36 @@ export function unscale(node) {
 }
 
 export function setSelected(node, selected) {
-  node.fill(selected ? COLOR_SELECTED : COLOR_NORMAL);
-  node.stroke(selected ? OUTLINE_SELECTED : OUTLINE);
+  node.selected = selected;
+  paint(node);
+}
+
+/** The one doodad the sidebar is pointing at. See `state.hoveredDoodad`. */
+export function setHighlighted(node, highlighted) {
+  node.highlighted = highlighted;
+  paint(node);
+}
+
+/**
+ * A node is in one of three states and the two flags are kept on it, rather than
+ * each setter writing the colour it knows about: they overlap -- every
+ * highlighted doodad is a selected one -- and two setters writing the same
+ * attribute means whichever ran last wins, which is not a rule anybody can read
+ * off the code.
+ *
+ * Highlighted wins, because a highlight that lost would never be seen.
+ */
+function paint(node) {
+  if (node.highlighted) {
+    node.fill(COLOR_HIGHLIGHTED);
+    node.stroke(OUTLINE_HIGHLIGHTED);
+    node.strokeWidth(STROKE_HIGHLIGHTED);
+    return;
+  }
+
+  node.fill(node.selected ? COLOR_SELECTED : COLOR_NORMAL);
+  node.stroke(node.selected ? OUTLINE_SELECTED : OUTLINE);
+  node.strokeWidth(STROKE);
 }
 
 /**
