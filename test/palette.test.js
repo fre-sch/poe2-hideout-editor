@@ -26,6 +26,10 @@ function table(language) {
 /**
  * Three doodads with everything the panel reads off them: two sharing a name,
  * one tagged, one untagged, one tied to a hideout.
+ *
+ * And the two kinds of row the table names without offering -- one the
+ * blacklist marked, one the game places itself and no `HideoutDoodads` row
+ * describes. Both are named, neither is placeable.
  */
 const DATA = {
   language: "English",
@@ -39,6 +43,7 @@ const DATA = {
       tags: ["Plants"],
       variations: 3,
       hideout: "Canal Hideout",
+      placeable: true,
     },
     10: {
       id: "Metadata/Items/Hideout/HideoutRedWarpRune",
@@ -47,6 +52,7 @@ const DATA = {
       tags: [],
       variations: 1,
       hideout: null,
+      placeable: true,
     },
     20: {
       id: "Metadata/Items/Hideout/HideoutBlueWarpRune",
@@ -55,6 +61,25 @@ const DATA = {
       tags: ["Furniture"],
       variations: 1,
       hideout: null,
+      placeable: true,
+    },
+    40: {
+      id: "Metadata/Items/Hideout/HideoutKaruiTotem",
+      name: "[DNT] Karui Totem",
+      category: "Karui",
+      tags: ["Furniture"],
+      variations: 2,
+      hideout: null,
+      placeable: false,
+    },
+    50: {
+      id: "Metadata/Items/Hideout/HideoutRecombinator",
+      name: "Recombinator",
+      category: null,
+      tags: [],
+      variations: 0,
+      hideout: null,
+      placeable: false,
     },
   },
 };
@@ -74,6 +99,25 @@ describe("Palette", () => {
 
     expect(palette.find(30).name).toBe("Nikau Palm");
     expect(palette.find("30").name).toBe("Nikau Palm");
+  });
+
+  it("names what it does not offer, and offers none of it", () => {
+    const palette = new Palette(DATA);
+
+    expect(palette.find(50).name).toBe("Recombinator");
+    expect(palette.entries).toHaveLength(5);
+    expect(palette.placeable).toHaveLength(3);
+    expect(names(palette)).not.toContain("Recombinator");
+    expect(names(palette, { text: "Karui" })).toEqual([]);
+  });
+
+  it("builds its filters out of what it offers", () => {
+    const palette = new Palette(DATA);
+
+    // The blacklisted doodad's category, and no doodad left is in it.
+    expect(palette.categories.map((category) => category.key)).not.toContain(
+      "Karui",
+    );
   });
 
   it("distinguishes shared names, and only those", () => {
@@ -208,28 +252,60 @@ describe("Palette.disagreements", () => {
   });
 
   it("takes a doodad it does not know as no evidence either way", () => {
-    // The game places essentials itself and no MTX table lists them.
-    const found = new Palette(DATA).disagreements(doodads(["Recombinator", 7]));
+    // An essential the game places itself, which no MTX table lists.
+    const found = new Palette(DATA).disagreements(doodads(["Waypoint", 7]));
 
     expect(found).toEqual({ checked: 0, reports: [] });
+  });
+
+  /**
+   * The reason the table names what it does not offer. Every game export holds
+   * a Recombinator, and a check that skipped it was checking less than the
+   * document could tell it.
+   */
+  it("judges a doodad it names but does not offer", () => {
+    const found = new Palette(DATA).disagreements(
+      doodads(["Rekombinator", 50]),
+    );
+
+    expect(found.checked).toBe(1);
+    expect(found.reports).toEqual([
+      { hash: "50", name: "Rekombinator", expected: "Recombinator" },
+    ]);
   });
 });
 
 /**
- * Counts are not asserted here. What the tables hold is the blacklist's to
- * decide -- see `scripts/doodad_palette.py` -- and a suite that goes red
+ * Counts are not asserted here. What the tables offer is the blacklist's to
+ * decide -- see `scripts/editor_data.py` -- and a suite that goes red
  * because a category was dropped on purpose is a suite that has to be edited
  * to say yes. What is asserted is what must hold whatever the blacklist says.
- * The measurements live in wiki/issues/0030-scripts-doodad-palette-data.md.
+ * The measurements live in wiki/issues/0030-scripts-doodad-palette-data.md and
+ * wiki/issues/0054-scripts-doodad-table-names-every-hash.md.
  */
 describe("the generated tables", () => {
-  it("holds every doodad under a category header", () => {
+  it("holds every placeable doodad under a category header", () => {
     const palette = new Palette(table("English"));
     const grouped = palette.groups().flatMap((group) => group.entries);
 
-    expect(palette.entries.length).toBeGreaterThan(1000);
-    expect(grouped).toHaveLength(palette.entries.length);
+    expect(palette.placeable.length).toBeGreaterThan(1000);
+    expect(grouped).toHaveLength(palette.placeable.length);
     expect(palette.groups()).toHaveLength(palette.categories.length);
+  });
+
+  /**
+   * The whole point of the table naming more than it offers: a hideout holds
+   * doodads a player cannot place -- the ones the game placed itself, and the
+   * ones GGG marked as not for use -- and every one of them has to be nameable
+   * or the file cannot be rewritten into another language.
+   */
+  it("names more doodads than it offers", () => {
+    const palette = new Palette(table("English"));
+
+    expect(palette.entries.length).toBeGreaterThan(palette.placeable.length);
+    expect(palette.find(4243958141).name, "the Recombinator").toBe(
+      "Recombinator",
+    );
   });
 
   it("leaves no doodad unreachable by the tag filters", () => {
@@ -240,7 +316,7 @@ describe("the generated tables", () => {
     });
 
     expect(keys).toContain(UNTAGGED);
-    expect(reachable).toHaveLength(palette.entries.length);
+    expect(reachable).toHaveLength(palette.placeable.length);
   });
 
   it("offers a filter for every category, and no empty ones", () => {
@@ -263,6 +339,24 @@ describe("the generated tables", () => {
   });
 
   /**
+   * A name the game did not write is a name the load-time check reports and a
+   * player cannot act on, so the published text is the text the game uses --
+   * ten of the cells the export holds carry a trailing space.
+   */
+  it("publishes no name, category or tag padded with whitespace", () => {
+    for (const language of ["English", "French", "Traditional Chinese"]) {
+      const palette = new Palette(table(language));
+      const texts = [
+        ...palette.entries.flatMap((entry) => [entry.name, entry.hideout]),
+        ...palette.categories.map((category) => category.name),
+        ...palette.tags.map((tag) => tag.name),
+      ];
+
+      expect(texts.filter((text) => text && text !== text.trim())).toEqual([]);
+    }
+  });
+
+  /**
    * What the palette row and the Selection section's variation button both read.
    * Every doodad has at least one variation -- being drawn at all takes one art
    * file -- and the ones with a choice to make are a minority, which is why the
@@ -270,7 +364,7 @@ describe("the generated tables", () => {
    */
   it("counts the variations of every doodad, and more than one for some", () => {
     const palette = new Palette(table("English"));
-    const counts = palette.entries.map((entry) => entry.variations);
+    const counts = palette.placeable.map((entry) => entry.variations);
 
     expect(counts.every((count) => count >= 1)).toBe(true);
     expect(counts.filter((count) => count > 1).length).toBeGreaterThan(0);
@@ -280,14 +374,28 @@ describe("the generated tables", () => {
     ).toBe(12);
   });
 
-  /** The blacklist of `scripts/doodad_palette.py`, seen from this end. */
-  it("offers nothing the game marks as not for use", () => {
+  /**
+   * An entry no `HideoutDoodads` row describes has no variation list to count,
+   * and `0` is how the table says it cannot tell -- `gui/table.js` reads it as
+   * that already, which is why those rows need no shape of their own.
+   */
+  it("reports no variations for the doodads it only names", () => {
     const palette = new Palette(table("English"));
-    const marked = palette.entries.filter((entry) =>
-      /\[DNT\]|\[DO NOT USE\]/.test(entry.name),
-    );
+    const silent = palette.entries.filter((entry) => entry.variations === 0);
 
-    expect(marked).toEqual([]);
+    expect(silent.length).toBeGreaterThan(0);
+    expect(silent.every((entry) => entry.placeable === false)).toBe(true);
+    expect(palette.find(4243958141).variations, "the Recombinator").toBe(0);
+  });
+
+  /** The blacklist of `scripts/editor_data.py`, seen from this end. */
+  it("offers nothing the game marks as not for use, and still names it", () => {
+    const palette = new Palette(table("English"));
+    const marked = (entries) =>
+      entries.filter((entry) => /\[DNT\]|\[DO NOT USE\]/.test(entry.name));
+
+    expect(marked(palette.placeable)).toEqual([]);
+    expect(marked(palette.entries).length).toBeGreaterThan(0);
   });
 });
 
@@ -295,7 +403,30 @@ describe("the generated tables", () => {
  * The measurement the whole feature rests on: the table's names are the names
  * the game itself wrote into a file of that language. Hundreds of samples per
  * file, which is what makes the load-time check a test rather than a hope.
+ *
+ * Every doodad, not merely every doodad the table happens to know: a hash the
+ * table cannot name is a hideout that cannot be rewritten into another
+ * language, and the Recombinator every export carries was exactly that until
+ * the table began naming what it does not offer.
+ *
+ * What is left over is `UNNAMED`, and it is listed rather than counted so that
+ * a new gap is a red suite naming the hash.
  */
+
+/**
+ * The hashes the exports hold that the generated tables do not name, measured
+ * 2026-08-11 -- see wiki/issues/0056-scripts-the-hashes-the-table-cannot-name.md.
+ *
+ * Four pets, which the data names under `Metadata/Items/Pets` and the table
+ * does not carry; `The Hooded One`, which no row of `MtxTypes` holds at all;
+ * and the two NPC decorations the data names wrongly, left out rather than
+ * published as a name the game rejects.
+ */
+const UNNAMED = new Set([
+  1700354733, 181403298, 583221441, 2312204769, // pets
+  4210047056, // The Hooded One
+  1023253651, 2204408127, // Atalui and Ketzuli
+]);
 describe.skipIf(gameExport.listFiles().length === 0)(
   "the tables against the game's own exports",
   () => {
@@ -304,8 +435,12 @@ describe.skipIf(gameExport.listFiles().length === 0)(
         const document_ = HideoutDocument.fromText(gameExport.readText(file));
         const palette = new Palette(table(document_.header.language));
         const found = palette.disagreements(document_.doodads);
+        const unnamed = document_.doodads
+          .filter((doodad) => palette.find(doodad.hash) === undefined)
+          .filter((doodad) => !UNNAMED.has(doodad.hash));
 
         expect(found.reports).toEqual([]);
+        expect(unnamed.map((doodad) => [doodad.hash, doodad.name])).toEqual([]);
         expect(found.checked).toBeGreaterThan(0);
       });
     }
