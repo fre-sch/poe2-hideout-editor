@@ -2,10 +2,17 @@
  * The table of everything that can be placed, in one language.
  *
  * It is built from a `public/doodads/{language}.json` file, generated from the
- * game's own data by `scripts/doodad_palette.py` -- see
+ * game's own data by `scripts/editor_data.py` -- see
  * wiki/decisions/doodad-palette.md. This module reads that data and answers the
  * three questions the palette asks of it: what is there, what matches what the
  * player typed, and is this table the one the document is written in.
+ *
+ * The table names every hash a hideout can contain, which is more than a player
+ * may place: art the developers marked as not shipping, categories no Path of
+ * Exile 2 hideout offers, and the doodads the game places itself. `placeable`
+ * is what tells them apart, and it is a question this module asks -- naming a
+ * doodad and offering it are different things, and a name that is not in the
+ * table is a hideout that cannot be rewritten into another language.
  *
  * Fetching the file is not here, for the same reason `viewport/bounds.js`
  * fetches and `hideout/bounds.js` does not: the domain layer is framework-free
@@ -42,13 +49,22 @@ export const INCLUDE = "include";
 export const EXCLUDE = "exclude";
 
 export class Palette {
-  /** `data` is a parsed `public/doodads/{language}.json`. */
+  /**
+   * `data` is a parsed `public/doodads/{language}.json`.
+   *
+   * `entries` is every hash the table names and `placeable` is the part of it
+   * the palette offers. The filters and the list are built from the second,
+   * `find` and `disagreements` answer out of the first: what a doodad is called
+   * is worth knowing about a doodad nobody may place.
+   */
   constructor(data) {
     this.language = data.language;
     this.entries = readEntries(data);
     this.byHash = new Map(this.entries.map((entry) => [entry.hash, entry]));
-    this.tags = readTags(data.t9nTags, this.entries);
-    this.categories = readCategories(this.entries);
+    this.placeable = this.entries.filter((entry) => entry.placeable);
+    distinguishShared(this.placeable);
+    this.tags = readTags(data.t9nTags, this.placeable);
+    this.categories = readCategories(this.placeable);
   }
 
   /**
@@ -72,10 +88,13 @@ export class Palette {
    * The two filters are read together: a doodad shows when its category and
    * its tags both allow it. They answer different questions -- where a doodad
    * is from, and what it is -- so a player narrowing both means both.
+   *
+   * Only what is placeable, and that is not a filter a player can turn off:
+   * the rest is in the table to be named, not to be offered.
    */
   groups({ text = "", categories = new Map(), tags = new Map() } = {}) {
     const wanted = text.trim().toLocaleLowerCase();
-    const matching = this.entries.filter(
+    const matching = this.placeable.filter(
       (entry) =>
         matchesText(entry, wanted) &&
         allows(categories, [entry.categoryKey]) &&
@@ -121,25 +140,33 @@ export class Palette {
 /**
  * The entries, with the category translated and the tags left as keys: a
  * category is read by the player and a tag is matched against a toggle.
- *
+ */
+function readEntries(data) {
+  return Object.entries(data.doodads)
+    .map(([hash, doodad]) => ({
+      ...doodad,
+      hash,
+      categoryKey: doodad.category,
+      category: data.t9nCategory[doodad.category] ?? doodad.category,
+    }))
+    .sort(byNameThenId);
+}
+
+/**
  * A name is not unique -- three English names cover twelve doodads, seven of
  * them `Warp Rune` -- so an entry sharing its name carries a `distinguisher`,
  * the last segment of its metadata id. Only the ones that share, because a
  * metadata id on every row is noise obscuring the few places it is the answer.
+ *
+ * Asked of what the palette offers rather than of the whole table: two rows
+ * that read alike are a choice a player cannot make, and a player is never
+ * shown the rest.
  */
-function readEntries(data) {
-  const entries = Object.entries(data.doodads).map(([hash, doodad]) => ({
-    ...doodad,
-    hash,
-    categoryKey: doodad.category,
-    category: data.t9nCategory[doodad.category] ?? doodad.category,
-  }));
-
+function distinguishShared(entries) {
   const shared = sharedNames(entries);
   for (const entry of entries) {
     if (shared.has(entry.name)) entry.distinguisher = lastSegment(entry.id);
   }
-  return entries.sort(byNameThenId);
 }
 
 function sharedNames(entries) {
