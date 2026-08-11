@@ -225,8 +225,8 @@ const names = (palette, wanted) =>
 
 /**
  * The check that decides whether the editor may write a name at all. A table
- * that disagrees with the document would write a file the game rejects, so
- * disagreement has to be found before a placement rather than after an import.
+ * that disagrees with the document is a table in another language, and placing
+ * from it writes a second language into the file beside the first.
  */
 describe("Palette.disagreements", () => {
   const doodads = (...names) =>
@@ -388,6 +388,19 @@ describe("the generated tables", () => {
     expect(palette.find(4243958141).variations, "the Recombinator").toBe(0);
   });
 
+  /**
+   * The data is the current name and a file is as current as its export. Both
+   * of these were renamed in game, and taking the older exports as the truth
+   * cost the palette two doodads it offers -- wiki issue 0057.
+   */
+  it("names a renamed doodad the way the data does", () => {
+    const palette = new Palette(table("English"));
+
+    expect(palette.find(1023253651).name).toBe("Zelina");
+    expect(palette.find(2204408127).name).toBe("Zolin");
+    expect(palette.find(1023253651).placeable).toBe(true);
+  });
+
   /** The blacklist of `scripts/editor_data.py`, seen from this end. */
   it("offers nothing the game marks as not for use, and still names it", () => {
     const palette = new Palette(table("English"));
@@ -405,12 +418,12 @@ describe("the generated tables", () => {
  * file, which is what makes the load-time check a test rather than a hope.
  *
  * Every doodad, not merely every doodad the table happens to know: a hash the
- * table cannot name is a hideout that cannot be rewritten into another
- * language, and the Recombinator every export carries was exactly that until
- * the table began naming what it does not offer.
+ * table cannot name is a doodad the editor can only show as a number, and the
+ * Recombinator every export carries was exactly that until the table began
+ * naming what it does not offer.
  *
- * What is left over is `UNNAMED`, and it is listed rather than counted so that
- * a new gap is a red suite naming the hash.
+ * The two exceptions are listed rather than counted, so that a new one is a red
+ * suite naming the hash.
  */
 
 /**
@@ -418,31 +431,50 @@ describe("the generated tables", () => {
  * 2026-08-11 -- see wiki/issues/0056-scripts-the-hashes-the-table-cannot-name.md.
  *
  * Four pets, which the data names under `Metadata/Items/Pets` and the table
- * does not carry; `The Hooded One`, which no row of `MtxTypes` holds at all;
- * and the two NPC decorations the data names wrongly, left out rather than
- * published as a name the game rejects.
+ * does not carry, and `The Hooded One`, which no row of `MtxTypes` holds at
+ * all. All five are in community exports and in none of this account's.
  */
 const UNNAMED = new Set([
   1700354733, 181403298, 583221441, 2312204769, // pets
   4210047056, // The Hooded One
-  1023253651, 2204408127, // Atalui and Ketzuli
 ]);
+
+/**
+ * What a doodad used to be called, per hash. A file exported before a rename
+ * carries the old name and is not a damaged file -- the two NPC decorations
+ * below were renamed in game, and the five exports still calling them by the
+ * old names are the five downloaded from elsewhere. See
+ * wiki/issues/0057-hideout-names-are-not-validated-and-old-files-hold-old-names.md.
+ */
+const SUPERSEDED = new Map([
+  ["1023253651", ["Atalui, Blood Priestess"]], // now Zelina
+  ["2204408127", ["Ketzuli, Architect of Time"]], // now Zolin
+]);
+
 describe.skipIf(gameExport.listFiles().length === 0)(
   "the tables against the game's own exports",
   () => {
     for (const file of gameExport.listFiles()) {
-      it(`agrees with every name in ${file.name}`, () => {
-        const document_ = HideoutDocument.fromText(gameExport.readText(file));
-        const palette = new Palette(table(document_.header.language));
-        const found = palette.disagreements(document_.doodads);
-        const unnamed = document_.doodads
-          .filter((doodad) => palette.find(doodad.hash) === undefined)
-          .filter((doodad) => !UNNAMED.has(doodad.hash));
+      it.skipIf(gameExport.HAND_EDITED.has(file.name))(
+        `agrees with every name in ${file.name}`,
+        () => {
+          const document_ = HideoutDocument.fromText(gameExport.readText(file));
+          const palette = new Palette(table(document_.header.language));
+          const found = palette.disagreements(document_.doodads);
+          const disagreed = found.reports.filter(
+            (report) => !(SUPERSEDED.get(report.hash) ?? []).includes(report.name),
+          );
+          const unnamed = document_.doodads
+            .filter((doodad) => palette.find(doodad.hash) === undefined)
+            .filter((doodad) => !UNNAMED.has(doodad.hash));
 
-        expect(found.reports).toEqual([]);
-        expect(unnamed.map((doodad) => [doodad.hash, doodad.name])).toEqual([]);
-        expect(found.checked).toBeGreaterThan(0);
-      });
+          expect(disagreed).toEqual([]);
+          expect(unnamed.map((doodad) => [doodad.hash, doodad.name])).toEqual(
+            [],
+          );
+          expect(found.checked).toBeGreaterThan(0);
+        },
+      );
     }
   },
 );

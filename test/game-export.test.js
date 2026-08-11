@@ -17,8 +17,9 @@ describe.skipIf(files.length === 0)(
     for (const gameFile of files) {
       describe(gameFile.name, () => {
         const text = gameExport.readText(gameFile);
+        const wrote = gameExport.HAND_EDITED.has(gameFile.name) ? it.skip : it;
 
-        it("serializes back to the bytes the game wrote", () => {
+        wrote("serializes back to the bytes the game wrote", () => {
           expect(file.serialize(file.parse(text))).toBe(text);
         });
 
@@ -39,11 +40,11 @@ describe.skipIf(files.length === 0)(
           );
         });
 
-        it("round trips through the document model", () => {
+        wrote("round trips through the document model", () => {
           expect(project.bake(HideoutDocument.fromText(text))).toBe(text);
         });
 
-        it("exports the same file after a project save and load", () => {
+        wrote("exports the same file after a project save and load", () => {
           const document_ = HideoutDocument.fromText(text);
           const saved = project.parse(project.serialize(document_));
 

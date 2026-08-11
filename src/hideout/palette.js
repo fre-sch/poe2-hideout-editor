@@ -11,8 +11,8 @@
  * may place: art the developers marked as not shipping, categories no Path of
  * Exile 2 hideout offers, and the doodads the game places itself. `placeable`
  * is what tells them apart, and it is a question this module asks -- naming a
- * doodad and offering it are different things, and a name that is not in the
- * table is a hideout that cannot be rewritten into another language.
+ * doodad and offering it are different things, and a hash the table cannot name
+ * is a doodad the editor can only show as a number.
  *
  * Fetching the file is not here, for the same reason `viewport/bounds.js`
  * fetches and `hideout/bounds.js` does not: the domain layer is framework-free
@@ -20,12 +20,17 @@
  *
  * ### Why the language question exists at all
  *
- * A `.hideout` names every doodad, the game validates that name against the
- * file's `language`, and it rejects an import that disagrees. So a name is
- * looked up or copied and never derived, and a table loaded for the wrong
- * language is worse than no table: it writes a file the game refuses. The
- * document itself is the test -- it arrives carrying hundreds of names the game
- * wrote -- and `disagreements` is that test.
+ * A `.hideout` names every doodad in one language, and the editor has only the
+ * `language` field's word for which. The game itself does not care -- it reads
+ * the hashes and imports a file whose keys are empty, measured 2026-08-11 --
+ * but everything on this side does: a table loaded for the wrong language shows
+ * a player one word and writes another beside it, in a file that then names the
+ * same doodad two ways. A name is looked up or copied and never derived.
+ *
+ * The document is the test, because it arrives carrying hundreds of names the
+ * game wrote, and `disagreements` is that test. Three answers, and the caller
+ * tells them apart by how many: a handful is a file edited by hand or exported
+ * before a doodad was renamed, wholesale is the wrong table.
  */
 
 /**
