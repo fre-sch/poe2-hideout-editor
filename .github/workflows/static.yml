@@ -39,6 +39,10 @@ jobs:
         run: npm ci
       - name: Build
         run: npm run build
+        env:
+          # Search Console ownership tag. A variable and not a secret: it is
+          # served to every visitor. A fork has none, and builds without it.
+          GOOGLE_SITE_VERIFICATION: ${{ vars.GOOGLE_SITE_VERIFICATION }}
       - name: Setup Pages
         uses: actions/configure-pages@v5
       - name: Upload artifact
