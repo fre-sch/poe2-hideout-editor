@@ -6,7 +6,7 @@
  * onto the stage unscaled and untranslated, and a hideout that lands on its own
  * outline is the proof that the coordinate mapping is right.
  *
- * The four in `public/bounds/` were traced by hand, walking each perimeter in
+ * The ones in `public/bounds/` were traced by hand, walking each perimeter in
  * game placing one doodad at a time. `scripts/probe_grid.py` derives them from
  * the game instead and writes the same convention; its outlines agree with the
  * hand traces to within a few units, but have not replaced them.
@@ -26,17 +26,17 @@ const CACHE = new Map();
 
 /**
  * The outline for a `hideout_hash` as a `Konva.Group`, or `null` for a hideout
- * type with no outline file -- three of the game's seven, wiki issue 0007.
+ * type nobody has traced -- 76 of the game's 83, wiki issue 0021.
  *
  * Asynchronous because the outlines are static assets rather than source: they
  * come from the game by way of `scripts/`, and no edit to them belongs here.
  */
 export async function load(hash) {
-  const definition = bounds.find(hash);
-  if (!definition) return null;
+  const file = bounds.outlineFor(hash);
+  if (!file) return null;
 
   const group = new Konva.Group({ listening: false });
-  for (const data of await pathData(definition.file)) {
+  for (const data of await pathData(file)) {
     group.add(
       new Konva.Path({
         data,
