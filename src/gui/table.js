@@ -1,6 +1,12 @@
 /**
- * The doodad table for the document's language: fetched once, checked against
- * the document, and shared by everything that asks the data a question.
+ * The generated tables for the document's language: fetched once each, and
+ * shared by everything that asks the data a question.
+ *
+ * Two of them, and they are loaded separately because they are wanted at
+ * different moments. The doodad table is 400 kilobytes and is read by the
+ * palette, the selection and the arrays, so it waits until one of those is
+ * open; the hideout table is three, and the sidebar names the loaded file from
+ * it the moment the file arrives.
  *
  * It began inside `gui/palette.jsx`, which is still its main reader. What moved
  * it out is the Selection section: how many variations a doodad has is the
@@ -23,6 +29,7 @@
 
 import { signal } from "@preact/signals";
 
+import { Hideouts } from "../hideout/hideouts.js";
 import { Palette } from "../hideout/palette.js";
 
 /**
@@ -35,7 +42,15 @@ import { Palette } from "../hideout/palette.js";
 export const table = signal(null);
 export const tableError = signal(null);
 
-/** Cached per language: ten files, and a player loads one or two of them. */
+/**
+ * The `Hideouts` for the loaded document's language, or `null`, and what went
+ * wrong fetching it. No check against the document: the header names one
+ * hideout, and one name is not evidence of a language the way hundreds are.
+ */
+export const hideouts = signal(null);
+export const hideoutsError = signal(null);
+
+/** Cached per directory and language: twenty files, a player loads a few. */
 const FETCHED = new Map();
 
 export async function loadTable(document_) {
@@ -45,7 +60,7 @@ export async function loadTable(document_) {
   table.value = null;
   tableError.value = null;
   try {
-    const palette = new Palette(await fetchLanguage(language));
+    const palette = new Palette(await fetchLanguage("doodads", language));
     table.value = {
       document: document_,
       language,
@@ -54,6 +69,19 @@ export async function loadTable(document_) {
     };
   } catch (error) {
     tableError.value = error;
+  }
+}
+
+export async function loadHideouts(document_) {
+  const language = document_.header.language;
+  if (hideouts.value?.language === language) return;
+
+  hideouts.value = null;
+  hideoutsError.value = null;
+  try {
+    hideouts.value = new Hideouts(await fetchLanguage("hideouts", language));
+  } catch (error) {
+    hideoutsError.value = error;
   }
 }
 
@@ -74,22 +102,28 @@ export function variationsOf(doodad) {
   return entryOf(doodad)?.variations ?? 0;
 }
 
-async function fetchLanguage(language) {
+/** What a directory of tables holds, for the message a player is shown. */
+const HOLDS = {
+  doodads: "doodad names",
+  hideouts: "hideout names",
+};
+
+async function fetchLanguage(directory, language) {
   if (!language) throw new Error("This file names no language.");
-  if (!FETCHED.has(language)) {
-    FETCHED.set(language, fetchJson(language));
+  const url = `${import.meta.env.BASE_URL}${directory}/${encodeURIComponent(language)}.json`;
+  if (!FETCHED.has(url)) {
+    FETCHED.set(
+      url,
+      fetchJson(url, `No ${HOLDS[directory]} for the language '${language}'`),
+    );
   }
-  return FETCHED.get(language);
+  return FETCHED.get(url);
 }
 
-async function fetchJson(language) {
-  const url = `${import.meta.env.BASE_URL}doodads/${encodeURIComponent(language)}.json`;
+async function fetchJson(url, complaint) {
   const response = await fetch(url);
   if (!response.ok) {
-    throw new Error(
-      `No doodad names for the language '${language}': ` +
-        `${response.status} ${response.statusText}.`,
-    );
+    throw new Error(`${complaint}: ${response.status} ${response.statusText}.`);
   }
   return response.json();
 }
