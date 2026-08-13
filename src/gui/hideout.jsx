@@ -8,11 +8,17 @@
  *
  * The hideout type is a viewport setting. Changing it changes the outline and
  * nothing else.
+ *
+ * The language is not: it is the document's, it is exported, and switching it
+ * is how a player reads a hideout somebody else exported in their own words --
+ * wiki issue 0053. What it changes is which tables are read; the names in the
+ * document are left exactly as they arrived.
  */
 
 import { useEffect } from "preact/hooks";
 
 import * as hideouts from "../hideout/hideouts.js";
+import * as languages from "../hideout/languages.js";
 import * as project from "../hideout/project.js";
 import * as state from "../state.js";
 import * as table from "../table.js";
@@ -27,9 +33,15 @@ const DANGER = 0.9;
 
 export default function Hideout() {
   const document_ = state.hideoutDocument.value;
+  const language = state.language.value;
 
+  // The hideout table is the language's, so a switch asks for another one.
   useEffect(() => {
     if (document_) table.loadHideouts(document_);
+  }, [document_, language]);
+  // The manifest is the selector's list, and one file for the whole session.
+  useEffect(() => {
+    if (document_) table.loadLanguages();
   }, [document_]);
 
   if (document_ === null) return null;
@@ -52,7 +64,9 @@ export default function Hideout() {
         <div class="text-secondary">Version:</div>
         <div>{header.version}</div>
         <div class="text-secondary">Language:</div>
-        <div>{header.language}</div>
+        <div>
+          <LanguageSelect />
+        </div>
         <div class="text-secondary">Name:</div>
         <div>{displayName(header)}</div>
         <div class="text-secondary">Outline:</div>
@@ -64,6 +78,7 @@ export default function Hideout() {
           <DoodadCount />
         </div>
       </div>
+      <LanguageNote />
       <TableError />
     </details>
   );
@@ -138,17 +153,87 @@ function label(option) {
 }
 
 /**
- * A missing hideout table leaves the dropdown holding one entry, which is a
- * gap worth a sentence rather than a silence.
+ * Every language there are tables for, and the document's own first where the
+ * manifest does not list it -- `TypeSelect`'s reasoning, applied to a word
+ * instead of a hash: a file naming a language the editor has never heard of
+ * must still show what it says it is, and must be able to come back to it.
+ */
+function LanguageSelect() {
+  const options = languages.optionsFor(
+    table.languages.value,
+    state.language.value,
+  );
+  return (
+    <select
+      class="form-select form-select-sm"
+      value={state.language.value}
+      onChange={switchLanguage}
+    >
+      {options.map((option) => (
+        <option value={option.language}>{languageLabel(option)}</option>
+      ))}
+    </select>
+  );
+}
+
+/**
+ * A language with tables behind it reads as itself. The two that do not are
+ * the document's own where the manifest does not list it -- no tables at all,
+ * so nothing can be named -- and the seven whose header spelling nobody has
+ * seen a client write.
+ */
+function languageLabel(option) {
+  if (option.unknown) return `${option.language} (no tables)`;
+  if (option.spelling === languages.ASSUMED) {
+    return `${option.language} (spelling assumed)`;
+  }
+  return option.language;
+}
+
+/**
+ * What "assumed" costs, said where a player has just chosen one. Not a warning:
+ * the game ignores the field, and reading a hideout in Japanese is exactly what
+ * this selector is for. What it costs is the file's next reader -- this editor
+ * among them -- picking its tables by a word no client may write.
+ */
+function LanguageNote() {
+  const chosen = state.language.value;
+  if (!languages.assumed(table.languages.value, chosen)) return null;
+  return (
+    <p class="text-secondary mt-2 mb-0">
+      No file this editor has measured spells its language '{chosen}', so the
+      word saved is the game data exporter's. The game ignores it; an editor
+      reading the file back picks its tables by it.
+    </p>
+  );
+}
+
+/**
+ * A missing table leaves a dropdown holding one entry, which is a gap worth a
+ * sentence rather than a silence. Two dropdowns, two files, and a player who
+ * has lost both is told so twice -- they are separate fetches and one can fail
+ * without the other.
  */
 function TableError() {
-  if (table.hideoutsError.value === null) return null;
   return (
-    <p class="text-danger mt-2 mb-0">{`${table.hideoutsError.value.message}`}</p>
+    <>
+      <Complaint error={table.hideoutsError.value} />
+      <Complaint error={table.languagesError.value} />
+    </>
   );
+}
+
+function Complaint({ error }) {
+  if (error === null) return null;
+  return <p class="text-danger mt-2 mb-0">{`${error.message}`}</p>;
 }
 
 function select(event) {
   state.hideoutType.value = event.currentTarget.value;
+  event.currentTarget.blur();
+}
+
+function switchLanguage(event) {
+  state.switchLanguage(event.currentTarget.value);
   event.currentTarget.blur();
 }

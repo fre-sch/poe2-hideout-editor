@@ -97,6 +97,7 @@ async function load(event) {
     state.activeLayer.value = firstOrdinaryLayer(hideout).id;
     state.fileName.value = file.name;
     state.hideoutType.value = hideout.header.hideout_hash;
+    state.language.value = hideout.header.language;
     state.doodadCount.value = hideout.doodads.length;
     state.loadError.value = null;
     // A loaded file resets the GUI. The palette in particular describes one

@@ -63,6 +63,23 @@ describe("bake", () => {
     expect(project.bake(document_)).toMatch(/"doodads":\s*\{\s*\}/);
   });
 
+  /**
+   * What a switch of language costs the file -- wiki issue 0053. The header
+   * word is the whole of it: the names are the document's and are copied, never
+   * derived, so a file can hold names in two languages and the game reads
+   * neither. Switching back is therefore the file it started as.
+   */
+  it("writes the switched language and nothing else", () => {
+    const document_ = HideoutDocument.fromText(SHRINE);
+    document_.header.language = "German";
+
+    const switched = project.bake(document_);
+    document_.header.language = "English";
+
+    expect(switched).toBe(SHRINE.replace('"English"', '"German"'));
+    expect(project.bake(document_)).toBe(SHRINE);
+  });
+
   it("exports in layer order", () => {
     const document_ = HideoutDocument.fromText(SHRINE);
     const garden = document_.addLayer("Garden");

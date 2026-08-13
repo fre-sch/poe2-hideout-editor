@@ -131,10 +131,13 @@ export function ArraySidebar() {
   state.arrayMoved.value;
 
   // The variation count is the doodad table's answer, and a player who made an
-  // array from a selection may never have opened the palette.
+  // array from a selection may never have opened the palette. The language is a
+  // dependency because switching it is what makes the loaded table the wrong
+  // one, and the document it was read from does not change with it.
+  const language = state.language.value;
   useEffect(() => {
     if (document_ && layer !== null) loadTable(document_);
-  }, [document_, layer]);
+  }, [document_, layer, language]);
 
   const parameters = layer === null ? null : document_?.findGenerator(layer);
   if (!parameters) return null;

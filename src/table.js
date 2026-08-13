@@ -32,7 +32,7 @@ import { signal } from "@preact/signals";
 import { Hideouts } from "./hideout/hideouts.js";
 import * as palette from "./hideout/palette.js";
 
-/** `{ document, language, palette }` once loaded, or `null`. */
+/** `{ language, palette }` once loaded, or `null`. */
 export const table = signal(null);
 export const tableError = signal(null);
 
@@ -44,22 +44,32 @@ export const tableError = signal(null);
 export const hideouts = signal(null);
 export const hideoutsError = signal(null);
 
+/**
+ * The manifest of languages there are tables for, or `null`, and what went
+ * wrong fetching it. It is the selector's list -- wiki issue 0053 -- and it is
+ * one file for the whole session rather than one per document.
+ */
+export const languages = signal(null);
+export const languagesError = signal(null);
+
 /** Cached per directory and language: twenty files, a player loads a few. */
 const FETCHED = new Map();
 
+/**
+ * Both loaders are keyed by language and not by document: a table is the
+ * language's, so two documents in one language share it and one document
+ * switched to another needs the other one. The switch is why -- it changes what
+ * a loaded document wants without changing the document a caller passes.
+ */
 export async function loadTable(document_) {
-  if (table.value?.document === document_) return;
-
   const language = document_.header.language;
+  if (table.value?.language === language) return;
+
   table.value = null;
   tableError.value = null;
   try {
     const data = await fetchLanguage("doodads", language);
-    table.value = {
-      document: document_,
-      language,
-      palette: new palette.Palette(data),
-    };
+    table.value = { language, palette: new palette.Palette(data) };
   } catch (error) {
     tableError.value = error;
   }
@@ -75,6 +85,21 @@ export async function loadHideouts(document_) {
     hideouts.value = new Hideouts(await fetchLanguage("hideouts", language));
   } catch (error) {
     hideoutsError.value = error;
+  }
+}
+
+/** The manifest, fetched once. Which languages exist does not change. */
+export async function loadLanguages() {
+  if (languages.value) return;
+
+  languagesError.value = null;
+  try {
+    languages.value = await fetchJson(
+      `${import.meta.env.BASE_URL}languages.json`,
+      "No list of the languages there are tables for",
+    );
+  } catch (error) {
+    languagesError.value = error;
   }
 }
 
