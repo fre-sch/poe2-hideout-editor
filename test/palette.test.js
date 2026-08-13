@@ -493,3 +493,43 @@ describe.skipIf(gameExport.listFiles().length === 0)(
     }
   },
 );
+
+/**
+ * The measurement a switch of language rests on -- wiki issue 0053. The three
+ * `felled_*` exports are one hideout exported from an English, a French and a
+ * German client, so the German names for the English file's doodads are known:
+ * they are the German file's own, doodad for doodad.
+ *
+ * It is the display rule of wiki issue 0059 read across two files rather than
+ * one. What a switch does is hand `nameFor` another table, and this is what
+ * that has to be worth.
+ */
+const FELLED = ["english", "french", "german"];
+
+const felled = (language) =>
+  HideoutDocument.fromText(
+    gameExport.readText(gameExport.find(`felled_${language}`)),
+  );
+
+describe.skipIf(
+  FELLED.some((language) => !gameExport.find(`felled_${language}`)),
+)("the same hideout in three languages", () => {
+  const [reference, ...others] = FELLED.map(felled);
+
+  for (const [index, other] of others.entries()) {
+    const language = other.header.language;
+
+    it(`names the English file's doodads as the ${language} file does`, () => {
+      const palette = new Palette(table(language));
+      const theirs = others[index].doodads;
+
+      expect(reference.doodads).toHaveLength(theirs.length);
+      const switched = reference.doodads.map((doodad, position) => [
+        nameFor(palette, doodad),
+        theirs[position].name,
+      ]);
+
+      expect(switched.filter(([shown, wanted]) => shown !== wanted)).toEqual([]);
+    });
+  }
+});

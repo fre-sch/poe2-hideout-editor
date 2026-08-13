@@ -228,3 +228,33 @@ describe.skipIf(gameExport.listFiles().length === 0)(
     }
   },
 );
+
+/**
+ * The header name under a switch of language -- wiki issue 0053. The `felled_*`
+ * exports are one hideout from three clients, so what the German table must
+ * call the English file's hash is not a guess: it is the German file's own
+ * `hideout_name`.
+ */
+const FELLED = ["english", "french", "german"];
+
+const header = (language) =>
+  HideoutDocument.fromText(
+    gameExport.readText(gameExport.find(`felled_${language}`)),
+  ).header;
+
+describe.skipIf(
+  FELLED.some((language) => !gameExport.find(`felled_${language}`)),
+)("the same hideout in three languages", () => {
+  const [english, ...others] = FELLED.map(header);
+
+  for (const other of others) {
+    it(`names the English file's hideout as the ${other.language} file does`, () => {
+      const hideouts = new Hideouts(table(other.language));
+
+      expect(english.hideout_hash).toBe(other.hideout_hash);
+      expect(
+        nameFor(hideouts, english.hideout_hash, english.hideout_name),
+      ).toBe(other.hideout_name);
+    });
+  }
+});

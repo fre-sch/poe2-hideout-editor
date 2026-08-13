@@ -24,6 +24,29 @@ export const loadError = signal(null);
 /** `hideout_hash` of the outline to draw. Never written back to the file. */
 export const hideoutType = signal(null);
 
+/**
+ * The document's `header.language`, republished.
+ *
+ * `doodadCount`'s reasoning, applied to a field: the header is part of the
+ * document, switching the language writes it there, and nothing can subscribe
+ * to a field being written. The header stays the truth -- it is what the export
+ * carries -- and this is what the tables and the sidebar watch.
+ */
+export const language = signal(null);
+
+/**
+ * Switches the document's language: the header, and everyone reading it.
+ *
+ * Nothing else in the document moves. Positions, rotations, variations, layers
+ * and generators are language-free, and so are the names, which a switch does
+ * not touch -- what a doodad is *shown* as is looked up per language, wiki
+ * issues 0053 and 0059.
+ */
+export function switchLanguage(chosen) {
+  hideoutDocument.value.header.language = chosen;
+  language.value = chosen;
+}
+
 export const doodadCount = signal(0);
 
 /**

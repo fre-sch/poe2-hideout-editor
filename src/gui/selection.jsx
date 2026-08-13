@@ -31,10 +31,13 @@ export default function Selection() {
   // may never have opened the palette -- so the section loads it for itself. Once
   // there is something selected, and not on every load: it is a 200kB file per
   // language, and looking at a hideout is not asking about it.
+  // The language is a dependency because a switch is what makes the loaded
+  // table the wrong one, and the document does not change with it.
   const anySelected = selected.length > 0;
+  const language = state.language.value;
   useEffect(() => {
     if (document_ && anySelected) loadTable(document_);
-  }, [document_, anySelected]);
+  }, [document_, anySelected, language]);
 
   // The pointer can leave a row by the row being taken away -- the tab switched,
   // the selection dropped -- and `mouseleave` is not fired for that. Nothing

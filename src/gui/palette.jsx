@@ -87,10 +87,13 @@ export function AddDoodadButton() {
 export function DoodadPalette() {
   const shown = state.showPalette.value;
   const document_ = state.hideoutDocument.value;
+  // Switching the language is what makes the loaded table the wrong one, and
+  // the document a caller passes does not change with it.
+  const language = state.language.value;
 
   useEffect(() => {
     if (shown && document_) loadTable(document_);
-  }, [shown, document_]);
+  }, [shown, document_, language]);
 
   if (!shown) return null;
   return (

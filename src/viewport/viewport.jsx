@@ -138,10 +138,13 @@ function Band() {
 function Overlay() {
   const document_ = state.hideoutDocument.value;
   const showLabels = state.showLabels.value;
+  // A switch of language asks for another table without changing the document,
+  // so it is a dependency of its own -- wiki issue 0053.
+  const language = state.language.value;
 
   useEffect(() => {
     if (document_ && showLabels) loadTable(document_);
-  }, [document_, showLabels]);
+  }, [document_, showLabels, language]);
 
   return (
     <div id="label-overlay">
