@@ -15,6 +15,7 @@
 import { useEffect, useRef } from "preact/hooks";
 
 import * as state from "../state.js";
+import { loadTable, nameOf } from "../table.js";
 import { Scene } from "./scene.js";
 
 export default function Viewport() {
@@ -124,12 +125,29 @@ function Band() {
   );
 }
 
+/**
+ * The names over the doodads. `Labels` says where each one goes and for which
+ * doodad, and the name is looked up here so that a table arriving -- or a
+ * language switched -- renames them without the viewport being touched.
+ *
+ * It asks for the table itself, the way the Selection section does: labels name
+ * hundreds of doodads at once, so they are the reader that most wants the
+ * table's word rather than the file's. Turned off, they want nothing -- which is
+ * what keeps a player who never opens the palette from fetching 400 kilobytes.
+ */
 function Overlay() {
+  const document_ = state.hideoutDocument.value;
+  const showLabels = state.showLabels.value;
+
+  useEffect(() => {
+    if (document_ && showLabels) loadTable(document_);
+  }, [document_, showLabels]);
+
   return (
     <div id="label-overlay">
       {state.labels.value.map((label) => (
         <div class="label" style={{ left: label.x, top: label.y }}>
-          {label.text}
+          {nameOf(label.doodad)}
         </div>
       ))}
     </div>

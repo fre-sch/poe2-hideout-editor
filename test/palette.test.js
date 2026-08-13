@@ -10,6 +10,7 @@ import {
   UNTAGGED,
   INCLUDE,
   EXCLUDE,
+  nameFor,
 } from "../src/hideout/palette.js";
 
 const TABLES = path.resolve(
@@ -224,54 +225,39 @@ const names = (palette, wanted) =>
     .flatMap((group) => group.entries.map((entry) => entry.name));
 
 /**
- * The check that decides whether the editor may write a name at all. A table
- * that disagrees with the document is a table in another language, and placing
- * from it writes a second language into the file beside the first.
+ * The display rule of wiki issue 0059: the table answers for a hash it knows,
+ * and the file answers for the rest. The document is never rewritten either
+ * way -- what is asserted here is what a player is shown.
  */
-describe("Palette.disagreements", () => {
-  const doodads = (...names) =>
-    names.map(([name, hash]) => ({ name, hash, x: 0, y: 0, r: 0, fv: 0 }));
+describe("nameFor", () => {
+  const doodad = (name, hash) => ({ name, hash, x: 0, y: 0, r: 0, fv: 0 });
 
-  it("counts what it recognised and reports what disagreed", () => {
-    const found = new Palette(DATA).disagreements(
-      doodads(["Warp Rune", 10], ["Portail runique", 20]),
-    );
+  it("names a known hash from the table, whatever the file called it", () => {
+    const palette = new Palette(DATA);
 
-    expect(found.checked).toBe(2);
-    expect(found.reports).toEqual([
-      { hash: "20", name: "Portail runique", expected: "Warp Rune" },
-    ]);
-  });
-
-  it("reports a hash once, however often the hideout holds it", () => {
-    const found = new Palette(DATA).disagreements(
-      doodads(["Palmier", 30], ["Palmier", 30], ["Palmier", 30]),
-    );
-
-    expect(found.reports).toHaveLength(1);
-  });
-
-  it("takes a doodad it does not know as no evidence either way", () => {
-    // An essential the game places itself, which no MTX table lists.
-    const found = new Palette(DATA).disagreements(doodads(["Waypoint", 7]));
-
-    expect(found).toEqual({ checked: 0, reports: [] });
+    expect(nameFor(palette, doodad("Portail runique", 20))).toBe("Warp Rune");
   });
 
   /**
    * The reason the table names what it does not offer. Every game export holds
-   * a Recombinator, and a check that skipped it was checking less than the
-   * document could tell it.
+   * a Recombinator, and a rule that skipped it would show one doodad in the
+   * file's language among a hideout named in the table's.
    */
-  it("judges a doodad it names but does not offer", () => {
-    const found = new Palette(DATA).disagreements(
-      doodads(["Rekombinator", 50]),
-    );
+  it("names a doodad it names but does not offer", () => {
+    const palette = new Palette(DATA);
 
-    expect(found.checked).toBe(1);
-    expect(found.reports).toEqual([
-      { hash: "50", name: "Rekombinator", expected: "Recombinator" },
-    ]);
+    expect(nameFor(palette, doodad("Rekombinator", 50))).toBe("Recombinator");
+  });
+
+  it("falls back to the file for a hash no table names", () => {
+    // An essential the game places itself, which no MTX table lists.
+    const palette = new Palette(DATA);
+
+    expect(nameFor(palette, doodad("Waypoint", 7))).toBe("Waypoint");
+  });
+
+  it("falls back to the file before a table has arrived", () => {
+    expect(nameFor(null, doodad("Wegpunkt", 20))).toBe("Wegpunkt");
   });
 });
 
@@ -376,7 +362,7 @@ describe("the generated tables", () => {
 
   /**
    * An entry no `HideoutDoodads` row describes has no variation list to count,
-   * and `0` is how the table says it cannot tell -- `gui/table.js` reads it as
+   * and `0` is how the table says it cannot tell -- `table.js` reads it as
    * that already, which is why those rows need no shape of their own.
    */
   it("reports no variations for the doodads it only names", () => {
@@ -415,7 +401,13 @@ describe("the generated tables", () => {
 /**
  * The measurement the whole feature rests on: the table's names are the names
  * the game itself wrote into a file of that language. Hundreds of samples per
- * file, which is what makes the load-time check a test rather than a hope.
+ * file.
+ *
+ * It is a claim about the generated tables and about nothing a player does. The
+ * editor used to make the same comparison at every load and refuse the palette
+ * over it, which is what wiki issue 0059 took out: the game reads the hashes,
+ * so a name that disagrees costs an import nothing. What is left is here, where
+ * a table generated wrong is caught by the exports rather than by a player.
  *
  * Every doodad, not merely every doodad the table happens to know: a hash the
  * table cannot name is a doodad the editor can only show as a number, and the
@@ -451,6 +443,26 @@ const SUPERSEDED = new Map([
   ["2204408127", ["Ketzuli, Architect of Time"]], // now Zolin
 ]);
 
+/**
+ * The doodads this table calls something else, one report per hash -- a hideout
+ * holds the same doodad dozens of times and a list saying so dozens of times
+ * says nothing more. A hash the table does not know is no evidence either way
+ * and is counted by the caller instead.
+ */
+function disagreements(palette, doodads) {
+  const reports = new Map();
+  for (const doodad of doodads) {
+    const entry = palette.find(doodad.hash);
+    if (!entry || entry.name === doodad.name) continue;
+    reports.set(entry.hash, {
+      hash: entry.hash,
+      name: doodad.name,
+      expected: entry.name,
+    });
+  }
+  return [...reports.values()];
+}
+
 describe.skipIf(gameExport.listFiles().length === 0)(
   "the tables against the game's own exports",
   () => {
@@ -460,9 +472,12 @@ describe.skipIf(gameExport.listFiles().length === 0)(
         () => {
           const document_ = HideoutDocument.fromText(gameExport.readText(file));
           const palette = new Palette(table(document_.header.language));
-          const found = palette.disagreements(document_.doodads);
-          const disagreed = found.reports.filter(
-            (report) => !(SUPERSEDED.get(report.hash) ?? []).includes(report.name),
+          const named = document_.doodads.filter((doodad) =>
+            palette.find(doodad.hash),
+          );
+          const disagreed = disagreements(palette, document_.doodads).filter(
+            (report) =>
+              !(SUPERSEDED.get(report.hash) ?? []).includes(report.name),
           );
           const unnamed = document_.doodads
             .filter((doodad) => palette.find(doodad.hash) === undefined)
@@ -472,7 +487,7 @@ describe.skipIf(gameExport.listFiles().length === 0)(
           expect(unnamed.map((doodad) => [doodad.hash, doodad.name])).toEqual(
             [],
           );
-          expect(found.checked).toBeGreaterThan(0);
+          expect(named.length).toBeGreaterThan(0);
         },
       );
     }

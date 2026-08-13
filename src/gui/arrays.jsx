@@ -27,7 +27,7 @@ import * as arrays from "../hideout/arrays.js";
 import * as generator from "../hideout/generator.js";
 import * as model from "../hideout/model.js";
 import { ActionButton, SelectionBadge } from "./buttons.jsx";
-import { loadTable, variationsOf } from "./table.js";
+import { loadTable, nameOf, variationsOf } from "../table.js";
 
 const SHAPES = [
   ["grid", "Grid"],
@@ -598,11 +598,14 @@ function PickButton({ label, mode, value, onChange }) {
  * wiki issue 0051.
  */
 function SourceRow({ entry, index, only, chosen }) {
+  // The table's name for the hash, or the one the source was stored with --
+  // wiki issue 0059. The stored name is what the doodads are written with.
+  const name = nameOf(entry);
   return (
     <li class="mb-1">
       <div class="array-source-row">
-        <span class="array-source-name" title={entry.name}>
-          {entry.name}
+        <span class="array-source-name" title={name}>
+          {name}
         </span>
         <button
           type="button"

@@ -4,8 +4,8 @@
  * It is built from a `public/doodads/{language}.json` file, generated from the
  * game's own data by `scripts/editor_data.py` -- see
  * wiki/decisions/doodad-palette.md. This module reads that data and answers the
- * three questions the palette asks of it: what is there, what matches what the
- * player typed, and is this table the one the document is written in.
+ * three questions asked of it: what is there, what matches what the player
+ * typed, and what is this hash called.
  *
  * The table names every hash a hideout can contain, which is more than a player
  * may place: art the developers marked as not shipping, categories no Path of
@@ -18,19 +18,16 @@
  * fetches and `hideout/bounds.js` does not: the domain layer is framework-free
  * by rule -- wiki issue 0011.
  *
- * ### Why the language question exists at all
+ * ### Where a displayed name comes from
  *
- * A `.hideout` names every doodad in one language, and the editor has only the
- * `language` field's word for which. The game itself does not care -- it reads
- * the hashes and imports a file whose keys are empty, measured 2026-08-11 --
- * but everything on this side does: a table loaded for the wrong language shows
- * a player one word and writes another beside it, in a file that then names the
- * same doodad two ways. A name is looked up or copied and never derived.
+ * `nameFor` is the rule, and it has two branches: this table for a hash it
+ * knows, the file's own word for the rest -- wiki issue 0059. The table is the
+ * current name in the document's language, and the file's is whatever client
+ * wrote it, which may be a language ago or a rename ago.
  *
- * The document is the test, because it arrives carrying hundreds of names the
- * game wrote, and `disagreements` is that test. Three answers, and the caller
- * tells them apart by how many: a handful is a file edited by hand or exported
- * before a doodad was renamed, wholesale is the wrong table.
+ * A name is looked up or copied and never derived, and never written back over
+ * what the document holds. The game reads the hashes and ignores the words
+ * entirely -- wiki issue 0057 -- so no name shown here can make a file fail.
  */
 
 /**
@@ -59,8 +56,8 @@ export class Palette {
    *
    * `entries` is every hash the table names and `placeable` is the part of it
    * the palette offers. The filters and the list are built from the second,
-   * `find` and `disagreements` answer out of the first: what a doodad is called
-   * is worth knowing about a doodad nobody may place.
+   * `find` answers out of the first: what a doodad is called is worth knowing
+   * about a doodad nobody may place.
    */
   constructor(data) {
     this.language = data.language;
@@ -107,39 +104,19 @@ export class Palette {
     );
     return groupByCategory(matching);
   }
+}
 
-  /**
-   * The document's doodads that this table calls something else.
-   *
-   * One report per hash, because a hideout holds the same doodad dozens of
-   * times and a list saying so dozens of times says nothing more. `checked` is
-   * how many doodads the table recognised at all: a doodad the table does not
-   * know -- an essential the game places itself, say -- is no evidence either
-   * way.
-   *
-   * Nothing to check is not the same as disagreement, and the caller is left to
-   * say which it has. A hideout with nothing placed in it yet is exactly where
-   * placing matters most, and refusing it for lack of samples would be refusing
-   * the empty hideout in particular.
-   */
-  disagreements(doodads) {
-    const reports = new Map();
-    let checked = 0;
-
-    for (const doodad of doodads) {
-      const entry = this.find(doodad.hash);
-      if (!entry) continue;
-
-      checked++;
-      if (entry.name === doodad.name) continue;
-      reports.set(entry.hash, {
-        hash: entry.hash,
-        name: doodad.name,
-        expected: entry.name,
-      });
-    }
-    return { checked, reports: [...reports.values()] };
-  }
+/**
+ * What to call a doodad: the table's name for its hash, or the name the file
+ * gave it where no table names that hash -- a handful in every game export, and
+ * the counterpart of `hideouts.nameFor` for the one name in the header.
+ *
+ * `palette` is the table or `null`, because it is fetched and a document is
+ * worked on before it arrives. Until then the file answers, which is the same
+ * branch and not a special case.
+ */
+export function nameFor(palette, doodad) {
+  return palette?.find(doodad.hash)?.name ?? doodad.name;
 }
 
 /**

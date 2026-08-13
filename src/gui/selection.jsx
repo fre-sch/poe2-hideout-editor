@@ -19,7 +19,7 @@ import { useEffect } from "preact/hooks";
 
 import * as state from "../state.js";
 import * as variation from "../hideout/variation.js";
-import { table, loadTable, variationsOf } from "./table.js";
+import { table, loadTable, nameOf, variationsOf } from "../table.js";
 
 const LIMIT = 20;
 
@@ -78,12 +78,24 @@ function Row({ doodad, fv }) {
       onMouseEnter={() => (state.hoveredDoodad.value = doodad)}
       onMouseLeave={() => (state.hoveredDoodad.value = null)}
     >
-      <span class="selection-name" title={doodad.name}>
-        {doodad.name}
-      </span>
+      <Name doodad={doodad} />
       <VariationButton doodad={doodad} fv={fv} />
       <MirrorButton doodad={doodad} fv={fv} />
     </li>
+  );
+}
+
+/**
+ * The table's name for the doodad, or the file's until the table arrives and
+ * for a hash it does not know -- wiki issue 0059. Its own component so that the
+ * name follows the table without the row's buttons being redrawn with it.
+ */
+function Name({ doodad }) {
+  const name = nameOf(doodad);
+  return (
+    <span class="selection-name" title={name}>
+      {name}
+    </span>
   );
 }
 
