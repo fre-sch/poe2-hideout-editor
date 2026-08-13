@@ -3,42 +3,36 @@
  * shared by everything that asks the data a question.
  *
  * Two of them, and they are loaded separately because they are wanted at
- * different moments. The doodad table is 400 kilobytes and is read by the
- * palette, the selection and the arrays, so it waits until one of those is
- * open; the hideout table is three, and the sidebar names the loaded file from
- * it the moment the file arrives.
+ * different moments. The doodad table is 400 kilobytes and is asked for by
+ * whoever needs it -- the labels, the palette, the selection, an array -- so a
+ * player who wants none of them fetches nothing; the hideout table is three, and
+ * the sidebar names the loaded file from it the moment the file arrives.
  *
  * It began inside `gui/palette.jsx`, which is still its main reader. What moved
  * it out is the Selection section: how many variations a doodad has is the
  * table's answer, and a player editing a selection may never have opened the
  * palette at all -- wiki issue 0042. Two readers is what a module is for.
  *
+ * It sits beside `state.js` and no longer in `gui/` for the same reason applied
+ * once more: the labels over the canvas name doodads too, and the viewport is
+ * not a part of the sidebar -- wiki issue 0059.
+ *
  * The generated files are static assets rather than source, the same as the
  * bounds outlines, so they are fetched and not imported -- one file per
  * language, and a player opens one of them. Fetching is why this is not in
  * `hideout/`, which is framework-free by rule, wiki issue 0011.
  *
- * ### Why the language check is part of loading
- *
- * A `.hideout` names every doodad, the game validates those names against the
- * file's `language`, and it rejects an import that disagrees. So the table is
- * only usable once it has agreed with the hundreds of names the game itself
- * wrote into the document, and `check` is that agreement. English is never a
- * fallback: it is precisely the wrong answer.
+ * A table that has not arrived is not an error and stops nothing: every reader
+ * has an answer without it -- the file's own names, and a variation count of
+ * none. Wiki issue 0059.
  */
 
 import { signal } from "@preact/signals";
 
-import { Hideouts } from "../hideout/hideouts.js";
-import { Palette } from "../hideout/palette.js";
+import { Hideouts } from "./hideout/hideouts.js";
+import * as palette from "./hideout/palette.js";
 
-/**
- * `{ document, language, palette, check }` once loaded, or `null`.
- *
- * The document is remembered beside the language because two documents can share
- * one: the check belongs to the file it was run against. It is computed when the
- * table arrives rather than per render -- it walks every doodad in the hideout.
- */
+/** `{ document, language, palette }` once loaded, or `null`. */
 export const table = signal(null);
 export const tableError = signal(null);
 
@@ -60,12 +54,11 @@ export async function loadTable(document_) {
   table.value = null;
   tableError.value = null;
   try {
-    const palette = new Palette(await fetchLanguage("doodads", language));
+    const data = await fetchLanguage("doodads", language);
     table.value = {
       document: document_,
       language,
-      palette,
-      check: palette.disagreements(document_.doodads),
+      palette: new palette.Palette(data),
     };
   } catch (error) {
     tableError.value = error;
@@ -91,6 +84,16 @@ export async function loadHideouts(document_) {
  */
 export function entryOf(doodad) {
   return table.value?.palette.find(doodad.hash);
+}
+
+/**
+ * What to call a doodad, wherever one is named: the sidebar's selection rows,
+ * an array's source list, the labels over the canvas. Reading the signal is
+ * what puts the table's word in place of the file's when the table arrives, and
+ * what follows a switch of language -- wiki issues 0059 and 0053.
+ */
+export function nameOf(doodad) {
+  return palette.nameFor(table.value?.palette, doodad);
 }
 
 /**

@@ -15,7 +15,7 @@ import { useEffect } from "preact/hooks";
 import * as hideouts from "../hideout/hideouts.js";
 import * as project from "../hideout/project.js";
 import * as state from "../state.js";
-import * as table from "./table.js";
+import * as table from "../table.js";
 
 /**
  * Where the count stops being green and stops being yellow, as fractions of the

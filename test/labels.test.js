@@ -9,9 +9,15 @@ function node(name, x, y) {
 const stage = { width: () => 100, height: () => 50 };
 
 describe("visible", () => {
+  /**
+   * The doodad and not its name: what a label reads is the table's answer or
+   * the file's, and the overlay asks that when it renders -- wiki issue 0059.
+   */
   it("labels a doodad inside the canvas, at its pixel position", () => {
-    expect(labels.visible([node("Stash", 12.4, 30.6)], stage)).toEqual([
-      { x: 12, y: 31, text: "Stash" },
+    const stash = node("Stash", 12.4, 30.6);
+
+    expect(labels.visible([stash], stage)).toEqual([
+      { x: 12, y: 31, doodad: stash.doodad },
     ]);
   });
 

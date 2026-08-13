@@ -4,7 +4,7 @@
  * Built from a `public/hideouts/{language}.json` file, generated from the
  * game's own data by `scripts/editor_data.py` -- 83 types, keyed by the
  * `hideout_hash` a `.hideout` header carries, named the way the game names them
- * in the document's language. Fetching it is `gui/table.js`'s, for the reason
+ * in the document's language. Fetching it is `table.js`'s, for the reason
  * `palette.js` gives: the domain layer is framework-free by rule, wiki issue
  * 0011.
  *
