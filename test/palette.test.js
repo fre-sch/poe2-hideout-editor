@@ -4,6 +4,7 @@ import * as url from "node:url";
 import { describe, expect, it } from "vitest";
 
 import * as gameExport from "./game-export.js";
+import * as mtxTypes from "./mtx-types.js";
 import { HideoutDocument } from "../src/hideout/model.js";
 import {
   Palette,
@@ -213,8 +214,9 @@ describe("Palette", () => {
     });
 
     expect(found).toEqual(["Warp Rune"]);
-    expect(names(palette, { categories: filter({ Teleporter: INCLUDE }) }))
-      .toHaveLength(2);
+    expect(
+      names(palette, { categories: filter({ Teleporter: INCLUDE }) }),
+    ).toHaveLength(2);
   });
 });
 
@@ -453,17 +455,16 @@ describe("the generated tables", () => {
  */
 
 /**
- * The hashes the exports hold that the generated tables do not name, measured
- * 2026-08-11 -- see wiki/issues/0056-scripts-the-hashes-the-table-cannot-name.md.
+ * The one hash the exports hold that nothing in the data names: `The Hooded
+ * One`, in four community exports, held by no row of `MtxTypes` in any prefix.
+ * See wiki/issues/0056-scripts-the-hashes-the-table-cannot-name.md.
  *
- * Four pets, which the data names under `Metadata/Items/Pets` and the table
- * does not carry, and `The Hooded One`, which no row of `MtxTypes` holds at
- * all. All five are in community exports and in none of this account's.
+ * It is enumerated because there is no rule to state -- a hash the data does
+ * not have is not a category of anything. The pets that used to sit beside it
+ * are excused by `mtxTypes.petHashes()` instead: being a pet is a rule, and a
+ * list of the hashes it produces is a list to edit after every export.
  */
-const UNNAMED = new Set([
-  1700354733, 181403298, 583221441, 2312204769, // pets
-  4210047056, // The Hooded One
-]);
+const UNNAMED = new Set([4210047056]);
 
 /**
  * What a doodad used to be called, per hash. A file exported before a rename
@@ -497,7 +498,16 @@ function disagreements(palette, doodads) {
   return [...reports.values()];
 }
 
-describe.skipIf(gameExport.listFiles().length === 0)(
+/**
+ * Two workspace fixtures, and the block needs both: the exports to measure, and
+ * `MtxTypes` to say which of their hashes are pets and therefore unnamed on
+ * purpose -- wiki/decisions/pets-are-not-doodads.md. Absent either, it skips
+ * and says which, the way the exports alone always did.
+ */
+const skipExports =
+  gameExport.listFiles().length === 0 || !mtxTypes.available();
+
+describe.skipIf(skipExports)(
   "the tables against the game's own exports",
   () => {
     for (const file of gameExport.listFiles()) {
@@ -513,9 +523,11 @@ describe.skipIf(gameExport.listFiles().length === 0)(
             (report) =>
               !(SUPERSEDED.get(report.hash) ?? []).includes(report.name),
           );
+          const pets = mtxTypes.petHashes();
           const unnamed = document_.doodads
             .filter((doodad) => palette.find(doodad.hash) === undefined)
-            .filter((doodad) => !UNNAMED.has(doodad.hash));
+            .filter((doodad) => !UNNAMED.has(doodad.hash))
+            .filter((doodad) => !pets.has(doodad.hash));
 
           expect(disagreed).toEqual([]);
           expect(unnamed.map((doodad) => [doodad.hash, doodad.name])).toEqual(
@@ -563,7 +575,9 @@ describe.skipIf(
         theirs[position].name,
       ]);
 
-      expect(switched.filter(([shown, wanted]) => shown !== wanted)).toEqual([]);
+      expect(switched.filter(([shown, wanted]) => shown !== wanted)).toEqual(
+        [],
+      );
     });
   }
 });
