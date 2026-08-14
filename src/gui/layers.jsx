@@ -94,7 +94,7 @@ export default function Layers() {
           title={addLayerTitle(selected)}
           onClick={addLayer}
         >
-          <i class="bi bi-plus-lg"></i> Add layer
+          <i class="bi bi-layers"></i> Add layer
           <SelectionBadge count={selected} />
         </button>
         <AddArrayButton />
@@ -462,13 +462,13 @@ function LayerActions() {
       <AddDoodadButton />
       <div class="btn-group" role="group" aria-label="This layer">
         <ActionButton
-          icon="bi-arrow-up"
+          icon="bi-arrow-up-square-fill"
           title={`Move this ${target.what} up`}
           disabled={!target.canMove(-1)}
           onClick={() => target.move(-1)}
         />
         <ActionButton
-          icon="bi-arrow-down"
+          icon="bi-arrow-down-square-fill"
           title={`Move this ${target.what} down`}
           disabled={!target.canMove(1)}
           onClick={() => target.move(1)}
