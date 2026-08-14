@@ -17,7 +17,7 @@ import { HelpButton } from "./help.jsx";
 
 export default function Sidebar() {
   return (
-    <div id="sidebar">
+    <div class="sidebar" id="sidebar">
       {/* A player reports a problem about a build, and a page they have had
           open for a week is a build neither of us can name otherwise. */}
       <h1>

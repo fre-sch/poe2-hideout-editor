@@ -159,7 +159,7 @@ export function ArraySidebar() {
   const parameters = layer === null ? null : document_?.findGenerator(layer);
   if (!parameters) return null;
   return (
-    <div id="array-sidebar">
+    <div class="sidebar" id="array-sidebar">
       <div class="d-flex justify-content-between align-items-center">
         <h2>Array settings</h2>
         <button

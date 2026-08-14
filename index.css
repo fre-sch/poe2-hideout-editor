@@ -36,26 +36,46 @@ main {
 details[open] .details-summary-extra {
   display: none;
 }
-/* A column so that the layer list can take the height the other sections
-   leave. It still scrolls, for the window too short to hold even those. */
-#sidebar {
+/* A full-height column beside the viewport. Its sections give up their height
+   from the inside -- the lists carry `min-height: 0` and shrink first -- so the
+   panel itself only scrolls when they have nothing left to give, in a window
+   too short to hold even that.
+
+   The width is written twice, as the width and as the floor that stops the flex
+   row from squeezing the panel, so it is one number named once. */
+.sidebar {
   display: flex;
   flex-direction: column;
-  width: 400px;
-  min-width: 400px;
+  width: var(--sidebar-width);
+  min-width: var(--sidebar-width);
   height: 100vh;
-  max-height: 100vh;
   background-color: var(--bs-secondary-bg-subtle);
   overflow-y: auto;
   overflow-x: hidden;
   padding: 0.5rem;
 }
-#sidebar h1 {
+#sidebar {
+  --sidebar-width: 400px;
+}
+/* The palette holds one list of short names, the array one column of fields. */
+#doodad-sidebar,
+#array-sidebar {
+  --sidebar-width: 300px;
+}
+/* The editor's title is the page's h1, a panel's title is an h2. A panel title
+   sits in a row with the button that closes the panel, so these are descendants
+   and not children. */
+.sidebar h1 {
   font-size: 1.2rem;
   padding: 0;
   margin: 0;
 }
-#sidebar hr {
+.sidebar h2 {
+  font-size: 1.1rem;
+  padding: 0;
+  margin: 0;
+}
+.sidebar hr {
   margin: 0.5rem 0;
 }
 .sidebar-item {
@@ -337,28 +357,7 @@ details[open] .details-summary-extra {
 
 /* The doodad palette: the sidebar on the other side. A column beside the
    viewport rather than a panel over it, so that it is never in the way and
-   never has to be moved out of it.
-
-   Same column as #sidebar, and narrower: it holds one list of short names. */
-#doodad-sidebar {
-  display: flex;
-  flex-direction: column;
-  width: 300px;
-  min-width: 300px;
-  height: 100vh;
-  max-height: 100vh;
-  background-color: var(--bs-secondary-bg-subtle);
-  overflow: hidden;
-  padding: 0.5rem;
-}
-#doodad-sidebar h2 {
-  font-size: 1.1rem;
-  padding: 0;
-  margin: 0;
-}
-#doodad-sidebar hr {
-  margin: 0.5rem 0;
-}
+   never has to be moved out of it. */
 
 /* Both filter lists are longer than the room for them -- 98 categories, 38
    tags -- so each scrolls within a share of the sidebar rather than pushing
@@ -432,25 +431,6 @@ details[open] .details-summary-extra {
    it. A generator carries a dozen parameters, so the fields between the heading
    and the buttons are what scrolls -- the buttons that keep or discard them
    must never be the part that is off the bottom. */
-#array-sidebar {
-  display: flex;
-  flex-direction: column;
-  width: 300px;
-  min-width: 300px;
-  height: 100vh;
-  max-height: 100vh;
-  background-color: var(--bs-secondary-bg-subtle);
-  overflow: hidden;
-  padding: 0.5rem;
-}
-#array-sidebar h2 {
-  font-size: 1.1rem;
-  padding: 0;
-  margin: 0;
-}
-#array-sidebar hr {
-  margin: 0.5rem 0;
-}
 .array-fields {
   flex: 1 1 auto;
   min-height: 0;
