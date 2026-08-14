@@ -2,15 +2,20 @@
  * The layer panel: organise a layout into parts, and say which part is being
  * worked on.
  *
- * **The radio is that saying, and it does all of it.** It marks where new
+ * **The row is that saying, and it does all of it.** Picking one marks where new
  * doodads land, it selects the layer's doodads, and on an array it raises the
- * box and its handles. One control, because they are one intent -- "I am working
+ * box and its handles. One gesture, because they are one intent -- "I am working
  * on this layer" -- and a separate button for the selection was a second way to
  * say a thing already said. It answers every click and not only the ones that
- * move it, so the way back to a selection just dismissed is the radio it is
+ * move the mark, so the way back to a selection just dismissed is the row it is
  * already on.
  *
- * **The list is a tree, and the radio runs over both kinds of row.** A group is
+ * **The row itself is the control**, and there is no radio button in it: the
+ * mark on the row's background says which row is up -- wiki issues 0068 and
+ * 0069 -- and a radio beside it said the same thing again, smaller. The controls
+ * the row carries keep their own clicks; see `pickRow`.
+ *
+ * **The list is a tree, and a pick runs over both kinds of row.** A group is
  * a row of its own with its layers indented under it: pick a layer and that
  * layer is worked on, pick the group and every member comes up under one box.
  * A group answering for its members was a group its members could not answer
@@ -27,8 +32,8 @@
  * two flags --
  * and those are a reading as much as a control, which belongs to the thing being
  * read. Moving, deleting and filling a layer are answered by the bar, which acts
- * on the layer the radio names. A copy of them in every row asks again, six
- * times over, what the radio has already answered once.
+ * on the layer the pick names. A copy of them in every row asks again, six
+ * times over, what the pick has already answered once.
  *
  * The layers are the document's, and this is the only place they are edited. It
  * mutates them and then calls `state.layersChanged`, which is what the viewport
@@ -127,12 +132,12 @@ function LayerRows({ layers, indented = false }) {
 }
 
 /**
- * **What is being worked on is a set of rows, not one row.** The radio names a
+ * **What is being worked on is a set of rows, not one row.** A pick names a
  * layer or a group, and the other kind of row comes with it: a layer's group
  * moves when the layer does, a group's layers are what the group is. So the
  * marked row and its company are both drawn, at two strengths of the one colour
- * -- the brighter one being the row the radio is actually on, which is how the
- * pair says which of the two kinds is up. Wiki issue 0068.
+ * -- the brighter one being the row that was picked, which is how the pair says
+ * which of the two kinds is up. Wiki issue 0068.
  *
  * `null` for a row that is neither, which draws no mark at all.
  */
@@ -144,13 +149,31 @@ function layerMark(layer) {
   return null;
 }
 
-/** A group row is marked by its own radio, or by one of its layers'. */
+/** A group row is marked by its own pick, or by one of its layers'. */
 function groupMark(group, layers) {
   if (state.activeGroup.value === group) return "active";
   if (layers.some((layer) => layer.id === state.activeLayer.value)) {
     return "related";
   }
   return null;
+}
+
+/**
+ * A click anywhere on the row works on it -- unless it landed on a control the
+ * row carries, which means what it means.
+ *
+ * The swatch, the group select, the two flag toggles, the fold caret and the
+ * name editor are all such controls, and one test finds them: they are the
+ * form elements in a row that is otherwise text. The name while it is being read
+ * is not among them. It is part of the row and picks it, and the double click
+ * that opens the editor costs only the selection the pick asked for.
+ *
+ * Every click and not only the ones that move the mark: clicking the row already
+ * being worked on is how a selection just dismissed is asked for again.
+ */
+function pickRow(event, pick) {
+  if (event.target.closest("button, select, input")) return;
+  pick();
 }
 
 /** A row's classes: what it is, and how it stands to what is worked on. */
@@ -220,7 +243,11 @@ function GroupRow({
   editing,
 }) {
   return (
-    <li class={rowClass("layer-row", "group-row", mark && `layer-row-${mark}`)}>
+    <li
+      class={rowClass("layer-row", "group-row", mark && `layer-row-${mark}`)}
+      title={`Work on the group '${group}': its ${layers.length} layers move together`}
+      onClick={(event) => pickRow(event, () => activateGroup(group, layers))}
+    >
       <button
         type="button"
         class="btn btn-sm btn-link p-0 group-caret"
@@ -231,14 +258,6 @@ function GroupRow({
           class={`bi ${collapsed ? "bi-caret-right-fill" : "bi-caret-down-fill"}`}
         ></i>
       </button>
-      <input
-        type="radio"
-        class="form-check-input"
-        name="active-layer"
-        title={`Work on the group '${group}': its ${layers.length} layers move together`}
-        checked={state.activeGroup.value === group}
-        onClick={() => activateGroup(group, layers)}
-      />
       <i class="bi bi-collection text-secondary" title="A layer group"></i>
       <Name
         name={group}
@@ -271,7 +290,7 @@ function GroupRow({
 }
 
 /**
- * The actions, once, acting on whatever the radio names -- a layer, or a group.
+ * The actions, once, acting on whatever row is picked -- a layer, or a group.
  *
  * A group answers the same four slots as a layer, meaning them of the whole
  * group: moving steps the run over its neighbour, duplicating copies every
@@ -441,9 +460,9 @@ function arrayOf(layer) {
  * colour its doodads are drawn in, its tally, and its two flags. What is done to
  * it is the bar's, below.
  *
- * The swatch sits by the radio and not by the name, because it is read against
- * the canvas rather than against the row: a column of swatches down the left is
- * the same list the doodads make out there.
+ * The swatch leads the row and does not sit by the name, because it is read
+ * against the canvas rather than against the row: a column of swatches down the
+ * left is the same list the doodads make out there.
  *
  * An array's row differs in one place, and it is the fact that its doodads are
  * generated: it carries the badge and no lock, an array's doodads being
@@ -487,18 +506,9 @@ function LayerRow({
         indented && "layer-row-grouped",
         mark && `layer-row-${mark}`,
       )}
+      title={activateTitle(array, group)}
+      onClick={(event) => pickRow(event, () => activate(layer))}
     >
-      <input
-        type="radio"
-        class="form-check-input"
-        name="active-layer"
-        title={activateTitle(array, group)}
-        checked={state.activeLayer.value === layer.id}
-        // Not `onChange`: a radio that is already on reports no change, and
-        // clicking the layer being worked on is how a selection just dismissed
-        // is asked for again.
-        onClick={() => activate(layer)}
-      />
       <input
         type="color"
         class="form-control form-control-color layer-color"
@@ -539,7 +549,7 @@ function LayerRow({
 }
 
 /**
- * What the radio does here. A layer in a group answers for itself, the group
+ * What picking the row does. A layer in a group answers for itself, the group
  * row being what answers for the group -- so the group changes nothing about
  * this except that it is worth saying which one moves.
  */
@@ -710,8 +720,8 @@ function Toggle({ layers, flag, enabled, on, off, title }) {
  * Writes a flag on some layers, and asks again what is being worked on when
  * they are part of it.
  *
- * **What is up on the canvas was derived from the flags once, when the radio was
- * answered.** A hidden layer's doodads are not selected and a hidden array does
+ * **What is up on the canvas was derived from the flags once, when the row was
+ * picked.** A hidden layer's doodads are not selected and a hidden array does
  * not ride with its group, so hiding one afterwards left a box standing over
  * nothing -- the doodads go, `showLayers` discards them, but an array rides on a
  * proxy the box holds and no flag reaches that. Showing one again was the same
@@ -781,7 +791,8 @@ function groupNames() {
  * What is being worked on is taken up again afterwards, and it is not
  * necessarily this layer: what moves together has just changed, and the box on
  * the canvas is showing the set as it was. Grouping a layer does not make it the
- * active one -- the radio says that, and one gesture says one thing.
+ * active one -- picking the row says that, and one gesture says one thing. It is
+ * why the select's own click is not also a pick; see `pickRow`.
  */
 function regroup(layer, chosen) {
   const group = chosen === NEW_GROUP ? newGroupName() : chosen;
@@ -823,8 +834,8 @@ function reactivate(fallback) {
  * `model.renameGroup`. An empty name is no answer and is ignored, the way the
  * new-group prompt ignores one.
  *
- * The fold and the radio follow the name: they hold group names, and the group
- * they held is the one that has just been renamed.
+ * The fold and the active group follow the name: they hold group names, and the
+ * group they held is the one that has just been renamed.
  */
 function renameGroup(group, renamed) {
   const name = renamed.trim();
@@ -951,7 +962,7 @@ function activate(layer) {
  *
  * No layer is active while a group is. A group is not a place a doodad lands, so
  * the palette refuses and names the layer to pick instead -- falling through to
- * some member would be the editor answering the question the radio asks.
+ * some member would be the editor answering the question the pick asks.
  */
 function activateGroup(group, layers) {
   state.workOnGroup(group);

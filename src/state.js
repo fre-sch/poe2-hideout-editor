@@ -93,7 +93,7 @@ export const activeLayer = signal(null);
 /**
  * The group being worked on, by name, or `null`.
  *
- * The other kind of row the layer list's radio runs over. Exactly one of these
+ * The other kind of row the layer list is picked over. Exactly one of these
  * two is set: a group is not a layer doodads can land in, so while one is up
  * there is no active layer and the palette says so. See
  * wiki/decisions/layer-groups.md.
