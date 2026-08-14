@@ -120,6 +120,12 @@ function Shortcuts() {
         the layer being worked on.
       </li>
       <li>
+        Put layers in the same <span class="shortcut">group</span> to move them
+        as one: the box then holds every one of them, arrays included, and moves
+        and turns them together. It does not spread them out — for that, the
+        selection box and an array's own box are still there.
+      </li>
+      <li>
         Drag <span class="shortcut">middle mouse button</span> to pan.
       </li>
       <li>
