@@ -144,6 +144,38 @@ describe("project files", () => {
     expect(loaded.layers[0].color).toBe("#123456");
   });
 
+  it("round trips the group a layer moves with", () => {
+    const document_ = HideoutDocument.fromText(SHRINE);
+    const garden = document_.addLayer("Garden");
+    document_.layers[0].group = "Yard";
+    garden.group = "Yard";
+
+    const loaded = project.parse(project.serialize(document_));
+
+    expect(loaded.groupOf(garden.id).map((layer) => layer.name)).toEqual([
+      "Shrine Hideout",
+      "Garden",
+    ]);
+  });
+
+  /**
+   * Groups are a field on a layer, which is the change the format version is
+   * explicitly not for -- see `project.js`. A project written before them loads
+   * with every layer moving by itself.
+   */
+  it("loads a project written without groups, ungrouped", () => {
+    const document_ = HideoutDocument.fromText(SHRINE);
+    const written = JSON.parse(project.serialize(document_));
+    for (const layer of written.layers) {
+      delete layer.group;
+    }
+
+    const loaded = project.parse(JSON.stringify(written));
+
+    expect(loaded.groupNames()).toEqual([]);
+    expect(loaded.layers[0].group).toBe(null);
+  });
+
   /**
    * A project written before layers carried colours, which the version does not
    * refuse -- see `project.js`. Its layers arrive coloured, and no two alike:

@@ -57,6 +57,8 @@ export default function Layers() {
             layer={layer}
             name={layer.name}
             color={layer.color}
+            group={layer.group}
+            groups={groupNames()}
             visible={layer.visible}
             locked={layer.locked}
             array={isArray(layer)}
@@ -188,18 +190,23 @@ function arrayOf(layer) {
  * So a row is a function of the values it draws. The layer is what the controls
  * edit, the rest is what they show.
  */
-function LayerRow({ layer, name, color, visible, locked, array }) {
+function LayerRow({
+  layer,
+  name,
+  color,
+  group,
+  groups,
+  visible,
+  locked,
+  array,
+}) {
   return (
     <li class="layer-row">
       <input
         type="radio"
         class="form-check-input"
         name="active-layer"
-        title={
-          array
-            ? "Work on this array: its box and handles come up"
-            : "Work on this layer: new doodads land here, and its doodads are selected"
-        }
+        title={activateTitle(array, group)}
         checked={state.activeLayer.value === layer.id}
         // Not `onChange`: a radio that is already on reports no change, and
         // clicking the layer being worked on is how a selection just dismissed
@@ -219,6 +226,7 @@ function LayerRow({ layer, name, color, visible, locked, array }) {
         value={name}
         onInput={(event) => rename(layer, event.currentTarget.value)}
       />
+      <GroupChoice layer={layer} group={group} groups={groups} />
       {array && <ArrayBadge />}
       <span class="text-secondary layer-count">{doodadsIn(layer).length}</span>
       <Toggle
@@ -242,6 +250,60 @@ function LayerRow({ layer, name, color, visible, locked, array }) {
     </li>
   );
 }
+
+/** What the radio does here, which the group is half the answer to. */
+function activateTitle(array, group) {
+  if (group !== null) {
+    return `Work on this layer, and put the group '${group}' in the box: it all moves together`;
+  }
+  if (array) return "Work on this array: its box and handles come up";
+  return "Work on this layer: new doodads land here, and its doodads are selected";
+}
+
+/**
+ * Which group this layer moves with: none, one that exists, or a new one.
+ *
+ * It is in the row and not in the actions bar because a group is what a layer
+ * *is*, the way its name and its colour are -- and because the answer has to be
+ * readable down the column: which layers move together is a thing to see at a
+ * glance rather than to discover by dragging one.
+ *
+ * A group is its name, so there is nothing else to make and nothing to keep in
+ * step -- see wiki/decisions/layer-groups.md. Naming a new one is a prompt for
+ * the same reason a delete is a confirm: it is one line of answer, and the
+ * editor has no dialogue of its own.
+ */
+function GroupChoice({ layer, group, groups }) {
+  return (
+    <select
+      class="form-select form-select-sm layer-group"
+      title={
+        group === null
+          ? "This layer moves by itself"
+          : `This layer moves with the group '${group}'`
+      }
+      value={group ?? NO_GROUP}
+      onChange={(event) => regroup(layer, event.currentTarget.value)}
+    >
+      <option value={NO_GROUP}>—</option>
+      {groups.map((name) => (
+        <option value={name}>{name}</option>
+      ))}
+      <option value={NEW_GROUP}>New group…</option>
+    </select>
+  );
+}
+
+/**
+ * The two entries of the select that are not a group name.
+ *
+ * A `<select>` carries strings, so these have to be strings no group can be
+ * called. They lead with a NUL, which nothing a player types contains -- written
+ * as an escape, a control character in source being a character nobody can see
+ * is there.
+ */
+const NO_GROUP = "\u0000none";
+const NEW_GROUP = "\u0000new";
 
 /**
  * The two flags, which differ only in which icon says which way round.
@@ -284,6 +346,44 @@ function doodadsIn(layer) {
 function rename(layer, name) {
   layer.name = name;
   state.layersChanged();
+}
+
+function groupNames() {
+  return state.hideoutDocument.value?.groupNames() ?? [];
+}
+
+/**
+ * The group a layer moves with, as the row's select says it. A new group is
+ * named and then simply carried, there being nothing else to a group.
+ *
+ * The layer being worked on is taken up again afterwards, and it is not
+ * necessarily this one: what moves together has just changed, and the box on
+ * the canvas is showing the set as it was. Grouping a layer does not make it the
+ * active one -- the radio says that, and one gesture says one thing.
+ */
+function regroup(layer, chosen) {
+  const group = chosen === NEW_GROUP ? newGroupName() : chosen;
+  if (group === null) {
+    // Cancelled at the prompt. The select is sitting on "New group…", which is
+    // not where the layer is, so the row is drawn again to put it back.
+    state.layersChanged();
+    return;
+  }
+
+  layer.group = group === NO_GROUP ? null : group;
+  state.layersChanged();
+  reactivate();
+}
+
+function reactivate() {
+  const layer = document_().findLayer(state.activeLayer.value);
+  if (layer) activate(layer);
+}
+
+/** A name for a new group, or `null` where the player gave none. */
+function newGroupName() {
+  const name = prompt("Name the group these layers move with:")?.trim();
+  return name ? name : null;
 }
 
 /**
@@ -339,9 +439,21 @@ function duplicate(layer) {
  * it is the box and its handles, its doodads being nothing to select; the
  * previous selection is dismissed either way, one layer at a time being the
  * point of the control.
+ *
+ * **A layer in a group answers for the group.** The radio still names the one
+ * layer being worked on -- new doodads land there, and the palette still reads
+ * it -- and what comes up is everything that moves with it. See `activateGroup`
+ * and wiki/decisions/layer-groups.md.
  */
 function activate(layer) {
   state.activeLayer.value = layer.id;
+  const group = document_().groupOf(layer.id);
+  if (group.length > 1) {
+    activateGroup(group);
+    return;
+  }
+
+  state.movingArrays.value = [];
   if (document_().findGenerator(layer.id)) {
     state.requestSelection([]);
     state.editArray(layer.id);
@@ -350,6 +462,30 @@ function activate(layer) {
 
   state.editArray(null);
   state.requestSelection(doodadsIn(layer));
+}
+
+/**
+ * Working on a group: every ordinary member's doodads selected, and every array
+ * member carried along with them under the one box.
+ *
+ * No array's own handles come up, however many arrays are in the group. Two
+ * boxes over one array is two answers to what a drag would do, and the group is
+ * the one being asked for; the array by itself is what its settings are for.
+ *
+ * A hidden array is left where it is, the way the viewport leaves a hidden
+ * layer's doodads unselected: a layer that cannot be seen moving is a layer that
+ * has moved without the player watching.
+ */
+function activateGroup(group) {
+  state.editArray(null);
+  state.movingArrays.value = group
+    .filter((layer) => isArray(layer) && layer.visible)
+    .map((layer) => layer.id);
+  state.requestSelection(
+    group
+      .filter((layer) => !isArray(layer))
+      .flatMap((layer) => doodadsIn(layer)),
+  );
 }
 
 /**

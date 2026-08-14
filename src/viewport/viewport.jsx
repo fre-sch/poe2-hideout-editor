@@ -28,6 +28,7 @@ export default function Viewport() {
   const showLabels = state.showLabels.value;
   const showGrid = state.showGrid.value;
   const editedArray = state.editedArray.value;
+  const movingArrays = state.movingArrays.value;
   const arrayEdit = state.arrayEdit.value;
   const selectionRequest = state.selectionRequest.value;
   const hoveredDoodad = state.hoveredDoodad.value;
@@ -60,12 +61,17 @@ export default function Viewport() {
   useEffect(() => {
     scene.current.showArray(editedArray);
   }, [editedArray, layers]);
+  // The layer effect's dependency for the same reason: a proxy is built from a
+  // generator of the document that effect has just drawn.
+  useEffect(() => {
+    scene.current.moveArrays(movingArrays);
+  }, [movingArrays, layers]);
   // A fresh object per edit, so two edits saying the same thing run twice. It
   // comes after the layer effect, which is what makes the group of a brand new
   // array layer exist before its doodads are drawn into it.
   useEffect(() => {
     if (arrayEdit === null) return;
-    scene.current.refreshArray(arrayEdit.layer);
+    scene.current.refreshArrays(arrayEdit.layers);
   }, [arrayEdit]);
   useEffect(() => {
     scene.current.showBounds(hideoutType);

@@ -286,6 +286,69 @@ describe("array layers", () => {
   });
 });
 
+/**
+ * A group is a name its layers carry and nothing besides, so what is worth
+ * testing is that it is read back that way -- and that a layer that has gone
+ * takes its membership with it, which is the whole reason there is no list of
+ * members. See wiki/decisions/layer-groups.md.
+ */
+describe("layer groups", () => {
+  function grouped() {
+    const document_ = HideoutDocument.fromText(SHRINE);
+    const garden = document_.addLayer("Garden");
+    const fence = document_.addLayer("Fence");
+    garden.group = "Yard";
+    fence.group = "Yard";
+    return { document_, garden, fence };
+  }
+
+  it("gives a layer no group until it is put in one", () => {
+    const document_ = HideoutDocument.fromText(SHRINE);
+
+    expect(document_.findLayer("default").group).toBe(null);
+    expect(document_.groupNames()).toEqual([]);
+  });
+
+  it("answers a grouped layer with every layer sharing the name", () => {
+    const { document_, garden, fence } = grouped();
+
+    expect(document_.groupOf(garden.id).map((layer) => layer.id)).toEqual([
+      garden.id,
+      fence.id,
+    ]);
+  });
+
+  it("answers an ungrouped layer with itself, a group of one", () => {
+    const { document_ } = grouped();
+
+    expect(document_.groupOf("default").map((layer) => layer.id)).toEqual([
+      "default",
+    ]);
+  });
+
+  it("names every group once, in layer order", () => {
+    const { document_ } = grouped();
+    document_.findLayer("default").group = "Floor";
+
+    expect(document_.groupNames()).toEqual(["Floor", "Yard"]);
+  });
+
+  it("loses a member with the layer, there being no list to dangle", () => {
+    const { document_, garden, fence } = grouped();
+    document_.removeLayer(fence.id, garden.id);
+
+    expect(document_.groupOf(garden.id).map((layer) => layer.id)).toEqual([
+      garden.id,
+    ]);
+  });
+
+  it("answers nothing for a layer that is not there", () => {
+    const { document_ } = grouped();
+
+    expect(document_.groupOf("nowhere")).toEqual([]);
+  });
+});
+
 describe("duplicateLayer", () => {
   it("copies an ordinary layer's doodads as doodads of their own", () => {
     const document_ = HideoutDocument.fromText(SHRINE);
@@ -334,6 +397,14 @@ describe("duplicateLayer", () => {
       copy.id,
       garden.id,
     ]);
+  });
+
+  it("copies the group, so the copy moves with what the original moves with", () => {
+    const document_ = HideoutDocument.fromText(SHRINE);
+    document_.findLayer("default").group = "Yard";
+    const copy = document_.duplicateLayer("default");
+
+    expect(copy.group).toBe("Yard");
   });
 
   it("copies the flags, a hidden layer's copy being hidden too", () => {

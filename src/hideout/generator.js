@@ -511,7 +511,7 @@ function alignsToShape(generator) {
  */
 function jittered(placement, index, random) {
   const along = directionVector(placement.direction);
-  const across = rotate(along, -90);
+  const across = turned(along, -90);
   return add(
     placement,
     add(
@@ -582,11 +582,17 @@ function hash(seed, index, channel) {
  * with the axes exchanged, and the stage sees y growing downwards.
  */
 function fromLocal({ x, y }, box) {
-  return add(box.center, rotate({ x: -y, y: x }, box.rotation));
+  return add(box.center, turned({ x: -y, y: x }, box.rotation));
 }
 
-/** A vector in doodad units, turned by an angle the stage would read. */
-function rotate({ x, y }, degrees) {
+/**
+ * A vector in doodad units, turned by an angle the stage would read.
+ *
+ * Exported because moving a whole array rigidly is the same turn applied to
+ * every point it carries -- see `arrays.moved` -- and the sense of a rotation
+ * is reasoned about in this module and `units.js` and nowhere else.
+ */
+export function turned({ x, y }, degrees) {
   const angle = degrees * DEGREE;
   const cos = Math.cos(angle);
   const sin = Math.sin(angle);
@@ -600,7 +606,7 @@ function angleOf({ x, y }) {
 
 /** The unit vector at a stage angle, in doodad units. */
 function directionVector(degrees) {
-  return rotate({ x: 0, y: 1 }, degrees);
+  return turned({ x: 0, y: 1 }, degrees);
 }
 
 function add(first, second) {

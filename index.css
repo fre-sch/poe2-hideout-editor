@@ -226,6 +226,14 @@ details[open] .details-summary-extra {
   min-width: 2.2rem;
   text-align: right;
 }
+/* Which group the layer moves with. Narrow and fixed: it is read down the
+   column, where what matters is whether two rows say the same thing, and the
+   name itself is in the select's own title when it does not fit. */
+.layer-group {
+  flex: 0 0 auto;
+  width: 4.5rem;
+  padding-right: 1.2rem;
+}
 
 /* The one bar of actions on the layer being worked on, ruled off from the list
    it acts on. */

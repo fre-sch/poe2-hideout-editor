@@ -1,11 +1,12 @@
 /**
- * The parameters an array starts life with, and the one edit that is geometry
- * rather than typing: changing its type.
+ * The parameters an array starts life with, and the two edits that are geometry
+ * rather than typing: changing its type, and moving the whole shape.
  *
  * `generator.js` reads parameters and `model.js` stores them; this is where a
  * set of them comes from. It is here and not in the sidebar because none of it
- * is a matter of buttons: fitting a shape to a selection and turning a box into
- * a line are arithmetic, and arithmetic is testable.
+ * is a matter of buttons: fitting a shape to a selection, turning a box into a
+ * line and carrying an array along with a layer group are arithmetic, and
+ * arithmetic is testable.
  */
 
 import * as generator from "./generator.js";
@@ -100,6 +101,88 @@ function spanOf(values) {
     middle: (low + high) / 2,
     size: Math.max(high - low, MINIMUM_SIZE),
   };
+}
+
+// -- moving a whole array ----------------------------------------------------
+//
+// A layer group moves several layers at once, and an array in one of them moves
+// by having its geometry rewritten -- there is nothing else to move, its doodads
+// being computed. See wiki/decisions/layer-groups.md.
+
+/**
+ * Where an array is, as one point: the centre of its box, or the middle of its
+ * ends for the two shapes drawn end to end.
+ *
+ * The midpoint and not the middle of the drawn curve. It is the point a player
+ * aligns *by*, so what it has to be is predictable and the same one every time
+ * -- and it is where a curve's box would be centred if it had one, `boxOfEnds`
+ * saying so.
+ */
+export function centerOf(parameters) {
+  if (model.carriesBox(parameters.type)) return parameters.box.center;
+
+  const { start, end } = parameters.ends;
+  return along(start, end, 0.5);
+}
+
+/**
+ * The same array moved rigidly: turned by `degrees` about `from`, which lands
+ * at `to`.
+ *
+ * A rigid motion and not a sequence of edits, because a gesture is one motion:
+ * a drag is read against where the array was when the gesture started, so a long
+ * drag does not accumulate what each of its steps rounded.
+ *
+ * Every point the shape carries goes through the same turn, controls included --
+ * a curve carried along is the same curve somewhere else, and a control left
+ * behind would flatten it as it went. A box carries its own angle as well, and
+ * the two agree by construction: a corner is its centre plus a local point
+ * turned by the box angle, so turning the centre about the pivot and adding the
+ * same amount to the angle turns every corner about the pivot.
+ */
+export function moved(parameters, { from, to, degrees = 0 }) {
+  const carry = (point) =>
+    displaced(generator.turned(offset(point, from), degrees), to);
+  if (model.carriesBox(parameters.type)) {
+    return {
+      ...parameters,
+      box: {
+        ...parameters.box,
+        center: carry(parameters.box.center),
+        rotation: parameters.box.rotation + degrees,
+      },
+    };
+  }
+
+  const moved_ = {
+    ...parameters,
+    ends: {
+      start: carry(parameters.ends.start),
+      end: carry(parameters.ends.end),
+    },
+  };
+  if (!parameters.controls) return moved_;
+
+  return {
+    ...moved_,
+    controls: {
+      first: carry(parameters.controls.first),
+      second: carry(parameters.controls.second),
+    },
+  };
+}
+
+/** The same array with its centre on a point, keeping its size, angle and shape. */
+export function alignedTo(parameters, center) {
+  return moved(parameters, { from: centerOf(parameters), to: center });
+}
+
+function offset(point, origin) {
+  return { x: point.x - origin.x, y: point.y - origin.y };
+}
+
+function displaced(point, by) {
+  return { x: point.x + by.x, y: point.y + by.y };
 }
 
 /**

@@ -66,12 +66,27 @@ export class Doodad {
  * useful colour is one no other layer carries -- and a layer knows about no
  * other layer. A layer that arrives without one is coloured by the document it
  * is put in, which is what loads a project written before colours existed.
+ *
+ * `group` is the name of the layer group this layer moves with, or `null`. The
+ * group is the layers carrying the name and is nothing besides -- the same
+ * arrangement one level up, a layer being a name a doodad carries rather than a
+ * collection it lives in. So a group cannot name a layer that has gone, and
+ * deleting a layer takes its membership with it. See
+ * wiki/decisions/layer-groups.md.
  */
 export class Layer {
-  constructor({ id, name, color = null, visible = true, locked = false }) {
+  constructor({
+    id,
+    name,
+    color = null,
+    group = null,
+    visible = true,
+    locked = false,
+  }) {
     this.id = id;
     this.name = name;
     this.color = color;
+    this.group = group;
     this.visible = visible;
     this.locked = locked;
   }
@@ -158,6 +173,23 @@ export function carriesBox(type) {
   return Boolean(SHAPE_FIELDS[type]?.includes("box"));
 }
 
+/**
+ * The shape half of a set of parameters: the fields its type carries, and none
+ * of the fields every type carries.
+ *
+ * What a rigid move rewrites, and therefore what a caller moving one writes
+ * back -- see `arrays.moved`. Read off the same table as `carriesBox`, so a
+ * shape that is added is moved by having been listed once.
+ */
+export function shapeOf(parameters) {
+  return Object.fromEntries(
+    (SHAPE_FIELDS[parameters.type] ?? []).map((field) => [
+      field,
+      parameters[field],
+    ]),
+  );
+}
+
 export class HideoutDocument {
   /**
    * `header` is whatever the file said, kept verbatim. The editor knows the
@@ -219,6 +251,37 @@ export class HideoutDocument {
 
   doodadsIn(id) {
     return this.doodads.filter((doodad) => doodad.layer === id);
+  }
+
+  /**
+   * The layers moving with this one: its group, or the layer alone when it
+   * carries no group name.
+   *
+   * A layer alone rather than an empty answer, because every caller is asking
+   * "what moves when I move this", and an ungrouped layer is a group of one.
+   * In layer order, which is the order the list shows them in.
+   */
+  groupOf(id) {
+    const layer = this.findLayer(id);
+    if (!layer) return [];
+    if (layer.group === null) return [layer];
+
+    return this.layersInGroup(layer.group);
+  }
+
+  layersInGroup(name) {
+    return this.layers.filter((layer) => layer.group === name);
+  }
+
+  /** Every group name in use, in layer order, each once. */
+  groupNames() {
+    return [
+      ...new Set(
+        this.layers
+          .map((layer) => layer.group)
+          .filter((name) => name !== null && name !== undefined),
+      ),
+    ];
   }
 
   /**
@@ -302,6 +365,10 @@ export class HideoutDocument {
     const copy = this.addLayer(`${source.name} copy`);
     copy.visible = source.visible;
     copy.locked = source.locked;
+    // The group comes with it: a copy is made to work on beside the original,
+    // and a copy that had left the group would be moved by nothing the original
+    // is moved by.
+    copy.group = source.group;
     const after = this.layers.indexOf(source) + 1;
     this.moveLayer(copy.id, after - (this.layers.length - 1));
 

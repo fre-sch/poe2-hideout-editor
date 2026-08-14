@@ -158,17 +158,37 @@ export const editedArray = signal(null);
 export const showArraySettings = signal(false);
 
 /**
+ * The layer ids of the arrays that move with the selection, which is how a
+ * layer group carries its arrays -- their doodads cannot be selected, so there
+ * is nothing else of theirs for a box to hold. See
+ * wiki/decisions/layer-groups.md.
+ *
+ * Ids rather than generators, for `editedArray`'s reason: an id survives a
+ * regeneration the way an object reference does not.
+ */
+export const movingArrays = signal([]);
+
+/**
  * Raises an array's handles, or puts them away. The settings go with them: they
  * are one array's, so there is nothing for them to describe once no array is
  * being worked on.
+ *
+ * Taking one array up puts a group down. Two boxes over the same array is two
+ * answers to what a drag would move, and the one being asked for is the one just
+ * named -- the granular half of working on an array, which is what the settings
+ * are. The group comes back when the layer is activated again.
  */
 export function editArray(layer) {
   editedArray.value = layer;
-  if (layer === null) showArraySettings.value = false;
+  if (layer === null) {
+    showArraySettings.value = false;
+    return;
+  }
+  movingArrays.value = [];
 }
 
 /**
- * The array the sidebar has just rewritten, as `{ layer }`, or `null`.
+ * The arrays the sidebar has just rewritten, as `{ layers }`, or `null`.
  *
  * `selectionRequest`'s reasoning, applied to parameters: the sidebar edits the
  * document in place, which nothing can subscribe to, and what has to happen
@@ -176,13 +196,19 @@ export function editArray(layer) {
  * viewport's. A fresh object per edit, so two edits that say the same thing are
  * two edits.
  *
- * It names the layer rather than being read off `editedArray`, so that an edit
- * reaches the doodads it is about however the panels have moved on since.
+ * It names the layers rather than being read off `editedArray`, so that an edit
+ * reaches the doodads it is about however the panels have moved on since. A list
+ * and not one layer, because aligning a group rewrites several arrays at once
+ * and a signal set twice in a tick is read once.
  */
 export const arrayEdit = signal(null);
 
 export function arrayEdited(layer) {
-  arrayEdit.value = { layer };
+  arraysEdited([layer]);
+}
+
+export function arraysEdited(layers) {
+  arrayEdit.value = { layers };
 }
 
 /**

@@ -81,6 +81,189 @@ describe("fromSelection", () => {
   });
 });
 
+/**
+ * Moving a whole array, which is how a layer group carries one along.
+ *
+ * The parameters are not what a player sees -- the doodads are -- so what is
+ * checked is the doodads: every one of them has to arrive where the same rigid
+ * motion would have put it. That is the claim a wrong rotation sense or a
+ * forgotten `box.rotation` breaks, and neither shows up in a box read on its
+ * own.
+ */
+describe("moved", () => {
+  const COMMON = {
+    layer: "layer-2",
+    source: [{ hash: 3230065491, name: "Stash", fv: 0 }],
+    rotation: { base: 0, increment: 0, align: false },
+    random: { seed: 1, jitter: { x: 0, y: 0, rotation: 0 } },
+  };
+  const BOX = {
+    center: { x: 400, y: 300 },
+    width: 120,
+    height: 80,
+    rotation: 37,
+  };
+  const ENDS = { start: { x: 100, y: 120 }, end: { x: 260, y: 400 } };
+
+  const SHAPES = [
+    { ...COMMON, type: "grid", box: BOX, resolution: { x: 3, y: 2 } },
+    { ...COMMON, type: "ellipse", box: BOX, resolution: 8 },
+    { ...COMMON, type: "polygon", box: BOX, corners: 5, resolution: 10 },
+    { ...COMMON, type: "line", ends: ENDS, resolution: 5 },
+    {
+      ...COMMON,
+      type: "bezier",
+      ends: ENDS,
+      controls: { first: { x: 200, y: 150 }, second: { x: 210, y: 380 } },
+      resolution: 6,
+    },
+  ];
+
+  /**
+   * Both sides are rounded onto the file's integer grid, half a unit each, so
+   * they may differ by one and no more.
+   */
+  const ROUNDING = 1;
+
+  function expectMoved(parameters, motion) {
+    const before = generator.generate(parameters);
+    const after = generator.generate(
+      new Generator(arrays.moved(parameters, motion)),
+    );
+
+    expect(after).toHaveLength(before.length);
+    for (const [index, doodad] of before.entries()) {
+      const turned = generator.turned(
+        { x: doodad.x - motion.from.x, y: doodad.y - motion.from.y },
+        motion.degrees ?? 0,
+      );
+      expect(
+        Math.abs(after[index].x - (turned.x + motion.to.x)),
+      ).toBeLessThanOrEqual(ROUNDING);
+      expect(
+        Math.abs(after[index].y - (turned.y + motion.to.y)),
+      ).toBeLessThanOrEqual(ROUNDING);
+    }
+  }
+
+  it("displaces every doodad of every shape by the same amount", () => {
+    for (const parameters of SHAPES) {
+      expectMoved(new Generator(parameters), {
+        from: { x: 0, y: 0 },
+        to: { x: 30, y: -70 },
+      });
+    }
+  });
+
+  it("turns every doodad of every shape about the pivot", () => {
+    for (const parameters of SHAPES) {
+      const array = new Generator(parameters);
+      expectMoved(array, {
+        from: arrays.centerOf(array),
+        to: arrays.centerOf(array),
+        degrees: 25,
+      });
+    }
+  });
+
+  it("turns and displaces in one motion", () => {
+    for (const parameters of SHAPES) {
+      const array = new Generator(parameters);
+      expectMoved(array, {
+        from: arrays.centerOf(array),
+        to: { x: 700, y: 200 },
+        degrees: -140,
+      });
+    }
+  });
+
+  /** A move is rigid: the shape is somewhere else and is not another shape. */
+  it("keeps the size of a box and the length of a line", () => {
+    const box = new Generator(SHAPES[1]);
+    const moved = arrays.moved(box, {
+      from: { x: 0, y: 0 },
+      to: { x: 10, y: 10 },
+      degrees: 90,
+    });
+
+    expect(moved.box.width).toBe(BOX.width);
+    expect(moved.box.height).toBe(BOX.height);
+    expect(moved.box.rotation).toBe(BOX.rotation + 90);
+
+    const line = arrays.moved(new Generator(SHAPES[3]), {
+      from: { x: 0, y: 0 },
+      to: { x: 0, y: 0 },
+      degrees: 33,
+    });
+    expect(length(line.ends)).toBeCloseTo(length(ENDS), 9);
+  });
+
+  it("carries a curve's controls with its ends", () => {
+    const curve = arrays.moved(new Generator(SHAPES[4]), {
+      from: { x: 0, y: 0 },
+      to: { x: 5, y: 5 },
+    });
+
+    expect(curve.controls.first).toEqual({ x: 205, y: 155 });
+  });
+});
+
+function length({ start, end }) {
+  return Math.hypot(end.x - start.x, end.y - start.y);
+}
+
+describe("centerOf and alignedTo", () => {
+  const BOX = {
+    center: { x: 400, y: 300 },
+    width: 120,
+    height: 80,
+    rotation: 37,
+  };
+
+  it("reads a box shape's centre off its box", () => {
+    expect(arrays.centerOf({ type: "grid", box: BOX })).toEqual(BOX.center);
+  });
+
+  /** The midpoint of the ends: where a box over the shape would be centred. */
+  it("reads an end-to-end shape's centre off its ends", () => {
+    expect(
+      arrays.centerOf({
+        type: "line",
+        ends: { start: { x: 100, y: 100 }, end: { x: 300, y: 200 } },
+      }),
+    ).toEqual({ x: 200, y: 150 });
+  });
+
+  it("puts an array's centre on a point, keeping its size and angle", () => {
+    const aligned = arrays.alignedTo(
+      { type: "ellipse", box: BOX },
+      { x: 50, y: 60 },
+    );
+
+    expect(aligned.box.center).toEqual({ x: 50, y: 60 });
+    expect(aligned.box.width).toBe(BOX.width);
+    expect(aligned.box.height).toBe(BOX.height);
+    expect(aligned.box.rotation).toBe(BOX.rotation);
+  });
+
+  it("puts two shapes of different kinds on the same centre", () => {
+    const target = { x: 500, y: 500 };
+    const line = arrays.alignedTo(
+      {
+        type: "line",
+        ends: { start: { x: 0, y: 0 }, end: { x: 100, y: 0 } },
+      },
+      target,
+    );
+
+    expect(arrays.centerOf(line)).toEqual(target);
+    expect(line.ends).toEqual({
+      start: { x: 450, y: 500 },
+      end: { x: 550, y: 500 },
+    });
+  });
+});
+
 describe("withType", () => {
   const GRID = {
     layer: "layer-2",

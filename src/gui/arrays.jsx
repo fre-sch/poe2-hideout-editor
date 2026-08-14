@@ -95,6 +95,9 @@ export function ArrayButtons({ layer = null }) {
     layer !== null &&
     state.showArraySettings.value &&
     state.editedArray.value === layer.id;
+  // Read so that the slot answers a group that has just been joined or left.
+  state.layers.value;
+  const others = groupArraysOf(layer);
   return (
     <div class="btn-group" role="group" aria-label="This array">
       <ActionButton
@@ -104,6 +107,12 @@ export function ArrayButtons({ layer = null }) {
         pressed={open}
         disabled={layer === null}
         onClick={() => (open ? closeSettings() : openSettings(layer.id))}
+      />
+      <ActionButton
+        icon="bi-bullseye"
+        title={alignTitle(layer, others)}
+        disabled={others.length === 0}
+        onClick={() => align(layer, others)}
       />
       <ActionButton
         icon="bi-scissors"
@@ -120,6 +129,14 @@ export function ArrayButtons({ layer = null }) {
 }
 
 const NOT_AN_ARRAY = "The layer being worked on is not an array";
+
+function alignTitle(layer, others) {
+  if (layer === null) return NOT_AN_ARRAY;
+  if (others.length === 0) {
+    return "No other array is in this layer's group";
+  }
+  return `Put the ${others.length} other arrays of this group on this one's centre`;
+}
 
 export function ArraySidebar() {
   const layer = state.showArraySettings.value ? state.editedArray.value : null;
@@ -919,6 +936,42 @@ export function closeSettings() {
 const DETACH_WARNING =
   "Its doodads stay where they are and become ordinary doodads, which you can " +
   "select and move. The settings are dropped and cannot be brought back.";
+
+/**
+ * The other arrays this one moves with: the generators of its group's layers,
+ * minus its own. Empty for an ungrouped layer, which is what disables the slot.
+ */
+function groupArraysOf(layer) {
+  if (layer === null) return [];
+
+  const hideout = document_();
+  return hideout
+    .groupOf(layer.id)
+    .filter((other) => other.id !== layer.id)
+    .map((other) => hideout.findGenerator(other.id))
+    .filter((array) => Boolean(array));
+}
+
+/**
+ * Every other array of the group onto this one's centre, each keeping its own
+ * size, angle and shape.
+ *
+ * This is what the copying by hand was doing: reading `Centre x` and `Centre y`
+ * off one array's settings and typing them into another's. Said once, it cannot
+ * be typed into the wrong array and cannot go stale between the reading and the
+ * writing.
+ *
+ * One edit for all of them, so that one regeneration follows -- see
+ * `state.arraysEdited`.
+ */
+function align(layer, others) {
+  const hideout = document_();
+  const center = arrays.centerOf(hideout.findGenerator(layer.id));
+  for (const array of others) {
+    hideout.replaceGenerator(arrays.alignedTo(array, center));
+  }
+  state.arraysEdited(others.map((array) => array.layer));
+}
 
 function detach(layer) {
   if (!confirm(`Detach the array in '${layer.name}'?\n\n${DETACH_WARNING}`)) {

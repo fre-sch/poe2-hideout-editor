@@ -60,11 +60,20 @@ export class Scene {
     this.selection.addEventListener("changed", this.onSelectionChanged);
 
     this.transform = new transform.Transform(this.stage.overlay);
-    this.transform.addEventListener("moving", this.refreshLabels);
-    this.transform.addEventListener("changed", this.refreshLabels);
+    this.transform.addEventListener("begin", this.onMoveBegun);
+    this.transform.addEventListener("moving", this.onMoving);
+    this.transform.addEventListener("changed", this.onMoved);
 
     this.arrays = new arrays.Gizmo(this.stage.overlay);
     this.arrays.addEventListener("changed", this.onArrayChanged);
+
+    // The arrays a layer group carries along with the selection, drawn in the
+    // overlay beside the gizmo they are the plainer version of. They name their
+    // layers and read the parameters through this, which is what keeps them
+    // pointing at the array rather than at a copy of it -- see there.
+    this.movers = new arrays.Movers(this.stage.overlay, (layer) =>
+      state.hideoutDocument.value?.findGenerator(layer),
+    );
 
     this.labels = new Labels((published) => {
       state.labels.value = published;
@@ -91,6 +100,7 @@ export class Scene {
 
   load(hideout) {
     this.selection.clear();
+    this.movers.destroy();
     this.transform.setNodes([]);
     this.arrays.show(null);
     this.placement = null;
@@ -129,6 +139,9 @@ export class Scene {
     );
     this.colorNodes();
     this.selection.discard(this.unselectableNodes());
+    // A layer that has gone, or an array that has been detached, takes its
+    // proxy with it. The set itself is the sidebar's to say -- `moveArrays`.
+    if (this.movers.keepOnly(this.generated)) this.attachTransform();
     this.refreshLabels();
   }
 
@@ -343,6 +356,50 @@ export class Scene {
   }
 
   /**
+   * The arrays that move with the selection, as layer ids: a layer group's, or
+   * none.
+   *
+   * Their proxies join the selection in the box, which is the whole mechanism --
+   * see `arrays.Movers`. An id naming no array is skipped rather than refused:
+   * the sidebar names a group's layers, and which of them carry a generator is
+   * this side's question.
+   */
+  moveArrays(layers) {
+    this.movers.show(layers);
+    this.attachTransform();
+  }
+
+  /** The box over what it moves: the selected doodads, and the riding arrays. */
+  attachTransform() {
+    this.transform.setNodes(this.selection.nodes, this.movers.nodes);
+  }
+
+  onMoveBegun = () => {
+    this.movers.begin();
+  };
+
+  /**
+   * A step of a move: the labels follow the doodads, and every riding array is
+   * regenerated where the gesture has now put it.
+   *
+   * Live, the way an array's own handles are live -- there is nothing else for
+   * a player to judge a drag by, an array being its doodads. Regenerating moves
+   * nodes rather than rebuilding them; see `regenerateArray`.
+   */
+  onMoving = () => {
+    this.refreshLabels();
+    for (const layer of this.movers.follow()) {
+      this.regenerateArray(layer);
+    }
+  };
+
+  /** The same, and then the proxies back onto the shapes they now stand for. */
+  onMoved = () => {
+    this.onMoving();
+    this.movers.redraw();
+  };
+
+  /**
    * An array's doodads brought back into step with its parameters, live.
    *
    * **Nodes are moved, not replaced.** Destroying and building a few hundred
@@ -359,17 +416,22 @@ export class Scene {
   };
 
   /**
-   * An array the sidebar has rewritten: its doodads regenerated, and its gizmo
-   * drawn again from parameters that may be a different object -- changing a
-   * type builds new ones, see `model.replaceGenerator`.
+   * The arrays the sidebar has rewritten: their doodads regenerated, and the
+   * gizmo drawn again from parameters that may be a different object -- changing
+   * a type builds new ones, see `model.replaceGenerator`.
    *
    * The gizmo is drawn for whatever the state now says is being worked on
-   * rather than for the layer named here, which is what keeps an edit that
-   * lands beside a change of layer from raising handles over the wrong array.
+   * rather than for a layer named here, which is what keeps an edit that lands
+   * beside a change of layer from raising handles over the wrong array. The
+   * proxies are redrawn for the same reason and by the same argument: aligning a
+   * group moves arrays that are standing in the box.
    */
-  refreshArray(layer) {
+  refreshArrays(layers) {
     this.showArray(state.editedArray.value);
-    this.regenerateArray(layer);
+    for (const layer of layers) {
+      this.regenerateArray(layer);
+    }
+    this.movers.redraw();
   }
 
   regenerateArray(layer) {
@@ -529,9 +591,8 @@ export class Scene {
     }
     if (!settled) return;
 
-    const nodes = this.selection.nodes;
-    this.transform.setNodes(nodes);
-    state.selection.value = nodes.map((node) => node.doodad);
+    this.attachTransform();
+    state.selection.value = this.selection.nodes.map((node) => node.doodad);
   };
 
   // -- keyboard -------------------------------------------------------------
