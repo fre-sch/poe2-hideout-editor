@@ -357,14 +357,17 @@ details[open] > summary::before {
   outline: 1px dashed var(--bs-info);
   outline-offset: -1px;
 }
-/* The way out of a group: a strip under the last row, drawn only while a layer
-   that is in one is being dragged. It is the height of a row so that a list
-   whose last row is a member does not jump as the drag starts. */
+/* The way out of a group: a strip at the top of the actions bar, drawn only
+   while a layer that is in one is being dragged. It stands under the list
+   rather than in it, because the list scrolls and a drag held against its
+   bottom edge does not reliably scroll it -- wiki issue 0078. The list is the
+   item that grows, so the strip's height comes off the list and the buttons
+   below it do not move as it appears. */
 .layer-drop-out {
   display: flex;
   align-items: center;
   gap: 0.35rem;
-  margin-top: 0.3rem;
+  margin-bottom: 0.3rem;
   padding: 0.1rem 0.4rem;
   border: 1px dashed var(--bs-border-color);
   border-radius: 3px;
@@ -392,7 +395,8 @@ details[open] > summary::before {
 }
 
 /* The one bar of actions on the layer being worked on, ruled off from the list
-   it acts on. */
+   it acts on. A column: the leave-group strip, when there is a drag to answer,
+   and the row of buttons. */
 .layer-actions {
   border-top: 1px solid var(--bs-dark-border-subtle);
   padding-top: 0.3rem;
