@@ -243,9 +243,11 @@ export class Box extends Konva.Transformer {
 }
 
 /**
- * Dispatches `moving` while a gesture is under way, and `changed` once it has
- * been written back to the domain doodads. Both matter: the labels have to
- * follow the doodads across the drag, not catch up when it ends.
+ * Dispatches `begin` as a gesture starts, `moving` while it is under way, and
+ * `changed` once it has been written back to the domain doodads. All three
+ * matter: the labels have to follow the doodads across the drag rather than
+ * catch up when it ends, and a rider reads its motion against where it stood
+ * when the gesture began.
  */
 export class Transform extends EventTarget {
   constructor(layer) {
@@ -255,8 +257,11 @@ export class Transform extends EventTarget {
     layer.add(this.konva);
 
     this.nodes = [];
+    this.riders = [];
+    this.written = new Set();
     this.step = null;
     this.pinned = null;
+    this.konva.on("dragstart", this.begin);
     this.konva.on("dragmove", this.moving);
     this.konva.on("transformstart", this.begin);
     this.konva.on("transform", this.transforming);
@@ -265,32 +270,50 @@ export class Transform extends EventTarget {
   }
 
   /**
-   * The selection, drawn and draggable.
+   * The selection, drawn and draggable, and the nodes riding along with it.
    *
    * Dragging is enabled on the nodes rather than on the box: it is what Konva
    * proxies a whole-selection drag through, and leaving it off everywhere else
    * is what stops a doodad nobody selected from being dragged by accident.
+   *
+   * **A rider is moved and not written back.** It stands for something that is
+   * not a doodad -- an array, see `viewport/arrays.js` -- so `doodads.apply`
+   * would have nothing to write into, and what happens to the thing it stands
+   * for is whoever handed it over's business. Which is why the two lists are
+   * two lists and not one with a flag.
+   *
+   * **Riders turn off the anchors.** Stretching a selection spreads doodads
+   * apart, and there is no such thing as spreading an array apart -- resizing
+   * its box changes its spacing, which is a different edit. One gesture cannot
+   * mean both, so while anything is riding, the box moves and turns and does not
+   * resize. See wiki/decisions/layer-groups.md.
    */
-  setNodes(nodes) {
-    for (const node of this.nodes) {
+  setNodes(nodes, riders = []) {
+    for (const node of [...this.nodes, ...this.riders]) {
       node.draggable(false);
     }
     this.nodes = nodes;
-    for (const node of nodes) {
+    this.riders = riders;
+    // The same list as a set, for `movedDoodads`: that one runs per node on
+    // every step of a resize, and a selection runs to hundreds of doodads.
+    this.written = new Set(nodes);
+    const all = [...nodes, ...riders];
+    for (const node of all) {
       node.draggable(true);
     }
-    this.konva.nodes(nodes);
-    this.konva.visible(nodes.length > 0);
+    this.konva.nodes(all);
+    this.konva.resizeEnabled(riders.length === 0);
+    this.konva.visible(all.length > 0);
   }
 
   /** Whether a node is one the box would move. */
   holds(node) {
-    return this.nodes.includes(node);
+    return this.nodes.includes(node) || this.riders.includes(node);
   }
 
   /** Whether a point in screen pixels is inside the box around the selection. */
   encloses(point) {
-    return this.nodes.length > 0 && this.konva.encloses(point);
+    return this.konva.nodes().length > 0 && this.konva.encloses(point);
   }
 
   /**
@@ -298,11 +321,12 @@ export class Transform extends EventTarget {
    *
    * Konva moves a selection by dragging one of its nodes and letting the
    * transformer carry the rest, which is what happens when a player grabs a
-   * gizmo. Any node will do to start it: a drag is a delta, not a destination,
-   * so the one that is grabbed does not jump to the pointer.
+   * gizmo. Any node will do to start it -- a rider as readily as a doodad,
+   * which is what moves a group holding no doodads at all: a drag is a delta,
+   * not a destination, so the one that is grabbed does not jump to the pointer.
    */
   startDragging(event) {
-    this.nodes[0].startDrag(event);
+    this.konva.nodes()[0].startDrag(event);
   }
 
   /** Whether a node is one of the handles. Anchors are the box's children. */
@@ -319,6 +343,7 @@ export class Transform extends EventTarget {
   begin = () => {
     this.step = null;
     this.pinned = null;
+    this.dispatchEvent(new CustomEvent("begin"));
     if (!this.konva.resizing()) return;
 
     const anchor = this.konva.getActiveAnchor();
@@ -382,16 +407,23 @@ export class Transform extends EventTarget {
    * which is exactly the thing the anchors are stretching.
    */
   unscaleNodes() {
-    // The transformer's own list, not the one handed to `setNodes`: it filters
-    // what it was given, and the nodes it wrote to are the nodes to undo.
-    for (const node of this.konva.nodes()) {
+    for (const node of this.movedDoodads()) {
       doodads.unscale(node);
     }
   }
 
+  /**
+   * The doodad nodes the box actually wrote to: the transformer's own list, not
+   * the one handed to `setNodes` -- it filters what it was given -- and the
+   * riders left out of it, they being nothing `doodads.js` can measure.
+   */
+  movedDoodads() {
+    return this.konva.nodes().filter((node) => this.written.has(node));
+  }
+
   commit = () => {
     this.pinned = null;
-    for (const node of this.konva.nodes()) {
+    for (const node of this.movedDoodads()) {
       doodads.apply(node);
     }
     // The nodes just snapped onto the grid, so the box around them moved.

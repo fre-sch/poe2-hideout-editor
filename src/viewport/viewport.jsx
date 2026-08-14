@@ -15,6 +15,7 @@
 import { useEffect, useRef } from "preact/hooks";
 
 import * as state from "../state.js";
+import { loadTable, nameOf, unknownHash } from "../table.js";
 import { Scene } from "./scene.js";
 
 export default function Viewport() {
@@ -27,6 +28,7 @@ export default function Viewport() {
   const showLabels = state.showLabels.value;
   const showGrid = state.showGrid.value;
   const editedArray = state.editedArray.value;
+  const movingArrays = state.movingArrays.value;
   const arrayEdit = state.arrayEdit.value;
   const selectionRequest = state.selectionRequest.value;
   const hoveredDoodad = state.hoveredDoodad.value;
@@ -59,12 +61,17 @@ export default function Viewport() {
   useEffect(() => {
     scene.current.showArray(editedArray);
   }, [editedArray, layers]);
+  // The layer effect's dependency for the same reason: a proxy is built from a
+  // generator of the document that effect has just drawn.
+  useEffect(() => {
+    scene.current.moveArrays(movingArrays);
+  }, [movingArrays, layers]);
   // A fresh object per edit, so two edits saying the same thing run twice. It
   // comes after the layer effect, which is what makes the group of a brand new
   // array layer exist before its doodads are drawn into it.
   useEffect(() => {
     if (arrayEdit === null) return;
-    scene.current.refreshArray(arrayEdit.layer);
+    scene.current.refreshArrays(arrayEdit.layers);
   }, [arrayEdit]);
   useEffect(() => {
     scene.current.showBounds(hideoutType);
@@ -124,14 +131,49 @@ function Band() {
   );
 }
 
+/**
+ * The names over the doodads. `Labels` says where each one goes and for which
+ * doodad, and the name is looked up here so that a table arriving -- or a
+ * language switched -- renames them without the viewport being touched. Where
+ * the name came from is looked up with it, and marks the label.
+ *
+ * It asks for the table itself, the way the Selection section does: labels name
+ * hundreds of doodads at once, so they are the reader that most wants the
+ * table's word rather than the file's. Turned off, they want nothing -- which is
+ * what keeps a player who never opens the palette from fetching 400 kilobytes.
+ */
 function Overlay() {
+  const document_ = state.hideoutDocument.value;
+  const showLabels = state.showLabels.value;
+  // A switch of language asks for another table without changing the document,
+  // so it is a dependency of its own -- wiki issue 0053.
+  const language = state.language.value;
+
+  useEffect(() => {
+    if (document_ && showLabels) loadTable(document_);
+  }, [document_, showLabels, language]);
+
   return (
     <div id="label-overlay">
       {state.labels.value.map((label) => (
         <div class="label" style={{ left: label.x, top: label.y }}>
-          {label.text}
+          <UnknownMark doodad={label.doodad} />
+          {nameOf(label.doodad)}
         </div>
       ))}
     </div>
   );
+}
+
+/**
+ * That this label's name came from the file, no table naming its hash -- wiki
+ * issue 0060. A glyph and not the hash: a label is drawn per doodad at every
+ * zoom, and ten digits over each of a hundred doodads is a hideout nobody can
+ * see. Which hash it is, is the sidebar's to say, where there is room for it
+ * and where a title can explain it -- the overlay takes no pointer events, so
+ * nothing here can be hovered.
+ */
+function UnknownMark({ doodad }) {
+  if (!unknownHash(doodad)) return null;
+  return <i class="bi bi-question-circle me-1"></i>;
 }

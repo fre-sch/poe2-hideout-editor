@@ -120,6 +120,29 @@ function Shortcuts() {
         the layer being worked on.
       </li>
       <li>
+        <span class="shortcut">Click a row</span> in the layer list to work on
+        that layer: new doodads land there, and its doodads are selected. The
+        row is marked while it is the one being worked on.
+      </li>
+      <li>
+        Put layers in the same <span class="shortcut">group</span> to move them
+        as one. <span class="shortcut">Drag a layer row</span> onto a group row
+        to put it in that group, and onto the strip at the end of the list to
+        take it out again; <span class="shortcut">Add group</span> makes a new
+        group out of the layer being worked on. The group gets a row of its own
+        in the list: pick that row and the box holds every layer of it, arrays
+        included, and moves and turns them together — pick a layer under it and
+        you are working on that layer alone. A group move does not spread
+        doodads out; for that, the selection box and an array's own box are
+        still there.
+      </li>
+      <li>
+        <span class="shortcut">Double-click</span> a layer or group name in the
+        list to rename it. <span class="shortcut">Enter</span> accepts the new
+        name, <span class="shortcut">Esc</span> puts the old one back, and
+        clicking away accepts.
+      </li>
+      <li>
         Drag <span class="shortcut">middle mouse button</span> to pan.
       </li>
       <li>

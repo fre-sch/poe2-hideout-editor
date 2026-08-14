@@ -1,0 +1,14 @@
+{
+  "languages": [
+    {"language": "English", "spelling": "measured"},
+    {"language": "French", "spelling": "measured"},
+    {"language": "German", "spelling": "measured"},
+    {"language": "Japanese", "spelling": "assumed"},
+    {"language": "Korean", "spelling": "assumed"},
+    {"language": "Portuguese", "spelling": "assumed"},
+    {"language": "Russian", "spelling": "assumed"},
+    {"language": "Spanish", "spelling": "assumed"},
+    {"language": "Thai", "spelling": "assumed"},
+    {"language": "Traditional Chinese", "spelling": "assumed"}
+  ]
+}

@@ -18,9 +18,8 @@
  * decided.
  *
  * **Loading a file closes it.** A new document may be in another language, which
- * invalidates both the table and the check it was loaded with; a palette that
- * survived a load would be describing the previous document. `gui/file.jsx` puts
- * it away.
+ * invalidates the table it was loaded with; a palette that survived a load would
+ * be describing the previous document. `gui/file.jsx` puts it away.
  *
  * **With an array as the active layer it sets that array's doodad instead of
  * placing one.** An array's doodads are computed, so there is nothing to place
@@ -28,7 +27,7 @@
  * answering it twice, once here and once from a selection, was two ways to say
  * one thing. So the palette is where a doodad is chosen, whoever is asking.
  *
- * The table itself is `gui/table.js`, which the Selection section reads too.
+ * The table itself is `table.js`, which the Selection section reads too.
  */
 
 import { useEffect } from "preact/hooks";
@@ -37,7 +36,7 @@ import { signal } from "@preact/signals";
 import * as state from "../state.js";
 import { INCLUDE, EXCLUDE } from "../hideout/palette.js";
 import { sourceDoodad } from "./arrays.jsx";
-import { table, tableError, loadTable } from "./table.js";
+import { table, tableError, loadTable } from "../table.js";
 
 /**
  * What the player is looking for. Kept across openings, because closing the
@@ -71,11 +70,19 @@ function purpose() {
  */
 export function AddDoodadButton() {
   const { title, icon } = purpose();
+  // A group is not a place a doodad lands, and which of its layers should take
+  // one is the list's question, not this button's -- so it says so and waits.
+  const group = state.activeGroup.value;
   return (
     <button
       type="button"
       class="btn btn-secondary btn-sm text-nowrap"
-      disabled={state.hideoutDocument.value === null}
+      title={
+        group === null
+          ? "The doodad palette"
+          : `The group '${group}' is being worked on. Pick a layer inside it to place doodads.`
+      }
+      disabled={state.hideoutDocument.value === null || group !== null}
       onClick={() => {
         state.showPalette.value = !state.showPalette.value;
       }}
@@ -88,10 +95,13 @@ export function AddDoodadButton() {
 export function DoodadPalette() {
   const shown = state.showPalette.value;
   const document_ = state.hideoutDocument.value;
+  // Switching the language is what makes the loaded table the wrong one, and
+  // the document a caller passes does not change with it.
+  const language = state.language.value;
 
   useEffect(() => {
     if (shown && document_) loadTable(document_);
-  }, [shown, document_]);
+  }, [shown, document_, language]);
 
   if (!shown) return null;
   return (
@@ -346,27 +356,25 @@ function Entry({ entry }) {
 /**
  * Why nothing can be chosen right now, or `null`.
  *
- * The language check is the important one, and it holds for an array too: a
- * `.hideout` names every doodad, the game rejects an import whose names disagree
- * with its `language`, and an array writes the name it was given into every
- * doodad it makes. English is never a fallback: it is precisely the wrong
- * answer.
+ * Two layer checks and nothing else. A third stood here and refused the whole
+ * palette when the document's names disagreed with the table, on the reading
+ * that placing one would write a name the game rejects -- it rejects nothing,
+ * wiki issues 0057 and 0059, and a German player reading an English file is
+ * exactly the case it used to shut down.
  *
- * The layer checks are the mundane ones, and they are here rather than at the
- * placement because a doodad placed into a hidden layer appears nowhere. They do
- * not apply to an array, which is being told what it is made of rather than
- * handed a doodad -- and a hidden array is a fair thing to work on.
+ * The layer checks are here rather than at the placement because a doodad
+ * placed into a hidden layer appears nowhere. They do not apply to an array,
+ * which is being told what it is made of rather than handed a doodad -- and a
+ * hidden array is a fair thing to work on.
  */
 function refusal() {
-  const loaded = table.value;
-  if (!loaded) return null;
-
-  if (loaded.check.reports.length > 0) {
-    const [first] = loaded.check.reports;
+  // A group first: with one up there is no active layer at all, so the two
+  // checks below have nothing to read and the answer is about the group anyway.
+  const group = state.activeGroup.value;
+  if (group !== null) {
     return (
-      `This file's doodad names do not match the ${loaded.language} table, so ` +
-      `using one would write a name the game rejects. It calls doodad ` +
-      `${first.hash} '${first.name}', where the table says '${first.expected}'.`
+      `The group '${group}' is being worked on, and a group is not a layer ` +
+      `a doodad can land in. Pick a layer inside it in the layer list.`
     );
   }
   if (activeArray() !== null) return null;

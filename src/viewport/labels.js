@@ -1,6 +1,13 @@
 /**
  * Doodad names, as DOM elements over the canvas.
  *
+ * Where each one goes, and which doodad it is for. What it is *called* is not
+ * decided here: a name is the table's answer where the table knows the hash and
+ * the file's where it does not -- wiki issue 0059 -- and the table arrives after
+ * the file and changes with the document's language. So a label carries its
+ * doodad and the overlay that renders it asks, which is one subscription rather
+ * than a rebuild of every label whenever a table lands.
+ *
  * The projection is the 3D editor's, minus the camera: a node's absolute
  * position already is a pixel offset into the stage, so there is no normalized
  * device coordinate step left to do.
@@ -66,7 +73,7 @@ export function visible(nodes, stage) {
     labels.push({
       x: Math.round(position.x),
       y: Math.round(position.y),
-      text: node.doodad.name,
+      doodad: node.doodad,
     });
   }
   return labels;

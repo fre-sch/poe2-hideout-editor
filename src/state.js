@@ -21,8 +21,58 @@ export const fileName = signal("");
 /** What went wrong loading the last file. A malformed file must say so. */
 export const loadError = signal(null);
 
-/** `hideout_hash` of the outline to draw. Never written back to the file. */
+/**
+ * The document's `header.hideout_hash`, republished. `language`'s arrangement,
+ * applied to the type -- see there.
+ *
+ * It is also what the viewport draws the outline from, so the outline follows
+ * the type without being a second setting to keep in step.
+ */
 export const hideoutType = signal(null);
+
+/**
+ * The type the loaded file arrived as, `{ hash, name }`.
+ *
+ * The selector's list is built from this rather than from the header, so that a
+ * type the game data does not name is still offered after it has been left --
+ * an option that disappears when it stops being selected cannot be returned to,
+ * wiki issue 0007. It is also the name restored when the player does return.
+ */
+export const fileType = signal(null);
+
+/**
+ * Changes the document's hideout type: the hash, and the name that follows it.
+ *
+ * `switchLanguage`'s arrangement, applied to a pair of fields --
+ * `hideouts.headerFor` says what to write, wiki issue 0061.
+ */
+export function switchHideoutType(header) {
+  Object.assign(hideoutDocument.value.header, header);
+  hideoutType.value = header.hideout_hash;
+}
+
+/**
+ * The document's `header.language`, republished.
+ *
+ * `doodadCount`'s reasoning, applied to a field: the header is part of the
+ * document, switching the language writes it there, and nothing can subscribe
+ * to a field being written. The header stays the truth -- it is what the export
+ * carries -- and this is what the tables and the sidebar watch.
+ */
+export const language = signal(null);
+
+/**
+ * Switches the document's language: the header, and everyone reading it.
+ *
+ * Nothing else in the document moves. Positions, rotations, variations, layers
+ * and generators are language-free, and so are the names, which a switch does
+ * not touch -- what a doodad is *shown* as is looked up per language, wiki
+ * issues 0053 and 0059.
+ */
+export function switchLanguage(chosen) {
+  hideoutDocument.value.header.language = chosen;
+  language.value = chosen;
+}
 
 export const doodadCount = signal(0);
 
@@ -39,6 +89,105 @@ export const layers = signal([]);
 
 /** Which layer a new doodad, or a moved selection, lands in. */
 export const activeLayer = signal(null);
+
+/**
+ * The group being worked on, by name, or `null`.
+ *
+ * The other kind of row the layer list is picked over. Exactly one of these
+ * two is set: a group is not a layer doodads can land in, so while one is up
+ * there is no active layer and the palette says so. See
+ * wiki/decisions/layer-groups.md.
+ */
+export const activeGroup = signal(null);
+
+export function workOnLayer(id) {
+  activeGroup.value = null;
+  activeLayer.value = id;
+}
+
+export function workOnGroup(name) {
+  activeLayer.value = null;
+  activeGroup.value = name;
+}
+
+/**
+ * The names of the groups whose rows are folded shut.
+ *
+ * Not stored and not saved: it is how the list is being looked at now, not
+ * something about the layout. A list rather than a `Set`, signals comparing by
+ * reference -- a mutated set is a set nobody hears about.
+ */
+export const collapsedGroups = signal([]);
+
+export function toggleCollapsed(name) {
+  const collapsed = collapsedGroups.value;
+  collapsedGroups.value = collapsed.includes(name)
+    ? collapsed.filter((other) => other !== name)
+    : [...collapsed, name];
+}
+
+/**
+ * Which name in the layer list is open for editing, as `{ kind, key }` -- kind
+ * `"layer"` with a layer id, or kind `"group"` with a group name -- or `null`
+ * while every name is being read rather than written.
+ *
+ * One signal, so opening a second editor closes the first: a name is edited by
+ * double-clicking it, and the row that was open is not necessarily near the row
+ * that just opened. Not stored and not saved, the way `collapsedGroups` is not:
+ * it is a gesture in progress. See wiki issue 0067.
+ */
+export const editedName = signal(null);
+
+export function editName(kind, key) {
+  editedName.value = { kind, key };
+}
+
+export function endNameEdit() {
+  editedName.value = null;
+}
+
+/** Whether this is the name that is open, `key` being an id or a group name. */
+export function editingName(kind, key) {
+  const edited = editedName.value;
+  return edited !== null && edited.kind === kind && edited.key === key;
+}
+
+/**
+ * The layer being dragged in the layer list, as `{ id, group }` -- the group it
+ * is leaving, or `null` for a layer in none -- and `null` while nothing is being
+ * dragged.
+ *
+ * The list draws itself differently while a drag is on: a member offers a strip
+ * at the end of the list to leave its group by. So the drag is a signal and not
+ * a property of the row it started on -- the strip is elsewhere. Not stored and
+ * not saved, the way `editedName` is not: it is a gesture in progress. See wiki
+ * issue 0070.
+ */
+export const draggedLayer = signal(null);
+
+/**
+ * Where the drag is hovering, as `{ group }` -- a group's name, or `null` for
+ * the strip that leaves a group -- and `null` where it is over neither.
+ *
+ * A signal because the drag has no hover: `:hover` is not maintained while the
+ * pointer is dragging something, so the row that would take the drop has to say
+ * so itself.
+ */
+export const dropTarget = signal(null);
+
+export function startLayerDrag(id, group) {
+  draggedLayer.value = { id, group };
+}
+
+export function endLayerDrag() {
+  draggedLayer.value = null;
+  dropTarget.value = null;
+}
+
+/** Whether the drag is over this drop target, `group` being a name or `null`. */
+export function overDropTarget(group) {
+  return dropTarget.value !== null && dropTarget.value.group === group;
+}
 
 export function layersChanged() {
   layers.value = [...hideoutDocument.value.layers];
@@ -108,17 +257,37 @@ export const editedArray = signal(null);
 export const showArraySettings = signal(false);
 
 /**
+ * The layer ids of the arrays that move with the selection, which is how a
+ * layer group carries its arrays -- their doodads cannot be selected, so there
+ * is nothing else of theirs for a box to hold. See
+ * wiki/decisions/layer-groups.md.
+ *
+ * Ids rather than generators, for `editedArray`'s reason: an id survives a
+ * regeneration the way an object reference does not.
+ */
+export const movingArrays = signal([]);
+
+/**
  * Raises an array's handles, or puts them away. The settings go with them: they
  * are one array's, so there is nothing for them to describe once no array is
  * being worked on.
+ *
+ * Taking one array up puts a group down. Two boxes over the same array is two
+ * answers to what a drag would move, and the one being asked for is the one just
+ * named -- the granular half of working on an array, which is what the settings
+ * are. The group comes back when the layer is activated again.
  */
 export function editArray(layer) {
   editedArray.value = layer;
-  if (layer === null) showArraySettings.value = false;
+  if (layer === null) {
+    showArraySettings.value = false;
+    return;
+  }
+  movingArrays.value = [];
 }
 
 /**
- * The array the sidebar has just rewritten, as `{ layer }`, or `null`.
+ * The arrays the sidebar has just rewritten, as `{ layers }`, or `null`.
  *
  * `selectionRequest`'s reasoning, applied to parameters: the sidebar edits the
  * document in place, which nothing can subscribe to, and what has to happen
@@ -126,13 +295,19 @@ export function editArray(layer) {
  * viewport's. A fresh object per edit, so two edits that say the same thing are
  * two edits.
  *
- * It names the layer rather than being read off `editedArray`, so that an edit
- * reaches the doodads it is about however the panels have moved on since.
+ * It names the layers rather than being read off `editedArray`, so that an edit
+ * reaches the doodads it is about however the panels have moved on since. A list
+ * and not one layer, because aligning a group rewrites several arrays at once
+ * and a signal set twice in a tick is read once.
  */
 export const arrayEdit = signal(null);
 
 export function arrayEdited(layer) {
-  arrayEdit.value = { layer };
+  arraysEdited([layer]);
+}
+
+export function arraysEdited(layers) {
+  arrayEdit.value = { layers };
 }
 
 /**

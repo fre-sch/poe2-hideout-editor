@@ -26,8 +26,8 @@ import * as state from "../state.js";
 import * as arrays from "../hideout/arrays.js";
 import * as generator from "../hideout/generator.js";
 import * as model from "../hideout/model.js";
-import { ActionButton, SelectionBadge } from "./buttons.jsx";
-import { loadTable, variationsOf } from "./table.js";
+import { ActionButton, SelectionBadge, UnknownHashMark } from "./buttons.jsx";
+import { loadTable, nameOf, variationsOf } from "../table.js";
 
 const SHAPES = [
   ["grid", "Grid"],
@@ -86,15 +86,18 @@ export function ArrayBadge() {
  * array answers, which is a thing the bar can show rather than explain.
  *
  * The settings are the granular half of working on an array. The other half is
- * the layer's own radio, which raises the box and its handles -- most of what a
- * player wants is to drag that box, and a dozen numbers is what they ask for
- * afterwards.
+ * the layer's own row, picking which raises the box and its handles -- most of
+ * what a player wants is to drag that box, and a dozen numbers is what they ask
+ * for afterwards.
  */
 export function ArrayButtons({ layer = null }) {
   const open =
     layer !== null &&
     state.showArraySettings.value &&
     state.editedArray.value === layer.id;
+  // Read so that the slot answers a group that has just been joined or left.
+  state.layers.value;
+  const others = groupArraysOf(layer);
   return (
     <div class="btn-group" role="group" aria-label="This array">
       <ActionButton
@@ -104,6 +107,12 @@ export function ArrayButtons({ layer = null }) {
         pressed={open}
         disabled={layer === null}
         onClick={() => (open ? closeSettings() : openSettings(layer.id))}
+      />
+      <ActionButton
+        icon="bi-bullseye"
+        title={alignTitle(layer, others)}
+        disabled={others.length === 0}
+        onClick={() => align(layer, others)}
       />
       <ActionButton
         icon="bi-scissors"
@@ -121,6 +130,14 @@ export function ArrayButtons({ layer = null }) {
 
 const NOT_AN_ARRAY = "The layer being worked on is not an array";
 
+function alignTitle(layer, others) {
+  if (layer === null) return NOT_AN_ARRAY;
+  if (others.length === 0) {
+    return "No other array is in this layer's group";
+  }
+  return `Put the ${others.length} other arrays of this group on this one's centre`;
+}
+
 export function ArraySidebar() {
   const layer = state.showArraySettings.value ? state.editedArray.value : null;
   const document_ = state.hideoutDocument.value;
@@ -131,10 +148,13 @@ export function ArraySidebar() {
   state.arrayMoved.value;
 
   // The variation count is the doodad table's answer, and a player who made an
-  // array from a selection may never have opened the palette.
+  // array from a selection may never have opened the palette. The language is a
+  // dependency because switching it is what makes the loaded table the wrong
+  // one, and the document it was read from does not change with it.
+  const language = state.language.value;
   useEffect(() => {
     if (document_ && layer !== null) loadTable(document_);
-  }, [document_, layer]);
+  }, [document_, layer, language]);
 
   const parameters = layer === null ? null : document_?.findGenerator(layer);
   if (!parameters) return null;
@@ -598,12 +618,17 @@ function PickButton({ label, mode, value, onChange }) {
  * wiki issue 0051.
  */
 function SourceRow({ entry, index, only, chosen }) {
+  // The table's name for the hash, or the one the source was stored with --
+  // wiki issue 0059, marked where no table names the hash, wiki issue 0060. The
+  // stored name is what the doodads are written with.
+  const name = nameOf(entry);
   return (
     <li class="mb-1">
       <div class="array-source-row">
-        <span class="array-source-name" title={entry.name}>
-          {entry.name}
+        <span class="array-source-name" title={name}>
+          {name}
         </span>
+        <UnknownHashMark doodad={entry} />
         <button
           type="button"
           class="btn btn-sm btn-link p-0 text-danger"
@@ -894,7 +919,7 @@ function addArray() {
  * double-click sets this array's doodad rather than placing one.
  */
 export function openSettings(layer) {
-  state.activeLayer.value = layer;
+  state.workOnLayer(layer);
   state.editArray(layer);
   state.showArraySettings.value = true;
 }
@@ -911,6 +936,42 @@ export function closeSettings() {
 const DETACH_WARNING =
   "Its doodads stay where they are and become ordinary doodads, which you can " +
   "select and move. The settings are dropped and cannot be brought back.";
+
+/**
+ * The other arrays this one moves with: the generators of its group's layers,
+ * minus its own. Empty for an ungrouped layer, which is what disables the slot.
+ */
+function groupArraysOf(layer) {
+  if (layer === null) return [];
+
+  const hideout = document_();
+  return hideout
+    .groupOf(layer.id)
+    .filter((other) => other.id !== layer.id)
+    .map((other) => hideout.findGenerator(other.id))
+    .filter((array) => Boolean(array));
+}
+
+/**
+ * Every other array of the group onto this one's centre, each keeping its own
+ * size, angle and shape.
+ *
+ * This is what the copying by hand was doing: reading `Centre x` and `Centre y`
+ * off one array's settings and typing them into another's. Said once, it cannot
+ * be typed into the wrong array and cannot go stale between the reading and the
+ * writing.
+ *
+ * One edit for all of them, so that one regeneration follows -- see
+ * `state.arraysEdited`.
+ */
+function align(layer, others) {
+  const hideout = document_();
+  const center = arrays.centerOf(hideout.findGenerator(layer.id));
+  for (const array of others) {
+    hideout.replaceGenerator(arrays.alignedTo(array, center));
+  }
+  state.arraysEdited(others.map((array) => array.layer));
+}
 
 function detach(layer) {
   if (!confirm(`Detach the array in '${layer.name}'?\n\n${DETACH_WARNING}`)) {

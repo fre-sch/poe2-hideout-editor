@@ -2,23 +2,36 @@
  * The table of everything that can be placed, in one language.
  *
  * It is built from a `public/doodads/{language}.json` file, generated from the
- * game's own data by `scripts/doodad_palette.py` -- see
+ * game's own data by `scripts/editor_data.py` -- see
  * wiki/decisions/doodad-palette.md. This module reads that data and answers the
- * three questions the palette asks of it: what is there, what matches what the
- * player typed, and is this table the one the document is written in.
+ * three questions asked of it: what is there, what matches what the player
+ * typed, and what is this hash called.
+ *
+ * The table names every hash a hideout can contain, which is more than a player
+ * may place: art the developers marked as not shipping, categories no Path of
+ * Exile 2 hideout offers, and the doodads the game places itself. `placeable`
+ * is what tells them apart, and it is a question this module asks -- naming a
+ * doodad and offering it are different things, and a hash the table cannot name
+ * is a doodad the editor can only show as a number.
  *
  * Fetching the file is not here, for the same reason `viewport/bounds.js`
  * fetches and `hideout/bounds.js` does not: the domain layer is framework-free
  * by rule -- wiki issue 0011.
  *
- * ### Why the language question exists at all
+ * ### Where a displayed name comes from
  *
- * A `.hideout` names every doodad, the game validates that name against the
- * file's `language`, and it rejects an import that disagrees. So a name is
- * looked up or copied and never derived, and a table loaded for the wrong
- * language is worse than no table: it writes a file the game refuses. The
- * document itself is the test -- it arrives carrying hundreds of names the game
- * wrote -- and `disagreements` is that test.
+ * `nameFor` is the rule, and it has two branches: this table for a hash it
+ * knows, the file's own word for the rest -- wiki issue 0059. The table is the
+ * current name in the document's language, and the file's is whatever client
+ * wrote it, which may be a language ago or a rename ago.
+ *
+ * Which branch answered is worth knowing on its own -- the two read alike and
+ * are not worth the same -- so `unknownHash` asks the same lookup for it, and
+ * the interface marks the doodad with the hash: wiki issue 0060.
+ *
+ * A name is looked up or copied and never derived, and never written back over
+ * what the document holds. The game reads the hashes and ignores the words
+ * entirely -- wiki issue 0057 -- so no name shown here can make a file fail.
  */
 
 /**
@@ -42,13 +55,22 @@ export const INCLUDE = "include";
 export const EXCLUDE = "exclude";
 
 export class Palette {
-  /** `data` is a parsed `public/doodads/{language}.json`. */
+  /**
+   * `data` is a parsed `public/doodads/{language}.json`.
+   *
+   * `entries` is every hash the table names and `placeable` is the part of it
+   * the palette offers. The filters and the list are built from the second,
+   * `find` answers out of the first: what a doodad is called is worth knowing
+   * about a doodad nobody may place.
+   */
   constructor(data) {
     this.language = data.language;
     this.entries = readEntries(data);
     this.byHash = new Map(this.entries.map((entry) => [entry.hash, entry]));
-    this.tags = readTags(data.t9nTags, this.entries);
-    this.categories = readCategories(this.entries);
+    this.placeable = this.entries.filter((entry) => entry.placeable);
+    distinguishShared(this.placeable);
+    this.tags = readTags(data.t9nTags, this.placeable);
+    this.categories = readCategories(this.placeable);
   }
 
   /**
@@ -72,10 +94,13 @@ export class Palette {
    * The two filters are read together: a doodad shows when its category and
    * its tags both allow it. They answer different questions -- where a doodad
    * is from, and what it is -- so a player narrowing both means both.
+   *
+   * Only what is placeable, and that is not a filter a player can turn off:
+   * the rest is in the table to be named, not to be offered.
    */
   groups({ text = "", categories = new Map(), tags = new Map() } = {}) {
     const wanted = text.trim().toLocaleLowerCase();
-    const matching = this.entries.filter(
+    const matching = this.placeable.filter(
       (entry) =>
         matchesText(entry, wanted) &&
         allows(categories, [entry.categoryKey]) &&
@@ -83,63 +108,66 @@ export class Palette {
     );
     return groupByCategory(matching);
   }
+}
 
-  /**
-   * The document's doodads that this table calls something else.
-   *
-   * One report per hash, because a hideout holds the same doodad dozens of
-   * times and a list saying so dozens of times says nothing more. `checked` is
-   * how many doodads the table recognised at all: a doodad the table does not
-   * know -- an essential the game places itself, say -- is no evidence either
-   * way.
-   *
-   * Nothing to check is not the same as disagreement, and the caller is left to
-   * say which it has. A hideout with nothing placed in it yet is exactly where
-   * placing matters most, and refusing it for lack of samples would be refusing
-   * the empty hideout in particular.
-   */
-  disagreements(doodads) {
-    const reports = new Map();
-    let checked = 0;
+/**
+ * What to call a doodad: the table's name for its hash, or the name the file
+ * gave it where no table names that hash -- a handful in every game export, and
+ * the counterpart of `hideouts.nameFor` for the one name in the header.
+ *
+ * `palette` is the table or `null`, because it is fetched and a document is
+ * worked on before it arrives. Until then the file answers, which is the same
+ * branch and not a special case.
+ */
+export function nameFor(palette, doodad) {
+  return palette?.find(doodad.hash)?.name ?? doodad.name;
+}
 
-    for (const doodad of doodads) {
-      const entry = this.find(doodad.hash);
-      if (!entry) continue;
-
-      checked++;
-      if (entry.name === doodad.name) continue;
-      reports.set(entry.hash, {
-        hash: entry.hash,
-        name: doodad.name,
-        expected: entry.name,
-      });
-    }
-    return { checked, reports: [...reports.values()] };
-  }
+/**
+ * Whether the name `nameFor` gives came from the file because no table names
+ * the hash -- the second thing asked of the same lookup, and what the interface
+ * marks a doodad with: wiki issue 0060.
+ *
+ * False while there is no table to have asked, the same as a hideout type's
+ * `unknown`: it is what the table said about the hash, not what it was too
+ * early to say. A document waiting for its table is every doodad at once, and a
+ * mark on every one of them says nothing about any.
+ */
+export function unknownHash(palette, doodad) {
+  if (!palette) return false;
+  return palette.find(doodad.hash) === undefined;
 }
 
 /**
  * The entries, with the category translated and the tags left as keys: a
  * category is read by the player and a tag is matched against a toggle.
- *
+ */
+function readEntries(data) {
+  return Object.entries(data.doodads)
+    .map(([hash, doodad]) => ({
+      ...doodad,
+      hash,
+      categoryKey: doodad.category,
+      category: data.t9nCategory[doodad.category] ?? doodad.category,
+    }))
+    .sort(byNameThenId);
+}
+
+/**
  * A name is not unique -- three English names cover twelve doodads, seven of
  * them `Warp Rune` -- so an entry sharing its name carries a `distinguisher`,
  * the last segment of its metadata id. Only the ones that share, because a
  * metadata id on every row is noise obscuring the few places it is the answer.
+ *
+ * Asked of what the palette offers rather than of the whole table: two rows
+ * that read alike are a choice a player cannot make, and a player is never
+ * shown the rest.
  */
-function readEntries(data) {
-  const entries = Object.entries(data.doodads).map(([hash, doodad]) => ({
-    ...doodad,
-    hash,
-    categoryKey: doodad.category,
-    category: data.t9nCategory[doodad.category] ?? doodad.category,
-  }));
-
+function distinguishShared(entries) {
   const shared = sharedNames(entries);
   for (const entry of entries) {
     if (shared.has(entry.name)) entry.distinguisher = lastSegment(entry.id);
   }
-  return entries.sort(byNameThenId);
 }
 
 function sharedNames(entries) {

@@ -27,6 +27,7 @@
 import Konva from "konva";
 
 import gizmoSource from "../gizmos/doodad.svg?raw";
+import * as colors from "../hideout/colors.js";
 import * as units from "../hideout/units.js";
 
 // Doodad units. Large enough to hit with a mouse at a zoom that shows a whole
@@ -52,6 +53,14 @@ const GIZMO_ROTATION = -90;
  * when it is selected, so the colours belong to the editor. Everything else
  * about the drawing comes from the file.
  *
+ * **A doodad at rest wears its layer's colour**, which is what makes the layers
+ * readable off the canvas -- `setColor`, and `hideout/colors.js` for where the
+ * colours come from. The other two states are the editor's own and are the same
+ * whatever layer they happen in: they say what the player is doing right now,
+ * and a state that a layer colour could out-shout is a state that cannot be
+ * seen. `COLOR_NORMAL` is what a node wears until it is told, which is the
+ * moment between being built and being put in its group.
+ *
  * The highlighted colours are for the one doodad the sidebar is pointing at, and
  * they are the loudest of the three. It is looked for in a field of selected
  * doodads that all draw as the same gizmo, so the difference has to carry across
@@ -61,7 +70,6 @@ const GIZMO_ROTATION = -90;
 const COLOR_NORMAL = "#008080";
 const COLOR_SELECTED = "#C0C000";
 const COLOR_HIGHLIGHTED = "#FF6000";
-const OUTLINE = "#00FFFF";
 const OUTLINE_SELECTED = "#FFFF00";
 const OUTLINE_HIGHLIGHTED = "#FFFFFF";
 
@@ -82,7 +90,7 @@ export function create(doodad) {
     offsetX: GIZMO.offsetX,
     offsetY: GIZMO.offsetY,
     fill: COLOR_NORMAL,
-    stroke: OUTLINE,
+    stroke: colors.outline(COLOR_NORMAL),
     // One screen pixel at any zoom. The gizmo's own stroke width is a width in
     // the drawing, and an outline that thins out as you zoom out is not what it
     // is there for.
@@ -94,6 +102,8 @@ export function create(doodad) {
   });
   node.getSelfRect = gizmoSelfRect;
   node.doodad = doodad;
+  node.color = COLOR_NORMAL;
+  node.outline = colors.outline(COLOR_NORMAL);
   node.selected = false;
   node.highlighted = false;
   place(node);
@@ -180,6 +190,26 @@ export function unscale(node) {
   node.rotation(facing(node.doodad));
 }
 
+/**
+ * The colour a node wears at rest, which is its layer's -- see `scene.js`, which
+ * reads it off the document.
+ *
+ * The outline is worked out here and kept, rather than at every paint: a paint
+ * happens per node on every selection change, and the colour changes when a
+ * player moves a slider.
+ *
+ * A node already wearing the colour is left alone, so telling every node its
+ * layer's colour after any layer edit costs nothing for the layers that did not
+ * change.
+ */
+export function setColor(node, color) {
+  if (node.color === color) return;
+
+  node.color = color;
+  node.outline = colors.outline(color);
+  paint(node);
+}
+
 export function setSelected(node, selected) {
   node.selected = selected;
   paint(node);
@@ -208,8 +238,8 @@ function paint(node) {
     return;
   }
 
-  node.fill(node.selected ? COLOR_SELECTED : COLOR_NORMAL);
-  node.stroke(node.selected ? OUTLINE_SELECTED : OUTLINE);
+  node.fill(node.selected ? COLOR_SELECTED : node.color);
+  node.stroke(node.selected ? OUTLINE_SELECTED : node.outline);
   node.strokeWidth(STROKE);
 }
 

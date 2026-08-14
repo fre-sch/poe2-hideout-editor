@@ -1,9 +1,30 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Hideout Editor</title>
+    <title>PoE2 Hideout Editor</title>
+    <!-- What the page is, for a reader who has not opened it: a search result,
+         a link unfurled in a chat. Without it an engine quotes whatever prose
+         it finds first, which is the help text under the file section. -->
+    <meta
+      name="description"
+      content="Edit Path of Exile 2 .hideout files in your browser. Arrange decorations on layers, generate arrays along grids, circles and paths, and export the file back to the game."
+    />
+    <link
+      rel="canonical"
+      href="https://fre-sch.github.io/poe2-hideout-editor/"
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="PoE2 Hideout Editor" />
+    <meta
+      property="og:description"
+      content="Edit Path of Exile 2 .hideout files in your browser. Arrange decorations on layers, generate arrays along grids, circles and paths, and export the file back to the game."
+    />
+    <meta
+      property="og:url"
+      content="https://fre-sch.github.io/poe2-hideout-editor/"
+    />
     <!-- CSS only, no Bootstrap JavaScript. Pinned by version and by hash: the
          browser discards a stylesheet the CDN serves altered. Linked here
          rather than @imported from index.css because integrity is an attribute
@@ -23,6 +44,20 @@
     <link rel="stylesheet" href="/index.css" />
   </head>
   <body data-bs-theme="dark">
+    <!-- The editor is the page, and the page is script. A visitor without it
+         gets a blank body otherwise; a crawler that does not run scripts reads
+         this and nothing else. -->
+    <noscript>
+      <div class="container py-4">
+        <h1>PoE2 Hideout Editor</h1>
+        <p>
+          Edit Path of Exile 2 <code>.hideout</code> files in your browser.
+          Arrange decorations on layers, generate arrays along grids, circles
+          and paths, and export the file back to the game.
+        </p>
+        <p>The editor runs in the browser and needs JavaScript enabled.</p>
+      </div>
+    </noscript>
     <main></main>
     <script type="module" src="/src/main.jsx"></script>
   </body>

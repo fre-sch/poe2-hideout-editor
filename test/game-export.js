@@ -16,6 +16,21 @@ const DIRECTORY = path.resolve(
   "../../../hideouts/game-export",
 );
 
+/**
+ * The files in that directory the game did not write.
+ *
+ * `AlpineTest` was mangled by hand and imported, to measure what the game
+ * checks: the names are empty strings, `hideout_name` is the French name of a
+ * different hideout, and `language` says German. The game accepted it, which is
+ * the measurement -- wiki issue 0057.
+ *
+ * So it is a fixture for what a reader must survive, not for what a writer must
+ * reproduce. Byte identity is a promise about the game's own output, and this
+ * file carries a trailing newline no export has; the name check has nothing to
+ * check. Both suites skip it by this set and say so.
+ */
+export const HAND_EDITED = new Set(["AlpineTest.hideout"]);
+
 export function listFiles() {
   if (!fs.existsSync(DIRECTORY)) return [];
   return fs

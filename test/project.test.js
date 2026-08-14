@@ -63,6 +63,51 @@ describe("bake", () => {
     expect(project.bake(document_)).toMatch(/"doodads":\s*\{\s*\}/);
   });
 
+  /**
+   * What a switch of language costs the file -- wiki issue 0053. The header
+   * word is the whole of it: the names are the document's and are copied, never
+   * derived, so a file can hold names in two languages and the game reads
+   * neither. Switching back is therefore the file it started as.
+   */
+  it("writes the switched language and nothing else", () => {
+    const document_ = HideoutDocument.fromText(SHRINE);
+    document_.header.language = "German";
+
+    const switched = project.bake(document_);
+    document_.header.language = "English";
+
+    expect(switched).toBe(SHRINE.replace('"English"', '"German"'));
+    expect(project.bake(document_)).toBe(SHRINE);
+  });
+
+  /**
+   * What a change of hideout type costs the file -- wiki issue 0061. The hash
+   * and the name that follows it, and nothing else: the doodads stay where the
+   * player put them, whichever hideout they are exported into. Changing back is
+   * therefore the file it started as.
+   */
+  it("writes the changed hideout type and nothing else", () => {
+    const document_ = HideoutDocument.fromText(SHRINE);
+    Object.assign(document_.header, {
+      hideout_hash: 13526,
+      hideout_name: "Felled Hideout",
+    });
+
+    const changed = project.bake(document_);
+    Object.assign(document_.header, {
+      hideout_hash: 26805,
+      hideout_name: "Shrine Hideout",
+    });
+
+    expect(changed).toBe(
+      SHRINE.replace("Shrine Hideout", "Felled Hideout").replace(
+        "26805",
+        "13526",
+      ),
+    );
+    expect(project.bake(document_)).toBe(SHRINE);
+  });
+
   it("exports in layer order", () => {
     const document_ = HideoutDocument.fromText(SHRINE);
     const garden = document_.addLayer("Garden");
@@ -88,6 +133,67 @@ describe("project files", () => {
     expect(loaded.doodadsIn(garden.id).map((doodad) => doodad.name)).toEqual([
       "Maraketh Incense Burner",
     ]);
+  });
+
+  it("round trips a colour the player picked", () => {
+    const document_ = HideoutDocument.fromText(SHRINE);
+    document_.layers[0].color = "#123456";
+
+    const loaded = project.parse(project.serialize(document_));
+
+    expect(loaded.layers[0].color).toBe("#123456");
+  });
+
+  it("round trips the group a layer moves with", () => {
+    const document_ = HideoutDocument.fromText(SHRINE);
+    const garden = document_.addLayer("Garden");
+    document_.layers[0].group = "Yard";
+    garden.group = "Yard";
+
+    const loaded = project.parse(project.serialize(document_));
+
+    expect(loaded.groupOf(garden.id).map((layer) => layer.name)).toEqual([
+      "Shrine Hideout",
+      "Garden",
+    ]);
+  });
+
+  /**
+   * Groups are a field on a layer, which is the change the format version is
+   * explicitly not for -- see `project.js`. A project written before them loads
+   * with every layer moving by itself.
+   */
+  it("loads a project written without groups, ungrouped", () => {
+    const document_ = HideoutDocument.fromText(SHRINE);
+    const written = JSON.parse(project.serialize(document_));
+    for (const layer of written.layers) {
+      delete layer.group;
+    }
+
+    const loaded = project.parse(JSON.stringify(written));
+
+    expect(loaded.groupNames()).toEqual([]);
+    expect(loaded.layers[0].group).toBe(null);
+  });
+
+  /**
+   * A project written before layers carried colours, which the version does not
+   * refuse -- see `project.js`. Its layers arrive coloured, and no two alike:
+   * a load is where they are handed out.
+   */
+  it("colours the layers of a project written without colours", () => {
+    const document_ = HideoutDocument.fromText(SHRINE);
+    document_.addLayer("Garden");
+    const written = JSON.parse(project.serialize(document_));
+    for (const layer of written.layers) {
+      delete layer.color;
+    }
+
+    const loaded = project.parse(JSON.stringify(written));
+
+    const used = loaded.layers.map((layer) => layer.color);
+    expect(used.every((color) => /^#[0-9a-f]{6}$/.test(color))).toBe(true);
+    expect(new Set(used).size).toBe(2);
   });
 
   it("round trips the header verbatim", () => {

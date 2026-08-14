@@ -1,6 +1,7 @@
 /**
  * An array's gizmo: the outline its doodads sit on, and the handles that move,
- * rotate and scale it.
+ * rotate and scale it -- and, for the arrays that are only coming along, the
+ * proxies that let a selection's box carry them (`Movers`, below).
  *
  * **The outline is the generator's own polyline, converted.** `generator.outline`
  * hands back the points a walk consumes -- the box for a grid -- and every one of
@@ -34,6 +35,7 @@
 
 import Konva from "konva";
 
+import * as arrays from "../hideout/arrays.js";
 import * as generator from "../hideout/generator.js";
 import * as model from "../hideout/model.js";
 import * as units from "../hideout/units.js";
@@ -322,6 +324,201 @@ export class Gizmo extends EventTarget {
       new CustomEvent("changed", { detail: { layer: this.array.layer } }),
     );
   }
+}
+
+/**
+ * The arrays riding with a moving selection, one proxy node each.
+ *
+ * A layer group moves several layers at once, and an array's doodads cannot be
+ * selected -- so an array has nothing in the selection's box for the box to
+ * hold. The proxy is that something: a rectangle standing where the array
+ * stands, handed to the transformer with the doodads, moved and turned by it
+ * like everything else, and read afterwards to say what the array's geometry
+ * now is. See wiki/decisions/layer-groups.md.
+ *
+ * It is drawn, faintly, and that is not decoration: an array in the set is
+ * otherwise invisible until the drag has already moved it. The rectangle is the
+ * shape's upright extent rather than its outline -- the outline belongs to the
+ * one array being worked on, and a hint that a rectangle can give is enough to
+ * say "this comes too".
+ *
+ * **The motion is read from where the gesture started, not from the last
+ * step.** `begin` keeps the parameters as they were, so a drag of a thousand
+ * steps applies one rigid motion rather than a thousand of them; the arithmetic
+ * is `arrays.moved`.
+ *
+ * **A mover names its layer and asks for the parameters.** `editedArray`'s
+ * reasoning, and it is not hypothetical here: aligning a group replaces every
+ * generator it touches with a new object, so a mover holding the old one would
+ * be drawing a shape nothing reads and writing into a shape nothing draws.
+ */
+export class Movers {
+  /** `find(layer)` answers with the generator that layer carries, or nothing. */
+  constructor(layer, find) {
+    this.layer = layer;
+    this.find = find;
+    this.movers = [];
+  }
+
+  /** A proxy for each of these layers' arrays, and none for any other. */
+  show(layers) {
+    this.destroy();
+    this.movers = layers
+      .filter((layer) => Boolean(this.find(layer)))
+      .map((layer) => new Mover(layer, this.find, this.layer));
+  }
+
+  get nodes() {
+    return this.movers.map((mover) => mover.node);
+  }
+
+  /**
+   * Forgets the arrays a layer edit has taken away, and says whether it forgot
+   * any -- the caller is holding these nodes in a transformer, and a destroyed
+   * node in one is a box measured off something that is not there.
+   */
+  keepOnly(layers) {
+    const kept = new Set(layers);
+    const gone = this.movers.filter((mover) => !kept.has(mover.layer));
+    for (const mover of gone) {
+      mover.destroy();
+    }
+    this.movers = this.movers.filter((mover) => kept.has(mover.layer));
+    return gone.length > 0;
+  }
+
+  begin() {
+    for (const mover of this.movers) {
+      mover.begin();
+    }
+  }
+
+  /** The parameters as the gesture now says, and the layers they belong to. */
+  follow() {
+    for (const mover of this.movers) {
+      mover.follow();
+    }
+    return this.movers.map((mover) => mover.layer);
+  }
+
+  /** The proxies back onto the shapes they stand for, upright again. */
+  redraw() {
+    for (const mover of this.movers) {
+      mover.redraw();
+    }
+  }
+
+  destroy() {
+    for (const mover of this.movers) {
+      mover.destroy();
+    }
+    this.movers = [];
+  }
+}
+
+/** One riding array: its proxy, and where both stood when the gesture began. */
+class Mover {
+  constructor(layer, find, drawnIn) {
+    this.layer = layer;
+    this.find = find;
+    this.node = proxyRect();
+    drawnIn.add(this.node);
+    this.origin = null;
+    this.redraw();
+  }
+
+  /** The parameters, asked for afresh: they may be a different object by now. */
+  get array() {
+    return this.find(this.layer);
+  }
+
+  begin() {
+    this.origin = {
+      parameters: structuredClone({ ...this.array }),
+      rotation: this.node.rotation(),
+    };
+  }
+
+  /**
+   * The array where the proxy now is. The proxy is anchored on the array's
+   * centre, so where it has been put *is* where the centre has gone, and the
+   * turn is what the transformer has added to its rotation.
+   *
+   * Only the geometry is written back. Everything else about the array -- its
+   * source, its seed, how many doodads it carries -- is not this gesture's, and
+   * writing the whole clone back would undo an edit made between `begin` and
+   * now.
+   */
+  follow() {
+    if (this.origin === null || !this.array) return;
+
+    const moved = arrays.moved(this.origin.parameters, {
+      from: arrays.centerOf(this.origin.parameters),
+      to: units.fromStageExact(this.node.position()),
+      degrees: this.node.rotation() - this.origin.rotation,
+    });
+    Object.assign(this.array, model.shapeOf(moved));
+  }
+
+  /**
+   * The proxy on the array as it now stands: over the shape's extent, anchored
+   * on its centre, and upright -- the turn a gesture left on it is in the
+   * parameters by now, so keeping it would be counting it twice.
+   */
+  redraw() {
+    const array = this.array;
+    if (!array) return;
+
+    const extent = extentOf(generator.outline(array).points.map(units.toStage));
+    const center = units.toStage(arrays.centerOf(array));
+    this.node.setAttrs({
+      ...center,
+      offsetX: center.x - extent.x,
+      offsetY: center.y - extent.y,
+      width: extent.width,
+      height: extent.height,
+      rotation: 0,
+      scaleX: 1,
+      scaleY: 1,
+    });
+    this.origin = null;
+  }
+
+  destroy() {
+    this.node.destroy();
+  }
+}
+
+/** The upright rectangle a set of stage points fits in. */
+function extentOf(points) {
+  const x = points.map((point) => point.x);
+  const y = points.map((point) => point.y);
+  const left = Math.min(...x);
+  const top = Math.min(...y);
+  return {
+    x: left,
+    y: top,
+    width: Math.max(...x) - left,
+    height: Math.max(...y) - top,
+  };
+}
+
+/**
+ * A proxy: seen and never touched. It listens to nothing, so a rectangle lying
+ * over another layer's doodads still lets them be clicked -- the outline's
+ * reasoning, and the boxRect's above.
+ */
+function proxyRect() {
+  return new Konva.Rect({
+    stroke: COLOR,
+    strokeWidth: 1,
+    dash: [2, 4],
+    strokeScaleEnabled: false,
+    opacity: 0.6,
+    listening: false,
+    perfectDrawEnabled: false,
+    shadowForStrokeEnabled: false,
+  });
 }
 
 /**

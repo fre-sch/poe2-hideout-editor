@@ -19,7 +19,8 @@ import { useEffect } from "preact/hooks";
 
 import * as state from "../state.js";
 import * as variation from "../hideout/variation.js";
-import { table, loadTable, variationsOf } from "./table.js";
+import { table, loadTable, nameOf, variationsOf } from "../table.js";
+import { UnknownHashMark } from "./buttons.jsx";
 
 const LIMIT = 20;
 
@@ -31,10 +32,13 @@ export default function Selection() {
   // may never have opened the palette -- so the section loads it for itself. Once
   // there is something selected, and not on every load: it is a 200kB file per
   // language, and looking at a hideout is not asking about it.
+  // The language is a dependency because a switch is what makes the loaded
+  // table the wrong one, and the document does not change with it.
   const anySelected = selected.length > 0;
+  const language = state.language.value;
   useEffect(() => {
     if (document_ && anySelected) loadTable(document_);
-  }, [document_, anySelected]);
+  }, [document_, anySelected, language]);
 
   // The pointer can leave a row by the row being taken away -- the tab switched,
   // the selection dropped -- and `mouseleave` is not fired for that. Nothing
@@ -78,12 +82,28 @@ function Row({ doodad, fv }) {
       onMouseEnter={() => (state.hoveredDoodad.value = doodad)}
       onMouseLeave={() => (state.hoveredDoodad.value = null)}
     >
-      <span class="selection-name" title={doodad.name}>
-        {doodad.name}
-      </span>
+      <Name doodad={doodad} />
       <VariationButton doodad={doodad} fv={fv} />
       <MirrorButton doodad={doodad} fv={fv} />
     </li>
+  );
+}
+
+/**
+ * The table's name for the doodad, or the file's until the table arrives and
+ * for a hash it does not know -- wiki issue 0059, marked as such where it is
+ * the second of those, wiki issue 0060. Its own component so that both follow
+ * the table without the row's buttons being redrawn with them.
+ */
+function Name({ doodad }) {
+  const name = nameOf(doodad);
+  return (
+    <>
+      <span class="selection-name" title={name}>
+        {name}
+      </span>
+      <UnknownHashMark doodad={doodad} />
+    </>
   );
 }
 

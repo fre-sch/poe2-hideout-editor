@@ -8,6 +8,7 @@
 
 import { describe, expect, it } from "vitest";
 
+import * as colors from "../src/hideout/colors.js";
 import { Doodad } from "../src/hideout/model.js";
 import * as doodads from "../src/viewport/doodads.js";
 import * as units from "../src/hideout/units.js";
@@ -175,6 +176,42 @@ describe("unscale", () => {
     doodads.unscale(node);
 
     expect(node.skew()).toEqual({ x: 0, y: 0 });
+  });
+});
+
+/**
+ * The layer's colour on the doodads in it, wiki issue 0063. What a node wears
+ * at rest is the layer's; the other two states are the editor's own and outdraw
+ * it, or the player could not see what they are doing.
+ */
+describe("setColor", () => {
+  it("draws a node in the colour it is given", () => {
+    const node = doodads.create(doodad({ x: 0, y: 0 }));
+
+    doodads.setColor(node, "#123456");
+
+    expect(node.fill()).toBe("#123456");
+  });
+
+  it("outlines it in a lighter shade of the same colour", () => {
+    const node = doodads.create(doodad({ x: 0, y: 0 }));
+
+    doodads.setColor(node, "#123456");
+
+    expect(node.stroke()).not.toBe(node.fill());
+    expect(node.stroke()).toBe(colors.outline("#123456"));
+  });
+
+  it("does not disturb a selected node, and is worn when it is dropped", () => {
+    const node = doodads.create(doodad({ x: 0, y: 0 }));
+    doodads.setSelected(node, true);
+    const selected = node.fill();
+
+    doodads.setColor(node, "#123456");
+    expect(node.fill()).toBe(selected);
+
+    doodads.setSelected(node, false);
+    expect(node.fill()).toBe("#123456");
   });
 });
 

@@ -148,6 +148,15 @@ details[open] .details-summary-extra {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* The mark on a name no table gave, in the selection rows and in an array's
+   source. It keeps its size and the name gives way to it: a mark an ellipsis
+   ate is read as part of the name. Smaller than the name, because it is what
+   the name is missing and not a second name. */
+.unknown-hash {
+  flex: 0 0 auto;
+  white-space: nowrap;
+  font-size: 0.75rem;
+}
 /* Numbers of one and two digits on the same button must not change its width, or
    a column of them jitters as variations are cycled. */
 .selection-row .btn {
@@ -199,13 +208,107 @@ details[open] .details-summary-extra {
   align-items: center;
   gap: 0.25rem;
   margin-bottom: 0.15rem;
+  /* The padding is on every row and not only on a marked one, or a row would
+     shift sideways as it is picked. */
+  padding: 0 0.2rem;
+  border-radius: 3px;
+  cursor: pointer;
 }
 .layer-row input[type="text"] {
   min-width: 3rem;
 }
+/* The whole row is the control, so the whole row answers the pointer. */
+.layer-row:hover {
+  background-color: var(--bs-secondary-bg);
+}
+/* What is being worked on, read off the list itself. Picking a row picks a
+   layer or a group and the other kind of row comes with it, so both are marked:
+   one colour at two strengths, the brighter being the row that was picked. The
+   colour is the selection band's, which is what "picked" already looks like out
+   on the canvas.
+
+   Two classes deep, so that a mark outweighs the hover above it. */
+.layer-row.layer-row-active {
+  background-color: rgba(85, 170, 255, 0.22);
+}
+.layer-row.layer-row-related {
+  background-color: rgba(85, 170, 255, 0.09);
+}
+/* The name while it is being read rather than typed. It stands where the field
+   will stand -- same flex basis, same height, Bootstrap's plaintext padding --
+   or the row shifts under the pointer as the double click opens it. One line
+   with an ellipsis, the full name being in the title; and no text selection,
+   since here a double click means "rename" and not "pick a word". */
+.layer-name {
+  flex: 1 1 100%;
+  min-width: 3rem;
+  /* Bootstrap's plaintext drops the side padding and the side borders; the
+     field keeps both, and the text has to start in the same place. */
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
+  border-width: 1px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  user-select: none;
+  /* No text cursor: a single click here picks the row like any other part of
+     it, and the double click that opens the editor is in the title. */
+}
+/* The colour swatch: a square the size of the row's other controls, which
+   Bootstrap's own colour input is not -- it is form-control sized, and a row of
+   those is twice the height of the layer list. The padding goes with it, or the
+   colour shows as a dot in a frame instead of as the colour of the row. */
+.layer-color {
+  flex: 0 0 auto;
+  width: 1.4rem;
+  height: 1.4rem;
+  padding: 2px;
+}
 .layer-count {
   min-width: 2.2rem;
   text-align: right;
+}
+/* A layer is put in a group by being dropped on it, so the row that would take
+   the drop says so while the drag is over it -- a dashed border rather than a
+   fill, which is what the marks on a picked row already are. It replaces the
+   border the row does not otherwise draw, so nothing shifts under the pointer.
+   Wiki issue 0070. */
+.layer-drop-over {
+  outline: 1px dashed var(--bs-info);
+  outline-offset: -1px;
+}
+/* The way out of a group: a strip under the last row, drawn only while a layer
+   that is in one is being dragged. It is the height of a row so that a list
+   whose last row is a member does not jump as the drag starts. */
+.layer-drop-out {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 0.3rem;
+  padding: 0.1rem 0.4rem;
+  border: 1px dashed var(--bs-border-color);
+  border-radius: 3px;
+  color: var(--bs-secondary-color);
+  font-size: 0.875em;
+}
+
+/* A group's row, and its layers under it. The indent is what says the rows
+   below belong to the row above; the rule down the left carries that from the
+   group's name to its last layer, so a long group is still read as one thing at
+   the bottom of it. */
+.group-row {
+  margin-top: 0.3rem;
+}
+.layer-row-grouped {
+  padding-left: 0.6rem;
+  margin-left: 0.35rem;
+  border-left: 1px solid var(--bs-border-color);
+}
+/* The caret keeps its width open or shut, or every row under it shifts by the
+   difference between two glyphs when a group is folded. */
+.group-caret {
+  flex: 0 0 auto;
+  width: 0.9rem;
 }
 
 /* The one bar of actions on the layer being worked on, ruled off from the list
