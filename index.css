@@ -148,6 +148,15 @@ details[open] .details-summary-extra {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* The mark on a name no table gave, in the selection rows and in an array's
+   source. It keeps its size and the name gives way to it: a mark an ellipsis
+   ate is read as part of the name. Smaller than the name, because it is what
+   the name is missing and not a second name. */
+.unknown-hash {
+  flex: 0 0 auto;
+  white-space: nowrap;
+  font-size: 0.75rem;
+}
 /* Numbers of one and two digits on the same button must not change its width, or
    a column of them jitters as variations are cycled. */
 .selection-row .btn {

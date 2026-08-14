@@ -26,7 +26,7 @@ import * as state from "../state.js";
 import * as arrays from "../hideout/arrays.js";
 import * as generator from "../hideout/generator.js";
 import * as model from "../hideout/model.js";
-import { ActionButton, SelectionBadge } from "./buttons.jsx";
+import { ActionButton, SelectionBadge, UnknownHashMark } from "./buttons.jsx";
 import { loadTable, nameOf, variationsOf } from "../table.js";
 
 const SHAPES = [
@@ -602,7 +602,8 @@ function PickButton({ label, mode, value, onChange }) {
  */
 function SourceRow({ entry, index, only, chosen }) {
   // The table's name for the hash, or the one the source was stored with --
-  // wiki issue 0059. The stored name is what the doodads are written with.
+  // wiki issue 0059, marked where no table names the hash, wiki issue 0060. The
+  // stored name is what the doodads are written with.
   const name = nameOf(entry);
   return (
     <li class="mb-1">
@@ -610,6 +611,7 @@ function SourceRow({ entry, index, only, chosen }) {
         <span class="array-source-name" title={name}>
           {name}
         </span>
+        <UnknownHashMark doodad={entry} />
         <button
           type="button"
           class="btn btn-sm btn-link p-0 text-danger"

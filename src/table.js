@@ -122,6 +122,16 @@ export function nameOf(doodad) {
 }
 
 /**
+ * Whether that name came from the file for want of a table entry, which is what
+ * the mark beside it says -- wiki issue 0060. It follows the table and not the
+ * document: a hash named by a regenerated table loses its mark and changes
+ * nothing else.
+ */
+export function unknownHash(doodad) {
+  return palette.unknownHash(table.value?.palette, doodad);
+}
+
+/**
  * How many art files a doodad can be drawn as, or `0` where the table cannot
  * say. Zero rather than one: "the table does not know" and "there is one" are
  * different answers, and only one of them is worth showing a player.

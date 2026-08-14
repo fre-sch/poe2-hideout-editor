@@ -25,6 +25,10 @@
  * current name in the document's language, and the file's is whatever client
  * wrote it, which may be a language ago or a rename ago.
  *
+ * Which branch answered is worth knowing on its own -- the two read alike and
+ * are not worth the same -- so `unknownHash` asks the same lookup for it, and
+ * the interface marks the doodad with the hash: wiki issue 0060.
+ *
  * A name is looked up or copied and never derived, and never written back over
  * what the document holds. The game reads the hashes and ignores the words
  * entirely -- wiki issue 0057 -- so no name shown here can make a file fail.
@@ -117,6 +121,21 @@ export class Palette {
  */
 export function nameFor(palette, doodad) {
   return palette?.find(doodad.hash)?.name ?? doodad.name;
+}
+
+/**
+ * Whether the name `nameFor` gives came from the file because no table names
+ * the hash -- the second thing asked of the same lookup, and what the interface
+ * marks a doodad with: wiki issue 0060.
+ *
+ * False while there is no table to have asked, the same as a hideout type's
+ * `unknown`: it is what the table said about the hash, not what it was too
+ * early to say. A document waiting for its table is every doodad at once, and a
+ * mark on every one of them says nothing about any.
+ */
+export function unknownHash(palette, doodad) {
+  if (!palette) return false;
+  return palette.find(doodad.hash) === undefined;
 }
 
 /**
