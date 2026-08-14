@@ -35,10 +35,10 @@ const VIEW_ROTATION = 225;
 
 // Doodad units. The observed coordinate range is 116..867 across every sample,
 // so a fixed square covers every hideout and needs no data to be drawn.
-const GRID_EXTENT = 1000;
+const GRID_EXTENT = 2000;
 const GRID_MINOR = 10;
 const GRID_MAJOR = 50;
-const GRID_MINOR_COLOR = "#204070";
+const GRID_MINOR_COLOR = "#103060";
 const GRID_MAJOR_COLOR = "#407090";
 
 /**
