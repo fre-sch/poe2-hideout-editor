@@ -423,6 +423,17 @@ details[open] > summary::before {
 .help-modal h2 {
   font-size: 1.1rem;
 }
+/* The modal holds two kinds of thing -- the gestures, and what the layer list
+   means -- so each is named. The first heading follows "Help" directly and does
+   not need the gap that separates the sections from one another. */
+.help-modal h3 {
+  font-size: 1rem;
+  margin-top: 0.75rem;
+  margin-bottom: 0.25rem;
+}
+.help-modal h2 + h3 {
+  margin-top: 0;
+}
 .help-modal::backdrop {
   background-color: rgba(0, 0, 0, 0.6);
 }

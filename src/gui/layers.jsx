@@ -54,6 +54,12 @@
  * sidebar's leftover height goes to, and a panel that appears halfway down on
  * load moves everything under it.
  *
+ * **No prose above the list.** What the list means -- export order, and what the
+ * two flags do to an export -- is in the help modal, which opens by itself on
+ * the first load and already carries these gestures. Four lines of text read
+ * once came off the top of the panel that most wants the height. Wiki issue
+ * 0079.
+ *
  * It is a tab rather than a section of its own, sharing the place with the
  * selection -- see `tabs.jsx` for what the two have in common and why the list
  * had to stop moving.
@@ -69,13 +75,6 @@ export default function Layers() {
   const selected = state.selection.value.length;
   return (
     <>
-      <p class="usage-text">
-        Exported in this order, first at the top. A hidden layer is left out of
-        the export; a locked one exports like any other. Layers in a group move
-        together: drag a layer onto a group to join it, and joining moves the
-        layer to that group. Drag it onto the strip that appears under the list
-        to leave the group again.
-      </p>
       <ul class="list-unstyled mb-2 layer-list">
         {outline().map((entry) =>
           entry.group === null ? (

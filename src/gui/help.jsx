@@ -1,5 +1,11 @@
 /**
- * The shortcuts, as a modal and as the button that raises it.
+ * The help, as a modal and as the button that raises it: the gestures, and what
+ * the layer list means.
+ *
+ * **It is where the editor is explained**, and a panel that explains itself over
+ * its own control pays for it on every load. So prose that is read once and read
+ * past thereafter belongs here, under a heading of its own -- see `Layers` and
+ * wiki issue 0079.
  *
  * It opens by itself the first time, because the editor is its mouse gestures
  * and nothing on screen spells them out. Everything after that is one keypress
@@ -57,11 +63,14 @@ export function HelpModal() {
       }}
     >
       <h2>Help</h2>
+      <h3>Gestures</h3>
       <p class="usage-text">
         The shortcuts reach the editor while the viewport has focus. Click it
         once if a key does nothing.
       </p>
       <Shortcuts />
+      <h3>Layers</h3>
+      <Layers />
       <form
         method="dialog"
         class="d-flex justify-content-between align-items-center"
@@ -96,6 +105,25 @@ function ShowAgain() {
         Show this again on every load
       </label>
     </div>
+  );
+}
+
+/**
+ * What the layer list means, as against what is done to it -- which is the
+ * gesture list's, above, and is not said twice here.
+ *
+ * It is here rather than over the list because it is read once and then read
+ * past: the layer panel is what the sidebar's leftover height goes to, and a
+ * paragraph that grew with every rule the list gained was taking that height
+ * from the list it described. Wiki issue 0079.
+ */
+function Layers() {
+  return (
+    <p class="usage-text">
+      Layers are exported in the order of the list, the first at the top. A
+      hidden layer is left out of the export; a locked one exports like any
+      other, it is only kept from being selected.
+    </p>
   );
 }
 
