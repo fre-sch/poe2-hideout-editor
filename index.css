@@ -36,6 +36,37 @@ main {
 details[open] .details-summary-extra {
   display: none;
 }
+/* A section folds with the caret the layer list folds a group with, and not
+   with the triangle the browser draws -- which is the one mark in the sidebar
+   no theme reaches, being painted by the UA rather than by a variable.
+
+   Bootstrap Icons is a webfont, so the glyphs are reachable by codepoint from
+   any `content`: `\f231` is `bi-caret-right-fill` and `\f229` is
+   `bi-caret-down-fill`, read off the pinned stylesheet in `index.html`.
+
+   `::before` and not `::marker`, which takes `content` but is the part Safari
+   supported last. `list-style` turns the triangle off everywhere except the
+   Safari versions before 17, which want the `-webkit-` marker instead.
+
+   `font-weight: normal` because a summary is bold, and a synthesised bold on an
+   icon font smears the glyph. */
+details > summary {
+  list-style: none;
+}
+details > summary::-webkit-details-marker {
+  display: none;
+}
+details > summary::before {
+  font-family: bootstrap-icons;
+  font-weight: normal;
+  line-height: 1;
+  vertical-align: -0.125em;
+  margin-right: 0.3rem;
+  content: "\f231";
+}
+details[open] > summary::before {
+  content: "\f229";
+}
 /* A full-height column beside the viewport. Its sections give up their height
    from the inside -- the lists carry `min-height: 0` and shrink first -- so the
    panel itself only scrolls when they have nothing left to give, in a window
