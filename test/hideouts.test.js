@@ -9,6 +9,7 @@ import { HideoutDocument } from "../src/hideout/model.js";
 import {
   Hideouts,
   UNKNOWN,
+  headerFor,
   nameFor,
   optionsFor,
 } from "../src/hideout/hideouts.js";
@@ -130,6 +131,30 @@ describe("nameFor", () => {
       "Hall of Ghosts",
     );
     expect(nameFor(null, 13526, "Felled Hideout")).toBe("Felled Hideout");
+  });
+});
+
+/** Wiki issue 0061. What a chosen type writes into the header. */
+describe("headerFor", () => {
+  const OWN = { hash: 99999, name: "Hall of Ghosts" };
+
+  it("names the chosen type as the table does, and numbers the hash", () => {
+    expect(headerFor(new Hideouts(DATA), "26805", OWN)).toEqual({
+      hideout_hash: 26805,
+      hideout_name: "Shrine Hideout",
+    });
+  });
+
+  /** Leaving the file's own type has to be reversible -- wiki issue 0007. */
+  it("restores the file's own name coming back to a hash no table names", () => {
+    expect(headerFor(new Hideouts(DATA), "99999", OWN)).toEqual({
+      hideout_hash: 99999,
+      hideout_name: "Hall of Ghosts",
+    });
+  });
+
+  it("writes the file's own name while there is no table", () => {
+    expect(headerFor(null, "99999", OWN).hideout_name).toBe("Hall of Ghosts");
   });
 });
 

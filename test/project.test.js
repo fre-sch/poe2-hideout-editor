@@ -80,6 +80,34 @@ describe("bake", () => {
     expect(project.bake(document_)).toBe(SHRINE);
   });
 
+  /**
+   * What a change of hideout type costs the file -- wiki issue 0061. The hash
+   * and the name that follows it, and nothing else: the doodads stay where the
+   * player put them, whichever hideout they are exported into. Changing back is
+   * therefore the file it started as.
+   */
+  it("writes the changed hideout type and nothing else", () => {
+    const document_ = HideoutDocument.fromText(SHRINE);
+    Object.assign(document_.header, {
+      hideout_hash: 13526,
+      hideout_name: "Felled Hideout",
+    });
+
+    const changed = project.bake(document_);
+    Object.assign(document_.header, {
+      hideout_hash: 26805,
+      hideout_name: "Shrine Hideout",
+    });
+
+    expect(changed).toBe(
+      SHRINE.replace("Shrine Hideout", "Felled Hideout").replace(
+        "26805",
+        "13526",
+      ),
+    );
+    expect(project.bake(document_)).toBe(SHRINE);
+  });
+
   it("exports in layer order", () => {
     const document_ = HideoutDocument.fromText(SHRINE);
     const garden = document_.addLayer("Garden");
