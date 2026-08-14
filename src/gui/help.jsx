@@ -64,7 +64,7 @@ export function HelpModal() {
     >
       <h2>Help</h2>
       <h3>Gestures</h3>
-      <p class="usage-text">
+      <p>
         The shortcuts reach the editor while the viewport has focus. Click it
         once if a key does nothing.
       </p>
@@ -108,18 +108,9 @@ function ShowAgain() {
   );
 }
 
-/**
- * What the layer list means, as against what is done to it -- which is the
- * gesture list's, above, and is not said twice here.
- *
- * It is here rather than over the list because it is read once and then read
- * past: the layer panel is what the sidebar's leftover height goes to, and a
- * paragraph that grew with every rule the list gained was taking that height
- * from the list it described. Wiki issue 0079.
- */
 function Layers() {
   return (
-    <p class="usage-text">
+    <p>
       Layers are exported in the order of the list, the first at the top. A
       hidden layer is left out of the export; a locked one exports like any
       other, it is only kept from being selected.

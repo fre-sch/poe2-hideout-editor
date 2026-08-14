@@ -427,6 +427,7 @@ details[open] > summary::before {
    means -- so each is named. The first heading follows "Help" directly and does
    not need the gap that separates the sections from one another. */
 .help-modal h3 {
+  font-weight: bold;
   font-size: 1rem;
   margin-top: 0.75rem;
   margin-bottom: 0.25rem;
