@@ -28,7 +28,7 @@
  * moves a layer to it. So the list still reads top to bottom as export order.
  *
  * **Membership is written where it is read**: a layer row is dragged onto a
- * group row to join it, and onto the strip at the end of the list to leave the
+ * group row to join it, and onto the strip in the actions bar to leave the
  * group it is in. The select that used to do it said in 4.5rem of truncated
  * name what the row's place under a group row already says -- see `dropOn` and
  * wiki issue 0070. Dragging never reorders; the bar's arrows do that.
@@ -73,7 +73,8 @@ export default function Layers() {
         Exported in this order, first at the top. A hidden layer is left out of
         the export; a locked one exports like any other. Layers in a group move
         together: drag a layer onto a group to join it, and joining moves the
-        layer to that group.
+        layer to that group. Drag it onto the strip that appears under the list
+        to leave the group again.
       </p>
       <ul class="list-unstyled mb-2 layer-list">
         {outline().map((entry) =>
@@ -83,7 +84,6 @@ export default function Layers() {
             <GroupRows entry={entry} />
           ),
         )}
-        <LeaveGroup />
       </ul>
       <LayerActions />
       <div class="d-flex gap-1 flex-nowrap">
@@ -185,7 +185,8 @@ function pickRow(event, pick) {
 }
 
 /**
- * A row picked up, to be dropped on a group row or on the strip that leaves one.
+ * A row picked up, to be dropped on a group row or on the strip in the actions
+ * bar that leaves one.
  *
  * The drag carries the layer's name as text although nothing reads it: a drag
  * with no data on it is a drag Firefox refuses to start, and a name is the
@@ -227,7 +228,7 @@ function leaveDrop(event, group) {
 
 /**
  * The drop, which is the write: the layer's group becomes this row's -- a name,
- * or `null` for the strip at the end of the list.
+ * or `null` for the strip that leaves a group.
  *
  * The document tidies the group into a run, so the layer moves in the list. What
  * is being worked on is taken up again afterwards, and it is not necessarily
@@ -250,20 +251,28 @@ function dropOn(event, group) {
 }
 
 /**
- * The way out of a group: a strip under the last row, there only while a layer
+ * The way out of a group: a strip in the actions bar, there only while a layer
  * that is in one is being dragged.
  *
- * It is a row of the list rather than the space beside it, so that it is still
- * reachable at the bottom of a list too long to fit. And it is there only for
- * the drag it answers -- a layer in no group has no group to leave, and a target
- * standing empty is a thing to wonder about.
+ * **It stands under the list rather than in it.** As the list's last row it was
+ * below the fold of any list long enough to scroll, and a drag held against the
+ * bottom edge does not reliably scroll a box -- so the one way out of a group
+ * was a target that was usually not on screen. The bar does not scroll, so the
+ * target is in the same place for every drag. Wiki issue 0078.
+ *
+ * Nothing under it moves as it comes and goes: the list is the item that grows,
+ * so the strip's height comes off the list. A target that pushed the delete
+ * button down as a drag started would be the worse gesture of the two.
+ *
+ * And it is there only for the drag it answers -- a layer in no group has no
+ * group to leave, and a target standing empty is a thing to wonder about.
  */
 function LeaveGroup() {
   const dragged = state.draggedLayer.value;
   if (dragged === null || dragged.group === null) return null;
 
   return (
-    <li
+    <div
       class={rowClass(
         "layer-drop-out",
         state.overDropTarget(null) && "layer-drop-over",
@@ -273,7 +282,7 @@ function LeaveGroup() {
       onDrop={(event) => dropOn(event, null)}
     >
       <i class="bi bi-box-arrow-left"></i> Drop here to leave the group
-    </li>
+    </div>
   );
 }
 
@@ -454,40 +463,48 @@ function GroupRow({
  *
  * Add doodad stays outside both. It places a doodad in the layer rather than
  * acting on the layer, and it is the palette's.
+ *
+ * **The bar also holds the way out of a group**, above the buttons and only
+ * while a grouped layer is being dragged. It is not an action and not a button;
+ * it is here because this is the part of the panel that does not scroll. See
+ * `LeaveGroup`.
  */
 function LayerActions() {
   const target = activeTarget();
   return (
-    <div class="d-flex gap-1 flex-nowrap align-items-center mb-2 layer-actions">
-      <AddDoodadButton />
-      <div class="btn-group" role="group" aria-label="This layer">
-        <ActionButton
-          icon="bi-arrow-up-square-fill"
-          title={`Move this ${target.what} up`}
-          disabled={!target.canMove(-1)}
-          onClick={() => target.move(-1)}
-        />
-        <ActionButton
-          icon="bi-arrow-down-square-fill"
-          title={`Move this ${target.what} down`}
-          disabled={!target.canMove(1)}
-          onClick={() => target.move(1)}
-        />
-        <ActionButton
-          icon="bi-copy"
-          title={`Duplicate this ${target.what}`}
-          disabled={!target.canDuplicate}
-          onClick={target.duplicate}
-        />
-        <ActionButton
-          icon="bi-trash"
-          extra="text-danger"
-          title={target.deleteTitle}
-          disabled={!target.canDelete}
-          onClick={target.remove}
-        />
+    <div class="mb-2 layer-actions">
+      <LeaveGroup />
+      <div class="d-flex gap-1 flex-nowrap align-items-center">
+        <AddDoodadButton />
+        <div class="btn-group" role="group" aria-label="This layer">
+          <ActionButton
+            icon="bi-arrow-up-square-fill"
+            title={`Move this ${target.what} up`}
+            disabled={!target.canMove(-1)}
+            onClick={() => target.move(-1)}
+          />
+          <ActionButton
+            icon="bi-arrow-down-square-fill"
+            title={`Move this ${target.what} down`}
+            disabled={!target.canMove(1)}
+            onClick={() => target.move(1)}
+          />
+          <ActionButton
+            icon="bi-copy"
+            title={`Duplicate this ${target.what}`}
+            disabled={!target.canDuplicate}
+            onClick={target.duplicate}
+          />
+          <ActionButton
+            icon="bi-trash"
+            extra="text-danger"
+            title={target.deleteTitle}
+            disabled={!target.canDelete}
+            onClick={target.remove}
+          />
+        </div>
+        <ArrayButtons layer={arrayOf(target.layer)} />
       </div>
-      <ArrayButtons layer={arrayOf(target.layer)} />
     </div>
   );
 }

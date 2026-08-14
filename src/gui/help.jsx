@@ -127,12 +127,12 @@ function Shortcuts() {
       <li>
         Put layers in the same <span class="shortcut">group</span> to move them
         as one. <span class="shortcut">Drag a layer row</span> onto a group row
-        to put it in that group, and onto the strip at the end of the list to
-        take it out again; <span class="shortcut">Add group</span> makes a new
-        group out of the layer being worked on. The group gets a row of its own
-        in the list: pick that row and the box holds every layer of it, arrays
-        included, and moves and turns them together — pick a layer under it and
-        you are working on that layer alone. A group move does not spread
+        to put it in that group, and onto the strip that appears under the list
+        to take it out again; <span class="shortcut">Add group</span> makes a
+        new group out of the layer being worked on. The group gets a row of its
+        own in the list: pick that row and the box holds every layer of it,
+        arrays included, and moves and turns them together — pick a layer under
+        it and you are working on that layer alone. A group move does not spread
         doodads out; for that, the selection box and an array's own box are
         still there.
       </li>
