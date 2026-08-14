@@ -268,13 +268,28 @@ details[open] .details-summary-extra {
   min-width: 2.2rem;
   text-align: right;
 }
-/* Which group the layer moves with. Narrow and fixed: it is read down the
-   column, where what matters is whether two rows say the same thing, and the
-   name itself is in the select's own title when it does not fit. */
-.layer-group {
-  flex: 0 0 auto;
-  width: 4.5rem;
-  padding-right: 1.2rem;
+/* A layer is put in a group by being dropped on it, so the row that would take
+   the drop says so while the drag is over it -- a dashed border rather than a
+   fill, which is what the marks on a picked row already are. It replaces the
+   border the row does not otherwise draw, so nothing shifts under the pointer.
+   Wiki issue 0070. */
+.layer-drop-over {
+  outline: 1px dashed var(--bs-info);
+  outline-offset: -1px;
+}
+/* The way out of a group: a strip under the last row, drawn only while a layer
+   that is in one is being dragged. It is the height of a row so that a list
+   whose last row is a member does not jump as the drag starts. */
+.layer-drop-out {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 0.3rem;
+  padding: 0.1rem 0.4rem;
+  border: 1px dashed var(--bs-border-color);
+  border-radius: 3px;
+  color: var(--bs-secondary-color);
+  font-size: 0.875em;
 }
 
 /* A group's row, and its layers under it. The indent is what says the rows

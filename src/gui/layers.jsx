@@ -27,6 +27,12 @@
  * because its layers are: the document tidies them, joining a group being what
  * moves a layer to it. So the list still reads top to bottom as export order.
  *
+ * **Membership is written where it is read**: a layer row is dragged onto a
+ * group row to join it, and onto the strip at the end of the list to leave the
+ * group it is in. The select that used to do it said in 4.5rem of truncated
+ * name what the row's place under a group row already says -- see `dropOn` and
+ * wiki issue 0070. Dragging never reorders; the bar's arrows do that.
+ *
  * **So the actions that act on a layer are drawn once, under the list.** A row
  * carries what it is and how it stands -- its name, its colour, its tally, its
  * two flags --
@@ -65,8 +71,9 @@ export default function Layers() {
     <>
       <p class="text-secondary mb-1">
         Exported in this order, first at the top. A hidden layer is left out of
-        the export; a locked one exports like any other. Layers put in a group
-        move together, and joining one moves the layer to it.
+        the export; a locked one exports like any other. Layers in a group move
+        together: drag a layer onto a group to join it, and joining moves the
+        layer to that group.
       </p>
       <ul class="list-unstyled mb-2 layer-list">
         {outline().map((entry) =>
@@ -76,6 +83,7 @@ export default function Layers() {
             <GroupRows entry={entry} />
           ),
         )}
+        <LeaveGroup />
       </ul>
       <LayerActions />
       <div class="d-flex gap-1 flex-nowrap">
@@ -90,6 +98,7 @@ export default function Layers() {
           <SelectionBadge count={selected} />
         </button>
         <AddArrayButton />
+        <AddGroupButton />
       </div>
     </>
   );
@@ -120,7 +129,6 @@ function LayerRows({ layers, indented = false }) {
       name={layer.name}
       color={layer.color}
       group={layer.group}
-      groups={groupNames()}
       visible={layer.visible}
       locked={layer.locked}
       array={isArray(layer)}
@@ -162,18 +170,140 @@ function groupMark(group, layers) {
  * A click anywhere on the row works on it -- unless it landed on a control the
  * row carries, which means what it means.
  *
- * The swatch, the group select, the two flag toggles, the fold caret and the
- * name editor are all such controls, and one test finds them: they are the
- * form elements in a row that is otherwise text. The name while it is being read
- * is not among them. It is part of the row and picks it, and the double click
- * that opens the editor costs only the selection the pick asked for.
+ * The swatch, the two flag toggles, the fold caret and the name editor are all
+ * such controls, and one test finds them: they are the form elements in a row
+ * that is otherwise text. The name while it is being read is not among them. It
+ * is part of the row and picks it, and the double click that opens the editor
+ * costs only the selection the pick asked for.
  *
  * Every click and not only the ones that move the mark: clicking the row already
  * being worked on is how a selection just dismissed is asked for again.
  */
 function pickRow(event, pick) {
-  if (event.target.closest("button, select, input")) return;
+  if (event.target.closest("button, input")) return;
   pick();
+}
+
+/**
+ * A row picked up, to be dropped on a group row or on the strip that leaves one.
+ *
+ * The drag carries the layer's name as text although nothing reads it: a drag
+ * with no data on it is a drag Firefox refuses to start, and a name is the
+ * honest thing to hand to whatever the row is dropped on outside the editor.
+ * What the list itself acts on is `state.draggedLayer`, the drop being answered
+ * in a row the drag did not start in.
+ */
+function startDrag(event, layer) {
+  event.dataTransfer.effectAllowed = "move";
+  event.dataTransfer.setData("text/plain", layer.name);
+  state.startLayerDrag(layer.id, layer.group ?? null);
+}
+
+/**
+ * A drop is offered here, or it is not: a target that does not call
+ * `preventDefault` is one the browser refuses to drop on, cursor and all. So
+ * this is where "you cannot drop a layer in the group it is already in" is said,
+ * and it is said by the pointer before the player lets go.
+ */
+function allowDrop(event, group) {
+  const dragged = state.draggedLayer.value;
+  if (dragged === null || dragged.group === group) return;
+
+  event.preventDefault();
+  event.dataTransfer.dropEffect = "move";
+  state.dropTarget.value = { group };
+}
+
+/**
+ * The drag has moved off this target, so it stops saying it would take it --
+ * unless it has only moved onto something inside it. A row is a name and a few
+ * controls, and each of them is a `dragleave` on the row that the drop is still
+ * going to land on.
+ */
+function leaveDrop(event, group) {
+  if (event.currentTarget.contains(event.relatedTarget)) return;
+  if (state.overDropTarget(group)) state.dropTarget.value = null;
+}
+
+/**
+ * The drop, which is the write: the layer's group becomes this row's -- a name,
+ * or `null` for the strip at the end of the list.
+ *
+ * The document tidies the group into a run, so the layer moves in the list. What
+ * is being worked on is taken up again afterwards, and it is not necessarily
+ * this layer: what moves together has just changed, and the box on the canvas is
+ * showing the set as it was. A drop does not pick the row it landed on -- one
+ * gesture says one thing, and picking is the click's.
+ */
+function dropOn(event, group) {
+  event.preventDefault();
+  const dragged = state.draggedLayer.value;
+  state.endLayerDrag();
+  if (dragged === null) return;
+
+  const layer = document_().findLayer(dragged.id);
+  if (layer === null) return;
+
+  document_().groupLayer(layer.id, group);
+  state.layersChanged();
+  reactivate(layer);
+}
+
+/**
+ * The way out of a group: a strip under the last row, there only while a layer
+ * that is in one is being dragged.
+ *
+ * It is a row of the list rather than the space beside it, so that it is still
+ * reachable at the bottom of a list too long to fit. And it is there only for
+ * the drag it answers -- a layer in no group has no group to leave, and a target
+ * standing empty is a thing to wonder about.
+ */
+function LeaveGroup() {
+  const dragged = state.draggedLayer.value;
+  if (dragged === null || dragged.group === null) return null;
+
+  return (
+    <li
+      class={rowClass(
+        "layer-drop-out",
+        state.overDropTarget(null) && "layer-drop-over",
+      )}
+      onDragOver={(event) => allowDrop(event, null)}
+      onDragLeave={(event) => leaveDrop(event, null)}
+      onDrop={(event) => dropOn(event, null)}
+    >
+      <i class="bi bi-box-arrow-left"></i> Drop here to leave the group
+    </li>
+  );
+}
+
+/**
+ * A new group holding the layer being worked on, which is the only layer the
+ * button can mean: a group is a name its layers carry, so there is no empty
+ * group to make and nothing to make it out of but a layer.
+ *
+ * The name is the next free `Group N`, the way a new layer is the next
+ * `Layer N`, and it is renamed by double-clicking the group row. A prompt asks
+ * for a name before there is a group to see, which is one answer more than the
+ * gesture needs.
+ */
+function AddGroupButton() {
+  const layer = activeLayer();
+  return (
+    <button
+      type="button"
+      class="btn btn-secondary btn-sm text-nowrap"
+      disabled={layer === null}
+      title={
+        layer === null
+          ? "Pick a layer to put in a new group"
+          : `A new group holding the layer '${layer.name}'`
+      }
+      onClick={() => addGroup(layer)}
+    >
+      <i class="bi bi-collection"></i> Add group
+    </button>
+  );
 }
 
 /** A row's classes: what it is, and how it stands to what is worked on. */
@@ -244,9 +374,17 @@ function GroupRow({
 }) {
   return (
     <li
-      class={rowClass("layer-row", "group-row", mark && `layer-row-${mark}`)}
-      title={`Work on the group '${group}': its ${layers.length} layers move together`}
+      class={rowClass(
+        "layer-row",
+        "group-row",
+        mark && `layer-row-${mark}`,
+        state.overDropTarget(group) && "layer-drop-over",
+      )}
+      title={`Work on the group '${group}': its ${layers.length} layers move together. Drop a layer here to put it in the group`}
       onClick={(event) => pickRow(event, () => activateGroup(group, layers))}
+      onDragOver={(event) => allowDrop(event, group)}
+      onDragLeave={(event) => leaveDrop(event, group)}
+      onDrop={(event) => dropOn(event, group)}
     >
       <button
         type="button"
@@ -370,9 +508,14 @@ function activeTarget() {
     if (index !== -1) return groupTarget(group, entries, index);
   }
 
-  const layer = document_()?.findLayer(state.activeLayer.value) ?? null;
+  const layer = activeLayer();
   if (layer === null) return NO_TARGET;
   return layerTarget(layer, entries);
+}
+
+/** The layer being worked on, and `null` while a group or nothing is. */
+function activeLayer() {
+  return document_()?.findLayer(state.activeLayer.value) ?? null;
 }
 
 const NO_TARGET = {
@@ -409,7 +552,7 @@ function groupTarget(group, entries, index) {
  * A layer moves inside its group, or over its neighbours when it has none.
  *
  * A step that landed between two members would be joining their group, and
- * joining is what the row's group control says -- one gesture, one meaning.
+ * joining is what a drop on the group's row says -- one gesture, one meaning.
  */
 function layerTarget(layer, entries) {
   const members = document_().groupOf(layer.id);
@@ -491,7 +634,6 @@ function LayerRow({
   name,
   color,
   group,
-  groups,
   visible,
   locked,
   array,
@@ -508,6 +650,9 @@ function LayerRow({
       )}
       title={activateTitle(array, group)}
       onClick={(event) => pickRow(event, () => activate(layer))}
+      draggable={!editing}
+      onDragStart={(event) => startDrag(event, layer)}
+      onDragEnd={state.endLayerDrag}
     >
       <input
         type="color"
@@ -523,7 +668,6 @@ function LayerRow({
         edit={() => state.editName("layer", layer.id)}
         commit={(typed) => rename(layer, typed)}
       />
-      <GroupChoice layer={layer} group={group} groups={groups} />
       {array && <ArrayBadge />}
       <span class="text-secondary layer-count">{doodadsIn(layer).length}</span>
       <Toggle
@@ -558,51 +702,6 @@ function activateTitle(array, group) {
   if (array) return `Work on this array${alone}: its box and handles come up`;
   return `Work on this layer${alone}: new doodads land here, and its doodads are selected`;
 }
-
-/**
- * Which group this layer moves with: none, one that exists, or a new one.
- *
- * It is in the row and not in the actions bar because a group is what a layer
- * *is*, the way its name and its colour are -- and because the answer has to be
- * readable down the column: which layers move together is a thing to see at a
- * glance rather than to discover by dragging one.
- *
- * A group is its name, so there is nothing else to make and nothing to keep in
- * step -- see wiki/decisions/layer-groups.md. Naming a new one is a prompt for
- * the same reason a delete is a confirm: it is one line of answer, and the
- * editor has no dialogue of its own.
- */
-function GroupChoice({ layer, group, groups }) {
-  return (
-    <select
-      class="form-select form-select-sm layer-group"
-      title={
-        group === null
-          ? "This layer moves by itself"
-          : `This layer moves with the group '${group}'`
-      }
-      value={group ?? NO_GROUP}
-      onChange={(event) => regroup(layer, event.currentTarget.value)}
-    >
-      <option value={NO_GROUP}>—</option>
-      {groups.map((name) => (
-        <option value={name}>{name}</option>
-      ))}
-      <option value={NEW_GROUP}>New group…</option>
-    </select>
-  );
-}
-
-/**
- * The two entries of the select that are not a group name.
- *
- * A `<select>` carries strings, so these have to be strings no group can be
- * called. They lead with a NUL, which nothing a player types contains -- written
- * as an escape, a control character in source being a character nobody can see
- * is there.
- */
-const NO_GROUP = "\u0000none";
-const NEW_GROUP = "\u0000new";
 
 /**
  * A name in the list: text to read, and a field once it has been double-clicked.
@@ -780,32 +879,33 @@ function groupNames() {
 }
 
 /**
- * The group a layer moves with, as the row's select says it. A new group is
- * named and then simply carried, there being nothing else to a group.
+ * A group holding one layer, which is all a new group can be: a group is a name
+ * its layers carry, so it comes into being with its first member and not before.
  *
- * Joining moves the layer to the group's other layers -- the document tidies
- * them, because a group is drawn as a run of rows. So the layer that was picked
- * from this row may now be somewhere else in the list, which is the price of a
- * list that reads as export order.
- *
- * What is being worked on is taken up again afterwards, and it is not
- * necessarily this layer: what moves together has just changed, and the box on
- * the canvas is showing the set as it was. Grouping a layer does not make it the
- * active one -- picking the row says that, and one gesture says one thing. It is
- * why the select's own click is not also a pick; see `pickRow`.
+ * The layer becomes the group's only member and goes on being the layer worked
+ * on, `reactivate` taking the group up instead when a group was up. Joining
+ * moves the layer to the group's run -- here that is a run of one, and it is the
+ * same `groupLayer` a drop calls.
  */
-function regroup(layer, chosen) {
-  const group = chosen === NEW_GROUP ? newGroupName() : chosen;
-  if (group === null) {
-    // Cancelled at the prompt. The select is sitting on "New group…", which is
-    // not where the layer is, so the row is drawn again to put it back.
-    state.layersChanged();
-    return;
-  }
-
-  document_().groupLayer(layer.id, group === NO_GROUP ? null : group);
+function addGroup(layer) {
+  document_().groupLayer(layer.id, newGroupName());
   state.layersChanged();
   reactivate(layer);
+}
+
+/**
+ * The next free `Group N`, the way a new layer is the next `Layer N`.
+ *
+ * Free rather than simply next: two groups cannot share a name -- sharing one
+ * *is* being one group, see wiki/decisions/layer-groups.md -- so a `Group 2`
+ * that a player renamed something else and a `Group 2` typed onto another group
+ * both have to be stepped over, or "add group" would silently join one.
+ */
+function newGroupName() {
+  const taken = groupNames();
+  let number = taken.length + 1;
+  while (taken.includes(`Group ${number}`)) number += 1;
+  return `Group ${number}`;
 }
 
 /**
@@ -850,12 +950,6 @@ function renameGroup(group, renamed) {
   );
   if (state.activeGroup.value === group) state.activeGroup.value = name;
   state.layersChanged();
-}
-
-/** A name for a new group, or `null` where the player gave none. */
-function newGroupName() {
-  const name = prompt("Name the group these layers move with:")?.trim();
-  return name ? name : null;
 }
 
 /**
