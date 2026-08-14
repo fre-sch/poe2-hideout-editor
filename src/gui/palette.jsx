@@ -105,7 +105,7 @@ export function DoodadPalette() {
 
   if (!shown) return null;
   return (
-    <div id="doodad-sidebar">
+    <div class="sidebar" id="doodad-sidebar">
       <div class="d-flex justify-content-between align-items-center">
         <h2>{purpose().title}</h2>
         <button
