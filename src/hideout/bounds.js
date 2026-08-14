@@ -26,7 +26,7 @@ const OUTLINES = {
   60854: "HideoutBlankMountain_60854.svg",
   4638: "HideoutShoreline_4638.svg",
   31541: "HideoutVerdant_31541.svg",
-  23536: "HideoutArcaneIsle_23536.svg"
+  23536: "HideoutArcaneIsle_23536.svg",
 };
 
 /**
