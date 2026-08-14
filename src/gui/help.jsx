@@ -57,7 +57,7 @@ export function HelpModal() {
       }}
     >
       <h2>Help</h2>
-      <p class="text-secondary">
+      <p class="usage-text">
         The shortcuts reach the editor while the viewport has focus. Click it
         once if a key does nothing.
       </p>

@@ -69,7 +69,7 @@ export default function Layers() {
   const selected = state.selection.value.length;
   return (
     <>
-      <p class="text-secondary mb-1">
+      <p class="usage-text">
         Exported in this order, first at the top. A hidden layer is left out of
         the export; a locked one exports like any other. Layers in a group move
         together: drag a layer onto a group to join it, and joining moves the
@@ -396,7 +396,7 @@ function GroupRow({
           class={`bi ${collapsed ? "bi-caret-right-fill" : "bi-caret-down-fill"}`}
         ></i>
       </button>
-      <i class="bi bi-collection text-secondary" title="A layer group"></i>
+      <i class="bi bi-collection" title="A layer group"></i>
       <Name
         name={group}
         editing={editing}
@@ -404,7 +404,7 @@ function GroupRow({
         edit={() => state.editName("group", group)}
         commit={(typed) => renameGroup(group, typed)}
       />
-      <span class="text-secondary layer-count">{count}</span>
+      <span class="layer-count">{count}</span>
       <Toggle
         layers={layers}
         flag="visible"
@@ -669,7 +669,7 @@ function LayerRow({
         commit={(typed) => rename(layer, typed)}
       />
       {array && <ArrayBadge />}
-      <span class="text-secondary layer-count">{doodadsIn(layer).length}</span>
+      <span class="layer-count">{doodadsIn(layer).length}</span>
       <Toggle
         layers={[layer]}
         flag="visible"

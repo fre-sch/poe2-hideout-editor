@@ -64,7 +64,7 @@ export const UNKNOWN_HASH_TITLE =
 export function UnknownHashMark({ doodad }) {
   if (!unknownHash(doodad)) return null;
   return (
-    <span class="unknown-hash text-secondary" title={UNKNOWN_HASH_TITLE}>
+    <span class="unknown-hash" title={UNKNOWN_HASH_TITLE}>
       unknown hash {doodad.hash}
     </span>
   );

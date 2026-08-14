@@ -21,7 +21,7 @@ export default function Sidebar() {
       {/* A player reports a problem about a build, and a page they have had
           open for a week is a build neither of us can name otherwise. */}
       <h1>
-        PoE2 Hideout Editor <small class="text-secondary">v{version}</small>
+        PoE2 Hideout Editor <small class="version-stamp">v{version}</small>
       </h1>
       <hr />
       <File />

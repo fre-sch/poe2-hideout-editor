@@ -53,7 +53,7 @@ export default function Selection() {
         ))}
       </ul>
       {selected.length > LIMIT && (
-        <p class="text-secondary mb-0">
+        <p class="selection-more">
           plus {selected.length - LIMIT} more doodads
         </p>
       )}

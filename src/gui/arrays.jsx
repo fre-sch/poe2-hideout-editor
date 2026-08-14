@@ -455,7 +455,7 @@ function Randomness({ parameters }) {
         onChange={(rotation) => updateJitter({ rotation })}
       />
       <div class="d-flex justify-content-between align-items-center gap-1">
-        <span class="text-secondary">Seed {random.seed}</span>
+        <span class="field-label">Seed {random.seed}</span>
         <button
           type="button"
           class="btn btn-secondary btn-sm text-nowrap"
@@ -476,8 +476,7 @@ function Randomness({ parameters }) {
  * never the table -- it is framework-free, and the table is fetched.
  */
 function Variations({ index, chosen, count }) {
-  if (count < 2)
-    return <p class="text-secondary small mb-0">{noVariations(count)}</p>;
+  if (count < 2) return <p class="list-empty">{noVariations(count)}</p>;
   return (
     <div class="d-flex flex-wrap gap-1">
       {range(count).map((at) => (
@@ -553,7 +552,7 @@ function Source({ source, pick }) {
         title="Which of a doodad's chosen variations it is drawn as"
         onChange={(variation) => updatePick({ variation })}
       />
-      <p class="text-secondary mb-0">
+      <p class="usage-text">
         Double-click one in <strong>Set array doodad</strong> to change this,
         and hold <span class="shortcut">Shift</span> there to add another.
       </p>
@@ -572,7 +571,7 @@ function Source({ source, pick }) {
 function PickSwitch({ label, value, title, onChange }) {
   return (
     <div class="d-flex justify-content-between align-items-center mb-1">
-      <span class="text-secondary" title={title}>
+      <span class="field-label" title={title}>
         {label}
       </span>
       <div class="btn-group" role="group" aria-label={title}>

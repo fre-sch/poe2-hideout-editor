@@ -144,7 +144,7 @@ export function DoodadPalette() {
 function Instructions() {
   if (activeArray() !== null) {
     return (
-      <p class="text-secondary mt-1 mb-0">
+      <p class="usage-text">
         Double-click a doodad to make this array out of it. Hold{" "}
         <span class="shortcut">Shift</span> to add it to the ones the array
         already uses, which it then places in turn.
@@ -152,7 +152,7 @@ function Instructions() {
     );
   }
   return (
-    <p class="text-secondary mt-1 mb-0">
+    <p class="usage-text">
       Double-click a doodad to place it in the view. Place several and they step
       away from each other; move the view to start again.
     </p>
@@ -243,7 +243,7 @@ function FilterRow({ item, filter }) {
   return (
     <button
       type="button"
-      class={`filter-row ${filterColour(state_)}`}
+      class={`filter-row ${filterState(state_)}`}
       onClick={() => cycleFilter(filter, item.key)}
     >
       <i class={`bi ${filterIcon(state_)}`}></i> {item.name}
@@ -257,10 +257,10 @@ function filterIcon(state_) {
   return "bi-circle";
 }
 
-function filterColour(state_) {
-  if (state_ === INCLUDE) return "text-info";
-  if (state_ === EXCLUDE) return "text-danger";
-  return "text-secondary";
+function filterState(state_) {
+  if (state_ === INCLUDE) return "filter-include";
+  if (state_ === EXCLUDE) return "filter-exclude";
+  return "filter-unset";
 }
 
 function cycleFilter(filter, key) {
@@ -274,9 +274,9 @@ function cycleFilter(filter, key) {
 
 function List() {
   if (tableError.value) {
-    return <p class="text-danger">{`${tableError.value.message}`}</p>;
+    return <p class="list-error">{`${tableError.value.message}`}</p>;
   }
-  if (!table.value) return <p class="text-secondary">Loading doodads...</p>;
+  if (!table.value) return <p class="list-empty">Loading doodads...</p>;
 
   const found = table.value.palette.groups({
     text: search.value,
@@ -284,7 +284,7 @@ function List() {
     tags: tagFilter.value,
   });
   if (found.length === 0) {
-    return <p class="text-secondary">Nothing matches.</p>;
+    return <p class="list-empty">Nothing matches.</p>;
   }
 
   // Said once for the whole list rather than per row: it is one answer, and

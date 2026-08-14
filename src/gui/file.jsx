@@ -57,7 +57,7 @@ export default function File() {
           <i class="bi bi-hdd"></i> Save project
         </button>
       </div>
-      <p class="text-secondary mt-1 mb-0">
+      <p class="usage-text">
         Load takes a `.hideout` or a saved project. Export writes the game's
         file, from the visible layers. Save project writes the editor's, from
         all of them.
