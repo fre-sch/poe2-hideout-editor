@@ -22,6 +22,7 @@
  * saved through `project.js` -- see wiki/discussions/project-format-and-user-layers.
  */
 
+import * as colors from "./colors.js";
 import * as file from "./file.js";
 import * as generator from "./generator.js";
 
@@ -53,17 +54,24 @@ export class Doodad {
 }
 
 /**
- * A user layer: a name to organise by, and two flags the viewport obeys.
+ * A user layer: a name to organise by, a colour its doodads are drawn in, and
+ * two flags the viewport obeys.
  *
  * `visible` reaches the export: a hidden layer is left out of the `.hideout`,
  * which is how a player tries a layout two ways without deleting half of it.
  * `locked` reaches nothing but the mouse. Neither reaches the project file,
  * which keeps every layer whatever its flags say.
+ *
+ * `color` arrives from the document rather than defaulting here, because a
+ * useful colour is one no other layer carries -- and a layer knows about no
+ * other layer. A layer that arrives without one is coloured by the document it
+ * is put in, which is what loads a project written before colours existed.
  */
 export class Layer {
-  constructor({ id, name, visible = true, locked = false }) {
+  constructor({ id, name, color = null, visible = true, locked = false }) {
     this.id = id;
     this.name = name;
+    this.color = color;
     this.visible = visible;
     this.locked = locked;
   }
@@ -166,6 +174,25 @@ export class HideoutDocument {
     // one owns its doodads -- they are computed from the parameters and not
     // authored, so nothing else may write into that layer.
     this.generators = generators;
+    this.colorLayers();
+  }
+
+  /**
+   * A colour for every layer that arrived without one, which is every layer of
+   * a project written before colours and the single layer a `.hideout` becomes.
+   *
+   * One at a time and in order, so that each is chosen against the ones already
+   * settled and no two layers of a loaded document share a colour.
+   */
+  colorLayers() {
+    for (const layer of this.layers) {
+      layer.color = layer.color ?? this.freeColor();
+    }
+  }
+
+  /** A colour no layer of this document carries. */
+  freeColor() {
+    return colors.generate(this.layers.map((layer) => layer.color));
   }
 
   /**
@@ -218,9 +245,16 @@ export class HideoutDocument {
       .flatMap((layer) => this.doodadsIn(layer.id));
   }
 
-  /** A new empty layer, on top of the list, with an id no other layer has. */
+  /**
+   * A new empty layer, on top of the list, with an id and a colour no other
+   * layer has.
+   */
   addLayer(name) {
-    const layer = new Layer({ id: this.freeLayerId(), name });
+    const layer = new Layer({
+      id: this.freeLayerId(),
+      name,
+      color: this.freeColor(),
+    });
     this.layers = [...this.layers, layer];
     return layer;
   }
@@ -256,6 +290,10 @@ export class HideoutDocument {
    *
    * The copy is deep, because two arrays are two arrays: a shared `box` object
    * would let a handle dragged on one move the other.
+   *
+   * The colour is the one thing not copied. A copy lands exactly on top of its
+   * original, so telling the two apart is the first thing wanted of it -- which
+   * is what a colour is for.
    */
   duplicateLayer(id) {
     const source = this.findLayer(id);

@@ -23,6 +23,12 @@ const FORMAT = "poe2-hideout-editor-project";
  * anything else is refused rather than partially read: a project half-read is a
  * layout half-lost, and the player still has the file that would have loaded
  * whole in a later build.
+ *
+ * A field *added* to a layer or a generator does not move it. Both directions
+ * survive one: this build fills in what an older file leaves out -- a layer with
+ * no `color` is coloured on load -- and an older build drops what it does not
+ * read, because both are built by constructors that name their fields. The
+ * version is for a change that would be misread, not for one that is ignored.
  */
 const FORMAT_VERSION = 1;
 

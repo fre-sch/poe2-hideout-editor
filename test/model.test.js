@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { Generator, HideoutDocument } from "../src/hideout/model.js";
+import { Generator, HideoutDocument, Layer } from "../src/hideout/model.js";
 
 const SHRINE = `﻿{
   "version": 1,
@@ -138,6 +138,32 @@ describe("layers", () => {
 
     const ids = [named.id, document_.addLayer("Second").id];
     expect(new Set(ids).size).toBe(2);
+  });
+
+  it("gives every new layer a colour no other layer carries", () => {
+    const document_ = HideoutDocument.fromText(SHRINE);
+    document_.addLayer("Garden");
+    document_.addLayer("Walls");
+
+    const used = document_.layers.map((layer) => layer.color);
+    expect(new Set(used).size).toBe(3);
+  });
+
+  it("colours a layer that arrives without one", () => {
+    // A project written before layers carried colours.
+    const document_ = new HideoutDocument({}, [], [new Layer({ id: "one" })]);
+
+    expect(document_.findLayer("one").color).toMatch(/^#[0-9a-f]{6}$/);
+  });
+
+  it("keeps the colour a layer arrives with", () => {
+    const document_ = new HideoutDocument(
+      {},
+      [],
+      [new Layer({ id: "one", color: "#123456" })],
+    );
+
+    expect(document_.findLayer("one").color).toBe("#123456");
   });
 });
 
@@ -318,6 +344,13 @@ describe("duplicateLayer", () => {
 
     expect(copy.visible).toBe(false);
     expect(copy.locked).toBe(true);
+  });
+
+  it("gives the copy a colour of its own, it landing on the original", () => {
+    const document_ = HideoutDocument.fromText(SHRINE);
+    const copy = document_.duplicateLayer("default");
+
+    expect(copy.color).not.toBe(document_.findLayer("default").color);
   });
 
   it("refuses a layer that does not exist", () => {

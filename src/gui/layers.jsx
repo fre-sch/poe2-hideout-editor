@@ -11,7 +11,8 @@
  * already on.
  *
  * **So the actions that act on a layer are drawn once, under the list.** A row
- * carries what it is and how it stands -- its name, its tally, its two flags --
+ * carries what it is and how it stands -- its name, its colour, its tally, its
+ * two flags --
  * and those are a reading as much as a control, which belongs to the thing being
  * read. Moving, deleting and filling a layer are answered by the bar, which acts
  * on the layer the radio names. A copy of them in every row asks again, six
@@ -55,6 +56,7 @@ export default function Layers() {
           <LayerRow
             layer={layer}
             name={layer.name}
+            color={layer.color}
             visible={layer.visible}
             locked={layer.locked}
             array={isArray(layer)}
@@ -156,8 +158,13 @@ function arrayOf(layer) {
 }
 
 /**
- * What a layer is and how it stands: which one is being worked on, its name, its
- * tally, and its two flags. What is done to it is the bar's, below.
+ * What a layer is and how it stands: which one is being worked on, its name, the
+ * colour its doodads are drawn in, its tally, and its two flags. What is done to
+ * it is the bar's, below.
+ *
+ * The swatch sits by the radio and not by the name, because it is read against
+ * the canvas rather than against the row: a column of swatches down the left is
+ * the same list the doodads make out there.
  *
  * An array's row differs in one place, and it is the fact that its doodads are
  * generated: it carries the badge and no lock, an array's doodads being
@@ -181,7 +188,7 @@ function arrayOf(layer) {
  * So a row is a function of the values it draws. The layer is what the controls
  * edit, the rest is what they show.
  */
-function LayerRow({ layer, name, visible, locked, array }) {
+function LayerRow({ layer, name, color, visible, locked, array }) {
   return (
     <li class="layer-row">
       <input
@@ -198,6 +205,13 @@ function LayerRow({ layer, name, visible, locked, array }) {
         // clicking the layer being worked on is how a selection just dismissed
         // is asked for again.
         onClick={() => activate(layer)}
+      />
+      <input
+        type="color"
+        class="form-control form-control-color layer-color"
+        title="The colour this layer's doodads are drawn in"
+        value={color}
+        onInput={(event) => recolor(layer, event.currentTarget.value)}
       />
       <input
         type="text"
@@ -269,6 +283,16 @@ function doodadsIn(layer) {
 
 function rename(layer, name) {
   layer.name = name;
+  state.layersChanged();
+}
+
+/**
+ * The colour this layer's doodads are drawn in. `onInput` rather than `onChange`
+ * so that the canvas follows the picker while it is open: a colour is chosen by
+ * looking at what it does to the hideout, not by reading a hex code.
+ */
+function recolor(layer, color) {
+  layer.color = color;
   state.layersChanged();
 }
 

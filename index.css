@@ -212,6 +212,16 @@ details[open] .details-summary-extra {
 .layer-row input[type="text"] {
   min-width: 3rem;
 }
+/* The colour swatch: a square the size of the row's other controls, which
+   Bootstrap's own colour input is not -- it is form-control sized, and a row of
+   those is twice the height of the layer list. The padding goes with it, or the
+   colour shows as a dot in a frame instead of as the colour of the row. */
+.layer-color {
+  flex: 0 0 auto;
+  width: 1.4rem;
+  height: 1.4rem;
+  padding: 2px;
+}
 .layer-count {
   min-width: 2.2rem;
   text-align: right;
