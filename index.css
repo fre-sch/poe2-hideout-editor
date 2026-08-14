@@ -33,24 +33,6 @@ main {
   justify-content: space-between;
   align-items: stretch;
 }
-details.d-flex {
-  display: initial !important;
-}
-details.d-flex[open]::details-content {
-  display: flex;
-}
-details.gap-1, details.gap-2, details.gap-3 {
-  gap: initial !important;
-}
-details.gap-1[open]::details-content {
-  gap: 0.25rem;
-}
-details.gap-2[open]::details-content {
-  gap: 0.5rem;
-}
-details.gap-3[open]::details-content {
-  gap: 1rem;
-}
 details[open] .details-summary-extra {
   display: none;
 }
@@ -86,6 +68,13 @@ details[open] .details-summary-extra {
   font-size: 0.9rem;
   color: var(--bs-secondary);
   margin-bottom: 0.2rem;
+}
+/* The view toggles, spaced. The layout goes on the content and not on the
+   `<details>` itself, which would make the summary a flex item beside it. */
+.view-flags[open]::details-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
 }
 
 /* The layers and the selection, tabbed: the section that takes the leftover
