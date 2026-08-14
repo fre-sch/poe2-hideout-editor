@@ -110,7 +110,7 @@ export class Scene {
 
   /**
    * Draws the layers as they now stand: their groups, their flags, their order,
-   * and which group each node belongs in.
+   * their colours, and which group each node belongs in.
    *
    * One method for all of it because a layer edit can be several of those at
    * once -- deleting a layer moves its doodads and drops a group -- and because
@@ -127,8 +127,26 @@ export class Scene {
       this.nodes,
       this.generated,
     );
+    this.colorNodes();
     this.selection.discard(this.unselectableNodes());
     this.refreshLabels();
+  }
+
+  /**
+   * Every node in the colour of the layer its doodad is in.
+   *
+   * Every node and not the ones that moved, because a layer edit is one signal
+   * whatever it changed -- a colour picked, a doodad handed to another layer,
+   * a layer deleted. A node already wearing its colour is left alone, so the
+   * walk costs a comparison per doodad; see `doodads.setColor`.
+   *
+   * After `groups.sync`, which refuses a node whose layer is gone -- so every
+   * node here has a layer to take a colour from.
+   */
+  colorNodes() {
+    for (const node of this.nodes) {
+      doodads.setColor(node, this.layerOf(node).color);
+    }
   }
 
   /**

@@ -11,7 +11,8 @@ Very much a *scratch-your-own-itch*-project at this time.
 ### Layers!
 
 Group and organize your hideout decorations into layers. Delete them, duplicate
-them.
+them. Every layer gets its own colour, so you can see at a glance which layer a
+decoration belongs to -- pick another colour whenever you like.
 
 ### Generators!
 

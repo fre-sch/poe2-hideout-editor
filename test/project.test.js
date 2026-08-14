@@ -135,6 +135,35 @@ describe("project files", () => {
     ]);
   });
 
+  it("round trips a colour the player picked", () => {
+    const document_ = HideoutDocument.fromText(SHRINE);
+    document_.layers[0].color = "#123456";
+
+    const loaded = project.parse(project.serialize(document_));
+
+    expect(loaded.layers[0].color).toBe("#123456");
+  });
+
+  /**
+   * A project written before layers carried colours, which the version does not
+   * refuse -- see `project.js`. Its layers arrive coloured, and no two alike:
+   * a load is where they are handed out.
+   */
+  it("colours the layers of a project written without colours", () => {
+    const document_ = HideoutDocument.fromText(SHRINE);
+    document_.addLayer("Garden");
+    const written = JSON.parse(project.serialize(document_));
+    for (const layer of written.layers) {
+      delete layer.color;
+    }
+
+    const loaded = project.parse(JSON.stringify(written));
+
+    const used = loaded.layers.map((layer) => layer.color);
+    expect(used.every((color) => /^#[0-9a-f]{6}$/.test(color))).toBe(true);
+    expect(new Set(used).size).toBe(2);
+  });
+
   it("round trips the header verbatim", () => {
     // The editor does not synthesize hideout_name, wiki issue 0009.
     const loaded = project.parse(
