@@ -212,19 +212,26 @@ details[open] .details-summary-extra {
      shift sideways as it is picked. */
   padding: 0 0.2rem;
   border-radius: 3px;
+  cursor: pointer;
 }
 .layer-row input[type="text"] {
   min-width: 3rem;
 }
-/* What is being worked on, read off the list rather than off one small radio.
-   The radio names a layer or a group and the other kind of row comes with it,
-   so both are marked: one colour at two strengths, the brighter being the row
-   the radio is on. The colour is the selection band's, which is what "picked"
-   already looks like out on the canvas. */
-.layer-row-active {
+/* The whole row is the control, so the whole row answers the pointer. */
+.layer-row:hover {
+  background-color: var(--bs-secondary-bg);
+}
+/* What is being worked on, read off the list itself. Picking a row picks a
+   layer or a group and the other kind of row comes with it, so both are marked:
+   one colour at two strengths, the brighter being the row that was picked. The
+   colour is the selection band's, which is what "picked" already looks like out
+   on the canvas.
+
+   Two classes deep, so that a mark outweighs the hover above it. */
+.layer-row.layer-row-active {
   background-color: rgba(85, 170, 255, 0.22);
 }
-.layer-row-related {
+.layer-row.layer-row-related {
   background-color: rgba(85, 170, 255, 0.09);
 }
 /* The name while it is being read rather than typed. It stands where the field
@@ -244,7 +251,8 @@ details[open] .details-summary-extra {
   white-space: nowrap;
   text-overflow: ellipsis;
   user-select: none;
-  cursor: text;
+  /* No text cursor: a single click here picks the row like any other part of
+     it, and the double click that opens the editor is in the title. */
 }
 /* The colour swatch: a square the size of the row's other controls, which
    Bootstrap's own colour input is not -- it is form-control sized, and a row of

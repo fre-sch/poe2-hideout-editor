@@ -120,6 +120,11 @@ function Shortcuts() {
         the layer being worked on.
       </li>
       <li>
+        <span class="shortcut">Click a row</span> in the layer list to work on
+        that layer: new doodads land there, and its doodads are selected. The
+        row is marked while it is the one being worked on.
+      </li>
+      <li>
         Put layers in the same <span class="shortcut">group</span> to move them
         as one. The group gets a row of its own in the list: pick that row and
         the box holds every layer of it, arrays included, and moves and turns

@@ -71,7 +71,7 @@ function purpose() {
 export function AddDoodadButton() {
   const { title, icon } = purpose();
   // A group is not a place a doodad lands, and which of its layers should take
-  // one is the radio's question, not this button's -- so it says so and waits.
+  // one is the list's question, not this button's -- so it says so and waits.
   const group = state.activeGroup.value;
   return (
     <button

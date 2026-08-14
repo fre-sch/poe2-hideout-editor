@@ -86,9 +86,9 @@ export function ArrayBadge() {
  * array answers, which is a thing the bar can show rather than explain.
  *
  * The settings are the granular half of working on an array. The other half is
- * the layer's own radio, which raises the box and its handles -- most of what a
- * player wants is to drag that box, and a dozen numbers is what they ask for
- * afterwards.
+ * the layer's own row, picking which raises the box and its handles -- most of
+ * what a player wants is to drag that box, and a dozen numbers is what they ask
+ * for afterwards.
  */
 export function ArrayButtons({ layer = null }) {
   const open =
