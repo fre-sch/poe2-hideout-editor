@@ -559,16 +559,41 @@ function Toggle({ layers, flag, enabled, on, off, title }) {
       type="button"
       class="btn btn-sm btn-link p-0"
       title={title}
-      onClick={() => {
-        for (const layer of layers) {
-          layer[flag] = !enabled;
-        }
-        state.layersChanged();
-      }}
+      onClick={() => toggle(layers, flag, enabled)}
     >
       <i class={`bi ${enabled ? on : off}`}></i>
     </button>
   );
+}
+
+/**
+ * Writes a flag on some layers, and asks again what is being worked on when
+ * they are part of it.
+ *
+ * **What is up on the canvas was derived from the flags once, when the radio was
+ * answered.** A hidden layer's doodads are not selected and a hidden array does
+ * not ride with its group, so hiding one afterwards left a box standing over
+ * nothing -- the doodads go, `showLayers` discards them, but an array rides on a
+ * proxy the box holds and no flag reaches that. Showing one again was the same
+ * omission the other way round: nothing had asked for its proxy.
+ *
+ * So the flags are a thing the answer depends on, and changing one asks again.
+ * Only when these layers are part of what is up: toggling an eye elsewhere in
+ * the list would otherwise throw away a selection the player banded by hand.
+ */
+function toggle(layers, flag, enabled) {
+  for (const layer of layers) {
+    layer[flag] = !enabled;
+  }
+  state.layersChanged();
+  if (worksOn(layers)) reactivate(layers[0]);
+}
+
+/** Whether any of these layers is part of what is being worked on. */
+function worksOn(layers) {
+  const group = state.activeGroup.value;
+  if (group !== null) return layers.some((layer) => layer.group === group);
+  return layers.some((layer) => layer.id === state.activeLayer.value);
 }
 
 function document_() {
