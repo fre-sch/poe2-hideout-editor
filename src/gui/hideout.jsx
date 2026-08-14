@@ -55,7 +55,7 @@ export default function Hideout() {
         Hideout
         <span class="details-summary-extra">
           &nbsp;
-          <span class="text-body">{displayName(header)}</span>
+          <HideoutName />
           &nbsp;
           <DoodadCount />
         </span>
@@ -69,8 +69,6 @@ export default function Hideout() {
         <div>
           <LanguageSelect />
         </div>
-        <div class="text-secondary">Name:</div>
-        <div>{displayName(header)}</div>
         <div class="text-secondary">Type:</div>
         <div>
           <TypeSelect />
@@ -86,13 +84,23 @@ export default function Hideout() {
   );
 }
 
-/** The table's name for the file's type, or the file's own until it arrives. */
-function displayName(header) {
-  return hideouts.nameFor(
+/**
+ * The table's name for the document's type, or the file's own where no table
+ * names the hash -- wiki issue 0059.
+ *
+ * It names the type the selector below is showing, so it reads
+ * `state.hideoutType` and not the header: the signal is `hideout_hash` in the
+ * form that can be subscribed to, and a name rendered from the field itself
+ * goes stale the moment the type is changed -- wiki issue 0062.
+ */
+function HideoutName() {
+  const header = state.hideoutDocument.value.header;
+  const name = hideouts.nameFor(
     table.hideouts.value,
-    header.hideout_hash,
+    state.hideoutType.value,
     header.hideout_name,
   );
+  return <span class="text-body">{name}</span>;
 }
 
 /**
