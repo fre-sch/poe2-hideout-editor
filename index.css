@@ -208,9 +208,24 @@ details[open] .details-summary-extra {
   align-items: center;
   gap: 0.25rem;
   margin-bottom: 0.15rem;
+  /* The padding is on every row and not only on a marked one, or a row would
+     shift sideways as it is picked. */
+  padding: 0 0.2rem;
+  border-radius: 3px;
 }
 .layer-row input[type="text"] {
   min-width: 3rem;
+}
+/* What is being worked on, read off the list rather than off one small radio.
+   The radio names a layer or a group and the other kind of row comes with it,
+   so both are marked: one colour at two strengths, the brighter being the row
+   the radio is on. The colour is the selection band's, which is what "picked"
+   already looks like out on the canvas. */
+.layer-row-active {
+  background-color: rgba(85, 170, 255, 0.22);
+}
+.layer-row-related {
+  background-color: rgba(85, 170, 255, 0.09);
 }
 /* The name while it is being read rather than typed. It stands where the field
    will stand -- same flex basis, same height, Bootstrap's plaintext padding --
