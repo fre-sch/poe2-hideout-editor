@@ -61,19 +61,19 @@ export default function Hideout() {
         </span>
       </summary>
       <div class="grid-2">
-        <div class="text-secondary">File:</div>
+        <div class="field-label">File:</div>
         <div style="line-break: anywhere">{state.fileName.value}</div>
-        <div class="text-secondary">Version:</div>
+        <div class="field-label">Version:</div>
         <div>{header.version}</div>
-        <div class="text-secondary">Language:</div>
+        <div class="field-label">Language:</div>
         <div>
           <LanguageSelect />
         </div>
-        <div class="text-secondary">Type:</div>
+        <div class="field-label">Type:</div>
         <div>
           <TypeSelect />
         </div>
-        <div class="text-secondary">Doodads:</div>
+        <div class="field-label">Doodads:</div>
         <div>
           <DoodadCount />
         </div>
@@ -210,7 +210,7 @@ function LanguageNote() {
   const chosen = state.language.value;
   if (!languages.assumed(table.languages.value, chosen)) return null;
   return (
-    <p class="text-secondary mt-2 mb-0">
+    <p class="usage-text">
       No file this editor has measured spells its language '{chosen}', so the
       word saved is the game data exporter's. The game ignores it; an editor
       reading the file back picks its tables by it.

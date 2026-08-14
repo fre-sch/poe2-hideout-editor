@@ -86,8 +86,48 @@ details[open] .details-summary-extra {
 .sidebar-item > summary {
   font-weight: bold;
   font-size: 0.9rem;
-  color: var(--bs-secondary);
   margin-bottom: 0.2rem;
+}
+
+/* Quiet text: what a thing is called, what a section is for, and what is not
+   there. Six concepts that are one colour, so the colour is said once. */
+.usage-text,
+.field-label,
+.filter-unset,
+.list-empty,
+.selection-more,
+.version-stamp,
+.unknown-hash,
+.layer-count,
+.group-row > .bi,
+.sidebar-item > summary,
+.palette-heading,
+.palette-mark,
+.palette-hideout,
+.palette-refused .palette-row {
+  color: var(--bs-secondary);
+}
+
+/* How a section is worked, under the controls that work it. Written seven times
+   over the sidebar and the help modal, in five different spacings, so the
+   spacing is settled here rather than at each of them. The same gap either
+   side: some of the seven end a section and some have a list under them. */
+.usage-text {
+  margin-top: 0.25rem;
+  margin-bottom: 0.25rem;
+}
+/* A line standing where rows would be: loading, nothing found, nothing to
+   vary -- and the load that failed, which is the same slot answered badly. */
+.list-empty,
+.list-error {
+  margin-bottom: 0;
+}
+.list-error {
+  color: var(--bs-danger);
+}
+/* The doodads the list stopped short of naming. */
+.selection-more {
+  margin-bottom: 0;
 }
 /* The view toggles, spaced. The layout goes on the content and not on the
    `<details>` itself, which would make the summary a flex item beside it. */
@@ -377,6 +417,14 @@ details[open] .details-summary-extra {
 .filter-row:hover {
   background-color: var(--bs-secondary-bg);
 }
+/* The three states a filter row cycles through. `.filter-unset` takes the quiet
+   colour above; these two are what the row was asked to do. */
+.filter-include {
+  color: var(--bs-info);
+}
+.filter-exclude {
+  color: var(--bs-danger);
+}
 
 /* Takes the height the sections above it leave, and scrolls. `min-height: 0`
    for the same reason the layer list carries it. */
@@ -391,7 +439,6 @@ details[open] .details-summary-extra {
 .palette-heading {
   font-size: 0.85rem;
   font-weight: bold;
-  color: var(--bs-secondary);
   margin: 0;
 }
 .palette-row {
@@ -411,19 +458,14 @@ details[open] .details-summary-extra {
    what else had gone. */
 .palette-refused .palette-row {
   cursor: default;
-  color: var(--bs-secondary);
 }
 .palette-refused .palette-row:hover {
   background-color: transparent;
-}
-.palette-mark {
-  color: var(--bs-secondary);
 }
 
 /* The hideout that grants the doodad, under its name. Smaller and quieter: it
    answers "can I place this", which is a second question. */
 .palette-hideout {
-  color: var(--bs-secondary);
   font-size: 0.9em;
 }
 
