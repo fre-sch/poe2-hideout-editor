@@ -20,6 +20,7 @@ import { useEffect } from "preact/hooks";
 import * as state from "../state.js";
 import * as variation from "../hideout/variation.js";
 import { table, loadTable, nameOf, variationsOf } from "../table.js";
+import { UnknownHashMark } from "./buttons.jsx";
 
 const LIMIT = 20;
 
@@ -90,15 +91,19 @@ function Row({ doodad, fv }) {
 
 /**
  * The table's name for the doodad, or the file's until the table arrives and
- * for a hash it does not know -- wiki issue 0059. Its own component so that the
- * name follows the table without the row's buttons being redrawn with it.
+ * for a hash it does not know -- wiki issue 0059, marked as such where it is
+ * the second of those, wiki issue 0060. Its own component so that both follow
+ * the table without the row's buttons being redrawn with them.
  */
 function Name({ doodad }) {
   const name = nameOf(doodad);
   return (
-    <span class="selection-name" title={name}>
-      {name}
-    </span>
+    <>
+      <span class="selection-name" title={name}>
+        {name}
+      </span>
+      <UnknownHashMark doodad={doodad} />
+    </>
   );
 }
 

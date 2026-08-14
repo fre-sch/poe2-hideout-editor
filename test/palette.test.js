@@ -11,6 +11,7 @@ import {
   INCLUDE,
   EXCLUDE,
   nameFor,
+  unknownHash,
 } from "../src/hideout/palette.js";
 
 const TABLES = path.resolve(
@@ -258,6 +259,39 @@ describe("nameFor", () => {
 
   it("falls back to the file before a table has arrived", () => {
     expect(nameFor(null, doodad("Wegpunkt", 20))).toBe("Wegpunkt");
+  });
+});
+
+/**
+ * Which of `nameFor`'s two branches answered, which is what the interface marks
+ * a doodad with -- wiki issue 0060. It is a question about the table and not
+ * about the document, so it says nothing while there is no table.
+ */
+describe("unknownHash", () => {
+  const doodad = (name, hash) => ({ name, hash, x: 0, y: 0, r: 0, fv: 0 });
+
+  it("is false for a hash the table names, offered or not", () => {
+    const palette = new Palette(DATA);
+
+    expect(unknownHash(palette, doodad("Warp Rune", 20))).toBe(false);
+    expect(unknownHash(palette, doodad("Recombinator", 50))).toBe(false);
+  });
+
+  it("is true for a hash no table names", () => {
+    const palette = new Palette(DATA);
+
+    expect(unknownHash(palette, doodad("Waypoint", 7))).toBe(true);
+  });
+
+  it("is false before a table has arrived, having asked nobody", () => {
+    expect(unknownHash(null, doodad("Waypoint", 7))).toBe(false);
+  });
+
+  /** The hash a file parses to is a number, the table's keys are strings. */
+  it("asks the same lookup the name came from", () => {
+    const palette = new Palette(DATA);
+
+    expect(unknownHash(palette, doodad("Warp Rune", "20"))).toBe(false);
   });
 });
 

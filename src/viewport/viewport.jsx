@@ -15,7 +15,7 @@
 import { useEffect, useRef } from "preact/hooks";
 
 import * as state from "../state.js";
-import { loadTable, nameOf } from "../table.js";
+import { loadTable, nameOf, unknownHash } from "../table.js";
 import { Scene } from "./scene.js";
 
 export default function Viewport() {
@@ -128,7 +128,8 @@ function Band() {
 /**
  * The names over the doodads. `Labels` says where each one goes and for which
  * doodad, and the name is looked up here so that a table arriving -- or a
- * language switched -- renames them without the viewport being touched.
+ * language switched -- renames them without the viewport being touched. Where
+ * the name came from is looked up with it, and marks the label.
  *
  * It asks for the table itself, the way the Selection section does: labels name
  * hundreds of doodads at once, so they are the reader that most wants the
@@ -150,9 +151,23 @@ function Overlay() {
     <div id="label-overlay">
       {state.labels.value.map((label) => (
         <div class="label" style={{ left: label.x, top: label.y }}>
+          <UnknownMark doodad={label.doodad} />
           {nameOf(label.doodad)}
         </div>
       ))}
     </div>
   );
+}
+
+/**
+ * That this label's name came from the file, no table naming its hash -- wiki
+ * issue 0060. A glyph and not the hash: a label is drawn per doodad at every
+ * zoom, and ten digits over each of a hundred doodads is a hideout nobody can
+ * see. Which hash it is, is the sidebar's to say, where there is room for it
+ * and where a title can explain it -- the overlay takes no pointer events, so
+ * nothing here can be hovered.
+ */
+function UnknownMark({ doodad }) {
+  if (!unknownHash(doodad)) return null;
+  return <i class="bi bi-question-circle me-1"></i>;
 }
