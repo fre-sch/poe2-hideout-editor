@@ -10,6 +10,18 @@
  * move it, so the way back to a selection just dismissed is the radio it is
  * already on.
  *
+ * **The list is a tree, and the radio runs over both kinds of row.** A group is
+ * a row of its own with its layers indented under it: pick a layer and that
+ * layer is worked on, pick the group and every member comes up under one box.
+ * A group answering for its members was a group its members could not answer
+ * for themselves -- moving one layer of a group meant leaving it first, which is
+ * three gestures to undo a feature. Wiki issues 0065 and 0066, and
+ * wiki/decisions/layer-groups.md.
+ *
+ * The tree is `HideoutDocument.layerOutline`, and a group's rows are adjacent
+ * because its layers are: the document tidies them, joining a group being what
+ * moves a layer to it. So the list still reads top to bottom as export order.
+ *
  * **So the actions that act on a layer are drawn once, under the list.** A row
  * carries what it is and how it stands -- its name, its colour, its tally, its
  * two flags --
@@ -43,27 +55,22 @@ import { AddDoodadButton } from "./palette.jsx";
 
 export default function Layers() {
   const loaded = state.hideoutDocument.value !== null;
-  const layers = state.layers.value;
   const selected = state.selection.value.length;
   return (
     <>
       <p class="text-secondary mb-1">
         Exported in this order, first at the top. A hidden layer is left out of
-        the export; a locked one exports like any other.
+        the export; a locked one exports like any other. Layers put in a group
+        move together, and joining one moves the layer to it.
       </p>
       <ul class="list-unstyled mb-2 layer-list">
-        {layers.map((layer) => (
-          <LayerRow
-            layer={layer}
-            name={layer.name}
-            color={layer.color}
-            group={layer.group}
-            groups={groupNames()}
-            visible={layer.visible}
-            locked={layer.locked}
-            array={isArray(layer)}
-          />
-        ))}
+        {outline().map((entry) =>
+          entry.group === null ? (
+            <LayerRows layers={entry.layers} />
+          ) : (
+            <GroupRows entry={entry} />
+          ),
+        )}
       </ul>
       <LayerActions />
       <div class="d-flex gap-1 flex-nowrap">
@@ -88,8 +95,149 @@ function addLayerTitle(selected) {
   return `A new layer holding the ${selected} selected doodads.`;
 }
 
+/** The list as it is drawn, and a subscription to it changing. */
+function outline() {
+  state.layers.value;
+  return document_()?.layerOutline() ?? [];
+}
+
 /**
- * The actions that act on a layer, once, acting on the layer the radio names.
+ * The rows of some layers, each drawn from its values -- see `LayerRow` for why
+ * every one of them is a prop.
+ *
+ * `indented` marks a member of a group, which is what the indent says: these
+ * rows belong to the row above them.
+ */
+function LayerRows({ layers, indented = false }) {
+  return layers.map((layer) => (
+    <LayerRow
+      layer={layer}
+      name={layer.name}
+      color={layer.color}
+      group={layer.group}
+      groups={groupNames()}
+      visible={layer.visible}
+      locked={layer.locked}
+      array={isArray(layer)}
+      indented={indented}
+    />
+  ));
+}
+
+/**
+ * A group: its own row, and its layers under it unless it is folded shut.
+ *
+ * The members are drawn even while the group is the active one. A group is not
+ * a thing apart from its layers, and a list that hid them while they were being
+ * moved would be hiding what is moving.
+ */
+function GroupRows({ entry }) {
+  const collapsed = state.collapsedGroups.value.includes(entry.group);
+  const lockable = entry.layers.filter((layer) => !isArray(layer));
+  return (
+    <>
+      <GroupRow
+        group={entry.group}
+        layers={entry.layers}
+        collapsed={collapsed}
+        visible={entry.layers.every((layer) => layer.visible)}
+        locked={lockable.length > 0 && lockable.every((layer) => layer.locked)}
+        lockable={lockable.length > 0}
+        count={entry.layers.reduce(
+          (total, layer) => total + doodadsIn(layer).length,
+          0,
+        )}
+      />
+      {collapsed ? null : <LayerRows layers={entry.layers} indented />}
+    </>
+  );
+}
+
+/**
+ * What a group is and how it stands: whether it is being worked on, its name,
+ * how many doodads it holds, and the two flags -- which are its members' flags,
+ * read as "all of them" and written to all of them.
+ *
+ * Nothing outside this panel learns what a group is: `viewport/groups.js` goes
+ * on obeying two booleans per layer, the way it did before groups existed. It is
+ * the reason a group is a name and not an object, applied to the flags.
+ *
+ * The name is committed on `change` and not on `input`. A group is its name, so
+ * every keystroke would be a group -- one that the members are moved into, that
+ * a half-typed name may collide with, and that the fold state and the active
+ * group both have to follow. Once, when the player has finished typing.
+ */
+function GroupRow({
+  group,
+  layers,
+  collapsed,
+  visible,
+  locked,
+  lockable,
+  count,
+}) {
+  return (
+    <li class="layer-row group-row">
+      <button
+        type="button"
+        class="btn btn-sm btn-link p-0 group-caret"
+        title={collapsed ? "Show these layers" : "Fold this group"}
+        onClick={() => state.toggleCollapsed(group)}
+      >
+        <i
+          class={`bi ${collapsed ? "bi-caret-right-fill" : "bi-caret-down-fill"}`}
+        ></i>
+      </button>
+      <input
+        type="radio"
+        class="form-check-input"
+        name="active-layer"
+        title={`Work on the group '${group}': its ${layers.length} layers move together`}
+        checked={state.activeGroup.value === group}
+        onClick={() => activateGroup(group, layers)}
+      />
+      <i class="bi bi-collection text-secondary" title="A layer group"></i>
+      <input
+        type="text"
+        class="form-control form-control-sm"
+        value={group}
+        title="The name of this group, which is what its layers carry"
+        onChange={(event) => renameGroup(group, event.currentTarget.value)}
+      />
+      <span class="text-secondary layer-count">{count}</span>
+      <Toggle
+        layers={layers}
+        flag="visible"
+        enabled={visible}
+        on="bi-eye"
+        off="bi-eye-slash"
+        title="Visible: every layer of the group"
+      />
+      {lockable ? (
+        <Toggle
+          layers={layers.filter((layer) => !isArray(layer))}
+          flag="locked"
+          enabled={locked}
+          on="bi-lock"
+          off="bi-unlock"
+          title="Locked: every layer of the group"
+        />
+      ) : null}
+    </li>
+  );
+}
+
+/**
+ * The actions, once, acting on whatever the radio names -- a layer, or a group.
+ *
+ * A group answers the same four slots as a layer, meaning them of the whole
+ * group: moving steps the run over its neighbour, duplicating copies every
+ * member into a group of its own, deleting takes them all after saying so. They
+ * are the same four things a player wants of the thing they have picked, and a
+ * second bar for groups would be the same bar drawn twice.
+ *
+ * The array half stays a layer's. An array is one member of a group, and the
+ * settings and the detach are about that one array.
  *
  * A slot that does not apply is disabled and not hidden. A hidden slot takes its
  * width with it and the rest slide over, so the delete button would sit
@@ -108,44 +256,130 @@ function addLayerTitle(selected) {
  * acting on the layer, and it is the palette's.
  */
 function LayerActions() {
-  const layers = state.layers.value;
-  const index = layers.findIndex(
-    (layer) => layer.id === state.activeLayer.value,
-  );
-  const layer = index === -1 ? null : layers[index];
+  const target = activeTarget();
   return (
     <div class="d-flex gap-1 flex-nowrap align-items-center mb-2 layer-actions">
       <AddDoodadButton />
       <div class="btn-group" role="group" aria-label="This layer">
         <ActionButton
           icon="bi-arrow-up"
-          title="Move this layer up"
-          disabled={layer === null || index === 0}
-          onClick={() => move(layer, -1)}
+          title={`Move this ${target.what} up`}
+          disabled={!target.canMove(-1)}
+          onClick={() => target.move(-1)}
         />
         <ActionButton
           icon="bi-arrow-down"
-          title="Move this layer down"
-          disabled={layer === null || index === layers.length - 1}
-          onClick={() => move(layer, 1)}
+          title={`Move this ${target.what} down`}
+          disabled={!target.canMove(1)}
+          onClick={() => target.move(1)}
         />
         <ActionButton
           icon="bi-copy"
-          title="Duplicate this layer"
-          disabled={layer === null}
-          onClick={() => duplicate(layer)}
+          title={`Duplicate this ${target.what}`}
+          disabled={!target.canDuplicate}
+          onClick={target.duplicate}
         />
         <ActionButton
           icon="bi-trash"
           extra="text-danger"
-          title="Delete this layer"
-          disabled={layer === null || layers.length < 2}
-          onClick={() => remove(layer)}
+          title={target.deleteTitle}
+          disabled={!target.canDelete}
+          onClick={target.remove}
         />
       </div>
-      <ArrayButtons layer={arrayOf(layer)} />
+      <ArrayButtons layer={arrayOf(target.layer)} />
     </div>
   );
+}
+
+/**
+ * What the bar acts on: the group being worked on, the layer being worked on, or
+ * neither -- one shape either way, so the bar reads its slots and does not ask
+ * which kind of thing it is holding.
+ *
+ * `what` names the thing in every title, which is the whole of what the bar says
+ * differently for a group.
+ */
+function activeTarget() {
+  const entries = outline();
+  const group = state.activeGroup.value;
+  if (group !== null) {
+    const index = entries.findIndex((entry) => entry.group === group);
+    if (index !== -1) return groupTarget(group, entries, index);
+  }
+
+  const layer = document_()?.findLayer(state.activeLayer.value) ?? null;
+  if (layer === null) return NO_TARGET;
+  return layerTarget(layer, entries);
+}
+
+const NO_TARGET = {
+  what: "layer",
+  layer: null,
+  canMove: () => false,
+  move: () => {},
+  canDuplicate: false,
+  duplicate: () => {},
+  canDelete: false,
+  deleteTitle: "Delete this layer",
+  remove: () => {},
+};
+
+function groupTarget(group, entries, index) {
+  const target = neighbourOfGroup(group);
+  return {
+    what: "group",
+    layer: null,
+    canMove: (offset) => at(index + offset, entries) !== null,
+    move: (offset) => moveEntry(index, offset),
+    canDuplicate: true,
+    duplicate: () => duplicateGroup(group),
+    canDelete: target !== null,
+    deleteTitle:
+      target === null
+        ? "Every layer is in this group, and a document keeps one layer"
+        : "Delete this group and all its layers",
+    remove: () => removeGroup(group, target),
+  };
+}
+
+/**
+ * A layer moves inside its group, or over its neighbours when it has none.
+ *
+ * A step that landed between two members would be joining their group, and
+ * joining is what the row's group control says -- one gesture, one meaning.
+ */
+function layerTarget(layer, entries) {
+  const members = document_().groupOf(layer.id);
+  const index = entries.findIndex((entry) => entry.layers.includes(layer));
+  const place = members.indexOf(layer);
+  const inGroup = layer.group !== null && layer.group !== undefined;
+  return {
+    what: "layer",
+    layer,
+    canMove: (offset) =>
+      inGroup
+        ? at(place + offset, members) !== null
+        : at(index + offset, entries) !== null,
+    move: (offset) =>
+      inGroup ? moveInGroup(layer, offset) : moveEntry(index, offset),
+    canDuplicate: true,
+    duplicate: () => duplicate(layer),
+    canDelete: state.layers.value.length > 1,
+    deleteTitle: "Delete this layer",
+    remove: () => remove(layer),
+  };
+}
+
+/** The item at an index, or `null` where the index is off either end. */
+function at(index, items) {
+  if (index < 0 || index >= items.length) return null;
+  return items[index];
+}
+
+/** A layer outside a group, to hand its doodads to when the group goes. */
+function neighbourOfGroup(group) {
+  return state.layers.value.find((layer) => layer.group !== group) ?? null;
 }
 
 /** Whether a layer carries a generator, which is what makes it an array. */
@@ -199,9 +433,10 @@ function LayerRow({
   visible,
   locked,
   array,
+  indented,
 }) {
   return (
-    <li class="layer-row">
+    <li class={indented ? "layer-row layer-row-grouped" : "layer-row"}>
       <input
         type="radio"
         class="form-check-input"
@@ -230,7 +465,7 @@ function LayerRow({
       {array && <ArrayBadge />}
       <span class="text-secondary layer-count">{doodadsIn(layer).length}</span>
       <Toggle
-        layer={layer}
+        layers={[layer]}
         flag="visible"
         enabled={visible}
         on="bi-eye"
@@ -239,7 +474,7 @@ function LayerRow({
       />
       {array ? null : (
         <Toggle
-          layer={layer}
+          layers={[layer]}
           flag="locked"
           enabled={locked}
           on="bi-lock"
@@ -251,13 +486,15 @@ function LayerRow({
   );
 }
 
-/** What the radio does here, which the group is half the answer to. */
+/**
+ * What the radio does here. A layer in a group answers for itself, the group
+ * row being what answers for the group -- so the group changes nothing about
+ * this except that it is worth saying which one moves.
+ */
 function activateTitle(array, group) {
-  if (group !== null) {
-    return `Work on this layer, and put the group '${group}' in the box: it all moves together`;
-  }
-  if (array) return "Work on this array: its box and handles come up";
-  return "Work on this layer: new doodads land here, and its doodads are selected";
+  const alone = group === null ? "" : ", by itself";
+  if (array) return `Work on this array${alone}: its box and handles come up`;
+  return `Work on this layer${alone}: new doodads land here, and its doodads are selected`;
 }
 
 /**
@@ -311,21 +548,52 @@ const NEW_GROUP = "\u0000new";
  * `flag` is what is written and `enabled` is what is drawn, which reads like one
  * thing said twice and is not: the value has to arrive as a prop for the row
  * above to redraw at all. See `LayerRow`.
+ *
+ * A list of layers rather than one, because a group's flag is its members'
+ * flags: they are all written to what `enabled` was not, so a group half of
+ * whose layers are hidden shows itself hidden and opens all of them at once.
  */
-function Toggle({ layer, flag, enabled, on, off, title }) {
+function Toggle({ layers, flag, enabled, on, off, title }) {
   return (
     <button
       type="button"
       class="btn btn-sm btn-link p-0"
       title={title}
-      onClick={() => {
-        layer[flag] = !layer[flag];
-        state.layersChanged();
-      }}
+      onClick={() => toggle(layers, flag, enabled)}
     >
       <i class={`bi ${enabled ? on : off}`}></i>
     </button>
   );
+}
+
+/**
+ * Writes a flag on some layers, and asks again what is being worked on when
+ * they are part of it.
+ *
+ * **What is up on the canvas was derived from the flags once, when the radio was
+ * answered.** A hidden layer's doodads are not selected and a hidden array does
+ * not ride with its group, so hiding one afterwards left a box standing over
+ * nothing -- the doodads go, `showLayers` discards them, but an array rides on a
+ * proxy the box holds and no flag reaches that. Showing one again was the same
+ * omission the other way round: nothing had asked for its proxy.
+ *
+ * So the flags are a thing the answer depends on, and changing one asks again.
+ * Only when these layers are part of what is up: toggling an eye elsewhere in
+ * the list would otherwise throw away a selection the player banded by hand.
+ */
+function toggle(layers, flag, enabled) {
+  for (const layer of layers) {
+    layer[flag] = !enabled;
+  }
+  state.layersChanged();
+  if (worksOn(layers)) reactivate(layers[0]);
+}
+
+/** Whether any of these layers is part of what is being worked on. */
+function worksOn(layers) {
+  const group = state.activeGroup.value;
+  if (group !== null) return layers.some((layer) => layer.group === group);
+  return layers.some((layer) => layer.id === state.activeLayer.value);
 }
 
 function document_() {
@@ -356,8 +624,13 @@ function groupNames() {
  * The group a layer moves with, as the row's select says it. A new group is
  * named and then simply carried, there being nothing else to a group.
  *
- * The layer being worked on is taken up again afterwards, and it is not
- * necessarily this one: what moves together has just changed, and the box on
+ * Joining moves the layer to the group's other layers -- the document tidies
+ * them, because a group is drawn as a run of rows. So the layer that was picked
+ * from this row may now be somewhere else in the list, which is the price of a
+ * list that reads as export order.
+ *
+ * What is being worked on is taken up again afterwards, and it is not
+ * necessarily this layer: what moves together has just changed, and the box on
  * the canvas is showing the set as it was. Grouping a layer does not make it the
  * active one -- the radio says that, and one gesture says one thing.
  */
@@ -370,14 +643,53 @@ function regroup(layer, chosen) {
     return;
   }
 
-  layer.group = group === NO_GROUP ? null : group;
+  document_().groupLayer(layer.id, group === NO_GROUP ? null : group);
   state.layersChanged();
-  reactivate();
+  reactivate(layer);
 }
 
-function reactivate() {
-  const layer = document_().findLayer(state.activeLayer.value);
-  if (layer) activate(layer);
+/**
+ * Takes up again whatever is being worked on, now that the membership has
+ * changed. `fallback` is the layer that changed, and it is what is taken up when
+ * the group that was active has just lost its last member.
+ */
+function reactivate(fallback) {
+  const group = state.activeGroup.value;
+  if (group === null) {
+    const layer = document_().findLayer(state.activeLayer.value);
+    if (layer) activate(layer);
+    return;
+  }
+
+  const members = document_().layersInGroup(group);
+  if (members.length > 0) {
+    activateGroup(group, members);
+    return;
+  }
+  activate(fallback);
+}
+
+/**
+ * A group renamed, which is the name written on every member -- see
+ * `model.renameGroup`. An empty name is no answer and is ignored, the way the
+ * new-group prompt ignores one.
+ *
+ * The fold and the radio follow the name: they hold group names, and the group
+ * they held is the one that has just been renamed.
+ */
+function renameGroup(group, renamed) {
+  const name = renamed.trim();
+  if (name === "" || name === group) {
+    state.layersChanged();
+    return;
+  }
+
+  document_().renameGroup(group, name);
+  state.collapsedGroups.value = state.collapsedGroups.value.map((other) =>
+    other === group ? name : other,
+  );
+  if (state.activeGroup.value === group) state.activeGroup.value = name;
+  state.layersChanged();
 }
 
 /** A name for a new group, or `null` where the player gave none. */
@@ -396,8 +708,15 @@ function recolor(layer, color) {
   state.layersChanged();
 }
 
-function move(layer, offset) {
-  document_().moveLayer(layer.id, offset);
+/** A group, or an ungrouped layer, over its neighbour in the list. */
+function moveEntry(index, offset) {
+  document_().moveEntry(index, offset);
+  state.layersChanged();
+}
+
+/** A layer over its neighbour inside its own group. */
+function moveInGroup(layer, offset) {
+  document_().moveInGroup(layer.id, offset);
   state.layersChanged();
 }
 
@@ -430,6 +749,18 @@ function duplicate(layer) {
 }
 
 /**
+ * A copy of a whole group, in a group of its own, which becomes the one being
+ * worked on -- `duplicate`'s reasoning, one level up: the copy is made in order
+ * to work on it, and it is standing exactly on the original.
+ */
+function duplicateGroup(group) {
+  const copies = document_().duplicateGroup(group);
+  state.doodadCount.value = document_().doodads.length;
+  state.layersChanged();
+  activateGroup(copies[0].group, copies);
+}
+
+/**
  * Working on a layer: it takes new doodads, and what it already holds is put in
  * front of the player.
  *
@@ -440,19 +771,12 @@ function duplicate(layer) {
  * previous selection is dismissed either way, one layer at a time being the
  * point of the control.
  *
- * **A layer in a group answers for the group.** The radio still names the one
- * layer being worked on -- new doodads land there, and the palette still reads
- * it -- and what comes up is everything that moves with it. See `activateGroup`
- * and wiki/decisions/layer-groups.md.
+ * **A layer in a group answers for itself.** It is one layer of several that
+ * move together, and picking it says which one -- the group is picked by its own
+ * row. See `activateGroup` and wiki/decisions/layer-groups.md.
  */
 function activate(layer) {
-  state.activeLayer.value = layer.id;
-  const group = document_().groupOf(layer.id);
-  if (group.length > 1) {
-    activateGroup(group);
-    return;
-  }
-
+  state.workOnLayer(layer.id);
   state.movingArrays.value = [];
   if (document_().findGenerator(layer.id)) {
     state.requestSelection([]);
@@ -475,14 +799,19 @@ function activate(layer) {
  * A hidden array is left where it is, the way the viewport leaves a hidden
  * layer's doodads unselected: a layer that cannot be seen moving is a layer that
  * has moved without the player watching.
+ *
+ * No layer is active while a group is. A group is not a place a doodad lands, so
+ * the palette refuses and names the layer to pick instead -- falling through to
+ * some member would be the editor answering the question the radio asks.
  */
-function activateGroup(group) {
+function activateGroup(group, layers) {
+  state.workOnGroup(group);
   state.editArray(null);
-  state.movingArrays.value = group
+  state.movingArrays.value = layers
     .filter((layer) => isArray(layer) && layer.visible)
     .map((layer) => layer.id);
   state.requestSelection(
-    group
+    layers
       .filter((layer) => !isArray(layer))
       .flatMap((layer) => doodadsIn(layer)),
   );
@@ -502,7 +831,7 @@ function remove(layer) {
   const wasArray = Boolean(document_().findGenerator(layer.id));
   document_().removeLayer(layer.id, target.id);
   if (state.activeLayer.value === layer.id) {
-    state.activeLayer.value = target.id;
+    state.workOnLayer(target.id);
   }
   if (wasArray) {
     if (state.editedArray.value === layer.id) state.editArray(null);
@@ -533,4 +862,49 @@ function neighbourOf(layer) {
   const layers = state.layers.value;
   const index = layers.indexOf(layer);
   return layers[index === 0 ? 1 : index - 1];
+}
+
+/**
+ * Deleting a group deletes its layers, so it says how many and what becomes of
+ * their doodads -- `remove`'s rule, said once for all of them rather than once
+ * per layer, which would be a row of confirms nobody reads by the third.
+ *
+ * The doodads go to a layer outside the group, `neighbourOfGroup`'s answer: a
+ * member would be about to be deleted itself.
+ */
+function removeGroup(group, target) {
+  const layers = document_().layersInGroup(group);
+  if (!confirm(removeGroupWarning(group, layers, target))) return;
+
+  document_().removeGroup(group, target.id);
+  state.collapsedGroups.value = state.collapsedGroups.value.filter(
+    (other) => other !== group,
+  );
+  state.editArray(null);
+  state.movingArrays.value = [];
+  state.requestSelection([]);
+  state.doodadCount.value = document_().doodads.length;
+  state.layersChanged();
+  activate(target);
+}
+
+function removeGroupWarning(group, layers, target) {
+  const arrays = layers.filter((layer) => isArray(layer));
+  const kept = layers
+    .filter((layer) => !isArray(layer))
+    .reduce((total, layer) => total + doodadsIn(layer).length, 0);
+  const generated = arrays.reduce(
+    (total, layer) => total + doodadsIn(layer).length,
+    0,
+  );
+  return (
+    `Delete the group '${group}' and its ${layers.length} layers?\n\n` +
+    `Their ${kept} doodads are not deleted. They move to the layer ` +
+    `'${target.name}'.` +
+    (arrays.length === 0
+      ? ""
+      : `\n\nThe ${arrays.length} arrays among them generate their own ` +
+        `${generated} doodads, so those are deleted with them. Detach an array ` +
+        `first to keep its doodads.`)
+  );
 }

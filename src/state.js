@@ -90,6 +90,42 @@ export const layers = signal([]);
 /** Which layer a new doodad, or a moved selection, lands in. */
 export const activeLayer = signal(null);
 
+/**
+ * The group being worked on, by name, or `null`.
+ *
+ * The other kind of row the layer list's radio runs over. Exactly one of these
+ * two is set: a group is not a layer doodads can land in, so while one is up
+ * there is no active layer and the palette says so. See
+ * wiki/decisions/layer-groups.md.
+ */
+export const activeGroup = signal(null);
+
+export function workOnLayer(id) {
+  activeGroup.value = null;
+  activeLayer.value = id;
+}
+
+export function workOnGroup(name) {
+  activeLayer.value = null;
+  activeGroup.value = name;
+}
+
+/**
+ * The names of the groups whose rows are folded shut.
+ *
+ * Not stored and not saved: it is how the list is being looked at now, not
+ * something about the layout. A list rather than a `Set`, signals comparing by
+ * reference -- a mutated set is a set nobody hears about.
+ */
+export const collapsedGroups = signal([]);
+
+export function toggleCollapsed(name) {
+  const collapsed = collapsedGroups.value;
+  collapsedGroups.value = collapsed.includes(name)
+    ? collapsed.filter((other) => other !== name)
+    : [...collapsed, name];
+}
+
 export function layersChanged() {
   layers.value = [...hideoutDocument.value.layers];
 }

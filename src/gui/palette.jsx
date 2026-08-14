@@ -70,11 +70,19 @@ function purpose() {
  */
 export function AddDoodadButton() {
   const { title, icon } = purpose();
+  // A group is not a place a doodad lands, and which of its layers should take
+  // one is the radio's question, not this button's -- so it says so and waits.
+  const group = state.activeGroup.value;
   return (
     <button
       type="button"
       class="btn btn-secondary btn-sm text-nowrap"
-      disabled={state.hideoutDocument.value === null}
+      title={
+        group === null
+          ? "The doodad palette"
+          : `The group '${group}' is being worked on. Pick a layer inside it to place doodads.`
+      }
+      disabled={state.hideoutDocument.value === null || group !== null}
       onClick={() => {
         state.showPalette.value = !state.showPalette.value;
       }}
@@ -360,6 +368,15 @@ function Entry({ entry }) {
  * hidden array is a fair thing to work on.
  */
 function refusal() {
+  // A group first: with one up there is no active layer at all, so the two
+  // checks below have nothing to read and the answer is about the group anyway.
+  const group = state.activeGroup.value;
+  if (group !== null) {
+    return (
+      `The group '${group}' is being worked on, and a group is not a layer ` +
+      `a doodad can land in. Pick a layer inside it in the layer list.`
+    );
+  }
   if (activeArray() !== null) return null;
 
   const layer = activeLayer();

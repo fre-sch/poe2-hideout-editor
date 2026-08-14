@@ -919,7 +919,7 @@ function addArray() {
  * double-click sets this array's doodad rather than placing one.
  */
 export function openSettings(layer) {
-  state.activeLayer.value = layer;
+  state.workOnLayer(layer);
   state.editArray(layer);
   state.showArraySettings.value = true;
 }

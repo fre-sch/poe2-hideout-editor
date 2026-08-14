@@ -349,6 +349,206 @@ describe("layer groups", () => {
   });
 });
 
+/**
+ * The tree the layer list draws, and the ordering that lets it be drawn: a group
+ * is a run of adjacent layers, because a group of rows scattered down a list is
+ * not a group anybody can read. See wiki/decisions/layer-groups.md and issue
+ * 0066.
+ */
+describe("layer groups as a tree", () => {
+  /** Two groups interleaved with an ungrouped layer, which is the hard case. */
+  function scattered() {
+    const document_ = HideoutDocument.fromText(SHRINE);
+    const garden = document_.addLayer("Garden");
+    const wall = document_.addLayer("Wall");
+    const fence = document_.addLayer("Fence");
+    garden.group = "Yard";
+    fence.group = "Yard";
+    return { document_, garden, wall, fence };
+  }
+
+  function ids(document_) {
+    return document_.layers.map((layer) => layer.id);
+  }
+
+  it("draws an outline of groups and ungrouped layers, in layer order", () => {
+    const { document_, garden, wall, fence } = scattered();
+    document_.tidyGroups();
+
+    expect(
+      document_
+        .layerOutline()
+        .map((entry) => [entry.group, entry.layers.map((layer) => layer.id)]),
+    ).toEqual([
+      [null, ["default"]],
+      ["Yard", [garden.id, fence.id]],
+      [null, [wall.id]],
+    ]);
+  });
+
+  it("gathers a group where its first member stands", () => {
+    const { document_, garden, wall, fence } = scattered();
+    document_.tidyGroups();
+
+    expect(ids(document_)).toEqual(["default", garden.id, fence.id, wall.id]);
+  });
+
+  it("tidies a project file whose members are scattered, on load", () => {
+    const { document_, garden, wall, fence } = scattered();
+    const loaded = new HideoutDocument(
+      document_.header,
+      document_.doodads,
+      document_.layers,
+    );
+
+    expect(loaded.layers.map((layer) => layer.id)).toEqual([
+      "default",
+      garden.id,
+      fence.id,
+      wall.id,
+    ]);
+  });
+
+  it("moves a layer to its group when it joins one", () => {
+    const { document_, garden, wall, fence } = scattered();
+    document_.tidyGroups();
+    document_.groupLayer(wall.id, "Yard");
+
+    expect(ids(document_)).toEqual([
+      "default",
+      garden.id,
+      fence.id,
+      wall.id,
+    ]);
+    expect(document_.groupOf(wall.id)).toHaveLength(3);
+  });
+
+  /**
+   * The layer stays where it stands and the group closes up behind it, which is
+   * the outline walk falling out right: a layer that has left is an entry of its
+   * own at its own place, and what remains of the group is still one run.
+   */
+  it("leaves the run whole when a member leaves the group", () => {
+    const { document_, garden, wall, fence } = scattered();
+    document_.tidyGroups();
+    document_.groupLayer(fence.id, null);
+
+    expect(ids(document_)).toEqual(["default", garden.id, fence.id, wall.id]);
+    expect(document_.layersInGroup("Yard").map((layer) => layer.id)).toEqual([
+      garden.id,
+    ]);
+  });
+
+  it("steps a group over a whole neighbouring entry", () => {
+    const { document_, garden, wall, fence } = scattered();
+    document_.tidyGroups();
+    document_.moveEntry(1, 1);
+
+    expect(ids(document_)).toEqual(["default", wall.id, garden.id, fence.id]);
+  });
+
+  it("steps an ungrouped layer over a whole group, never into one", () => {
+    const { document_, garden, wall, fence } = scattered();
+    document_.tidyGroups();
+    document_.moveEntry(2, -1);
+
+    expect(ids(document_)).toEqual(["default", wall.id, garden.id, fence.id]);
+  });
+
+  it("does not move an entry off either end", () => {
+    const { document_ } = scattered();
+    document_.tidyGroups();
+    const before = ids(document_);
+    document_.moveEntry(0, -1);
+    document_.moveEntry(2, 1);
+
+    expect(ids(document_)).toEqual(before);
+  });
+
+  it("moves a layer inside its own group, and no further", () => {
+    const { document_, garden, wall, fence } = scattered();
+    document_.tidyGroups();
+    document_.moveInGroup(fence.id, -1);
+
+    expect(ids(document_)).toEqual([
+      "default",
+      fence.id,
+      garden.id,
+      wall.id,
+    ]);
+
+    document_.moveInGroup(fence.id, -1);
+    expect(ids(document_)).toEqual([
+      "default",
+      fence.id,
+      garden.id,
+      wall.id,
+    ]);
+  });
+
+  it("renames a group by writing the name on every member", () => {
+    const { document_, garden, fence } = scattered();
+    document_.renameGroup("Yard", "Courtyard");
+
+    expect(document_.groupNames()).toEqual(["Courtyard"]);
+    expect(document_.layersInGroup("Courtyard").map((layer) => layer.id)).toEqual(
+      [garden.id, fence.id],
+    );
+  });
+
+  it("merges two groups renamed onto one name, a group being its name", () => {
+    const { document_, wall } = scattered();
+    document_.groupLayer(wall.id, "Path");
+    document_.renameGroup("Path", "Yard");
+
+    expect(document_.groupNames()).toEqual(["Yard"]);
+    expect(document_.layersInGroup("Yard")).toHaveLength(3);
+  });
+
+  it("copies a group into a group of its own, under a free name", () => {
+    const { document_ } = scattered();
+    const copies = document_.duplicateGroup("Yard");
+
+    expect(document_.groupNames()).toEqual(["Yard", "Yard copy"]);
+    expect(copies.map((layer) => layer.group)).toEqual([
+      "Yard copy",
+      "Yard copy",
+    ]);
+    expect(document_.layersInGroup("Yard copy")).toHaveLength(2);
+  });
+
+  it("finds a free name for a second copy", () => {
+    const { document_ } = scattered();
+    document_.duplicateGroup("Yard");
+    document_.duplicateGroup("Yard");
+
+    // Sorted, because `groupNames` answers in layer order and where a copy
+    // lands is `duplicateLayer`'s business, not this test's.
+    expect(document_.groupNames().sort()).toEqual([
+      "Yard",
+      "Yard copy",
+      "Yard copy 2",
+    ]);
+  });
+
+  it("deletes every layer of a group, keeping the doodads outside it", () => {
+    const { document_, garden } = scattered();
+    document_.assign(document_.doodadsIn("default"), garden.id);
+    document_.removeGroup("Yard", "default");
+
+    expect(document_.groupNames()).toEqual([]);
+    expect(document_.doodadsIn("default")).toHaveLength(2);
+  });
+
+  it("refuses to hand a deleted group's doodads to one of its own layers", () => {
+    const { document_, garden } = scattered();
+
+    expect(() => document_.removeGroup("Yard", garden.id)).toThrow(
+      /in the group being deleted/,
+    );
+  });
+});
+
 describe("duplicateLayer", () => {
   it("copies an ordinary layer's doodads as doodads of their own", () => {
     const document_ = HideoutDocument.fromText(SHRINE);

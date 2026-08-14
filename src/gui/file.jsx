@@ -94,7 +94,7 @@ async function load(event) {
 
     state.hideoutDocument.value = hideout;
     state.layers.value = [...hideout.layers];
-    state.activeLayer.value = firstOrdinaryLayer(hideout).id;
+    state.workOnLayer(firstOrdinaryLayer(hideout).id);
     state.fileName.value = file.name;
     state.hideoutType.value = hideout.header.hideout_hash;
     state.fileType.value = {
@@ -112,6 +112,8 @@ async function load(event) {
     // And an array's handles and settings with it, for the same reason: they
     // describe one array of one document.
     state.editArray(null);
+    // Folded groups are the previous document's groups.
+    state.collapsedGroups.value = [];
   } catch (error) {
     state.loadError.value = error;
   }
