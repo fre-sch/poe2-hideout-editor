@@ -152,6 +152,43 @@ export function editingName(kind, key) {
   return edited !== null && edited.kind === kind && edited.key === key;
 }
 
+/**
+ * The layer being dragged in the layer list, as `{ id, group }` -- the group it
+ * is leaving, or `null` for a layer in none -- and `null` while nothing is being
+ * dragged.
+ *
+ * The list draws itself differently while a drag is on: a member offers a strip
+ * at the end of the list to leave its group by. So the drag is a signal and not
+ * a property of the row it started on -- the strip is elsewhere. Not stored and
+ * not saved, the way `editedName` is not: it is a gesture in progress. See wiki
+ * issue 0070.
+ */
+export const draggedLayer = signal(null);
+
+/**
+ * Where the drag is hovering, as `{ group }` -- a group's name, or `null` for
+ * the strip that leaves a group -- and `null` where it is over neither.
+ *
+ * A signal because the drag has no hover: `:hover` is not maintained while the
+ * pointer is dragging something, so the row that would take the drop has to say
+ * so itself.
+ */
+export const dropTarget = signal(null);
+
+export function startLayerDrag(id, group) {
+  draggedLayer.value = { id, group };
+}
+
+export function endLayerDrag() {
+  draggedLayer.value = null;
+  dropTarget.value = null;
+}
+
+/** Whether the drag is over this drop target, `group` being a name or `null`. */
+export function overDropTarget(group) {
+  return dropTarget.value !== null && dropTarget.value.group === group;
+}
+
 export function layersChanged() {
   layers.value = [...hideoutDocument.value.layers];
 }
