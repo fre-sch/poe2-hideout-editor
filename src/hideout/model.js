@@ -207,6 +207,9 @@ export class HideoutDocument {
     // authored, so nothing else may write into that layer.
     this.generators = generators;
     this.colorLayers();
+    // A group is drawn as a run of rows, and a project file may hold its members
+    // anywhere. Reading one is where that is put right, once.
+    this.tidyGroups();
   }
 
   /**
@@ -282,6 +285,120 @@ export class HideoutDocument {
           .filter((name) => name !== null && name !== undefined),
       ),
     ];
+  }
+
+  /**
+   * The layers as the panel draws them: one entry per group and one per
+   * ungrouped layer, `{ group, layers }`, in layer order. A group's entry stands
+   * where its first member does and holds every member.
+   *
+   * The tree the layer list is, said once here rather than rebuilt wherever a
+   * group has to be stepped over -- moving, drawing and tidying are the same
+   * walk. See wiki/decisions/layer-groups.md.
+   */
+  layerOutline() {
+    const entries = [];
+    const seen = new Set();
+    for (const layer of this.layers) {
+      const name = layer.group ?? null;
+      if (name === null) {
+        entries.push({ group: null, layers: [layer] });
+        continue;
+      }
+      if (seen.has(name)) continue;
+
+      seen.add(name);
+      entries.push({ group: name, layers: this.layersInGroup(name) });
+    }
+    return entries;
+  }
+
+  /**
+   * Gathers each group's layers where its first member stands, leaving every
+   * other layer where it is.
+   *
+   * A group is drawn as a run of rows, so it has to be one -- and the tidying is
+   * the outline flattened, the two being the same statement read twice. Run on
+   * load, so a project file whose members are scattered arrives tidy, and after
+   * every membership change.
+   */
+  tidyGroups() {
+    this.layers = this.layerOutline().flatMap((entry) => entry.layers);
+  }
+
+  /**
+   * Puts a layer in a group, or takes it out of one for `null`, and tidies --
+   * joining a group is what moves a layer next to that group's others.
+   */
+  groupLayer(id, name) {
+    const layer = this.findLayer(id);
+    if (!layer) return;
+
+    layer.group = name;
+    this.tidyGroups();
+  }
+
+  /**
+   * Renames a group by writing the name on every member, there being nothing
+   * else a group is. Renaming onto a name already in use merges the two, which
+   * is what sharing a name means when the name is the group.
+   */
+  renameGroup(name, renamed) {
+    for (const layer of this.layersInGroup(name)) {
+      layer.group = renamed;
+    }
+    this.tidyGroups();
+  }
+
+  /**
+   * A copy of every layer of a group, in a group of its own.
+   *
+   * `duplicateLayer` copies the group name along with the layer, which is right
+   * for one layer and wrong for all of them -- the copies would join the
+   * original instead of standing beside it. So they are renamed, and a free name
+   * is found because two groups cannot share one.
+   */
+  duplicateGroup(name) {
+    const copies = this.layersInGroup(name).map((layer) =>
+      this.duplicateLayer(layer.id),
+    );
+    const renamed = this.freeGroupName(`${name} copy`);
+    for (const copy of copies) {
+      copy.group = renamed;
+    }
+    this.tidyGroups();
+    return copies;
+  }
+
+  /** A group name no group carries, from a name that may be taken. */
+  freeGroupName(name) {
+    const taken = new Set(this.groupNames());
+    if (!taken.has(name)) return name;
+
+    let number = 2;
+    while (taken.has(`${name} ${number}`)) {
+      number++;
+    }
+    return `${name} ${number}`;
+  }
+
+  /**
+   * Removes every layer of a group, handing the doodads to a layer outside it.
+   *
+   * Outside it, because a layer of the group being deleted is about to be
+   * deleted too, and the doodads would go round once and then vanish.
+   */
+  removeGroup(name, keepDoodadsIn) {
+    const target = this.findLayer(keepDoodadsIn);
+    if (!target)
+      throw new Error(`No layer '${keepDoodadsIn}' to keep doodads in`);
+    if (target.group === name) {
+      throw new Error(`Layer '${keepDoodadsIn}' is in the group being deleted`);
+    }
+
+    for (const layer of this.layersInGroup(name)) {
+      this.removeLayer(layer.id, keepDoodadsIn);
+    }
   }
 
   /**
@@ -474,6 +591,41 @@ export class HideoutDocument {
     this.doodads = this.doodads.filter((doodad) => doodad.layer !== id);
     this.detach(id);
     this.layers = this.layers.filter((layer) => layer.id !== id);
+  }
+
+  /**
+   * Moves an entry of the outline `offset` places along it, clamped to its ends:
+   * a group moves as its whole run, and an ungrouped layer steps over a
+   * neighbouring group rather than into it.
+   *
+   * Landing between two members would be joining their group, and joining is
+   * what the row's group control says. So the step is over the entry.
+   */
+  moveEntry(index, offset) {
+    const entries = this.layerOutline();
+    if (index < 0 || index >= entries.length) return;
+
+    const to = clamp(index + offset, 0, entries.length - 1);
+    entries.splice(to, 0, ...entries.splice(index, 1));
+    this.layers = entries.flatMap((entry) => entry.layers);
+  }
+
+  /** Moves a layer `offset` places inside its own group, clamped to the run. */
+  moveInGroup(id, offset) {
+    const members = this.groupOf(id);
+    const from = members.findIndex((layer) => layer.id === id);
+    if (from < 0) return;
+
+    const to = clamp(from + offset, 0, members.length - 1);
+    if (to === from) return;
+
+    // The run is contiguous -- `tidyGroups` is what keeps it so -- so it is
+    // reordered and written back over the slice it occupies.
+    const start = this.layers.indexOf(members[0]);
+    members.splice(to, 0, ...members.splice(from, 1));
+    const layers = [...this.layers];
+    layers.splice(start, members.length, ...members);
+    this.layers = layers;
   }
 
   /** Moves a layer `offset` places along the list, clamped to its ends. */

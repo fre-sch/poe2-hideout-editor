@@ -121,9 +121,11 @@ function Shortcuts() {
       </li>
       <li>
         Put layers in the same <span class="shortcut">group</span> to move them
-        as one: the box then holds every one of them, arrays included, and moves
-        and turns them together. It does not spread them out — for that, the
-        selection box and an array's own box are still there.
+        as one. The group gets a row of its own in the list: pick that row and
+        the box holds every layer of it, arrays included, and moves and turns
+        them together — pick a layer under it and you are working on that layer
+        alone. A group move does not spread doodads out; for that, the selection
+        box and an array's own box are still there.
       </li>
       <li>
         Drag <span class="shortcut">middle mouse button</span> to pan.
