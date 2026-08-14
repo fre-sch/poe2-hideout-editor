@@ -126,6 +126,32 @@ export function toggleCollapsed(name) {
     : [...collapsed, name];
 }
 
+/**
+ * Which name in the layer list is open for editing, as `{ kind, key }` -- kind
+ * `"layer"` with a layer id, or kind `"group"` with a group name -- or `null`
+ * while every name is being read rather than written.
+ *
+ * One signal, so opening a second editor closes the first: a name is edited by
+ * double-clicking it, and the row that was open is not necessarily near the row
+ * that just opened. Not stored and not saved, the way `collapsedGroups` is not:
+ * it is a gesture in progress. See wiki issue 0067.
+ */
+export const editedName = signal(null);
+
+export function editName(kind, key) {
+  editedName.value = { kind, key };
+}
+
+export function endNameEdit() {
+  editedName.value = null;
+}
+
+/** Whether this is the name that is open, `key` being an id or a group name. */
+export function editingName(kind, key) {
+  const edited = editedName.value;
+  return edited !== null && edited.kind === kind && edited.key === key;
+}
+
 export function layersChanged() {
   layers.value = [...hideoutDocument.value.layers];
 }

@@ -212,6 +212,25 @@ details[open] .details-summary-extra {
 .layer-row input[type="text"] {
   min-width: 3rem;
 }
+/* The name while it is being read rather than typed. It stands where the field
+   will stand -- same flex basis, same height, Bootstrap's plaintext padding --
+   or the row shifts under the pointer as the double click opens it. One line
+   with an ellipsis, the full name being in the title; and no text selection,
+   since here a double click means "rename" and not "pick a word". */
+.layer-name {
+  flex: 1 1 100%;
+  min-width: 3rem;
+  /* Bootstrap's plaintext drops the side padding and the side borders; the
+     field keeps both, and the text has to start in the same place. */
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
+  border-width: 1px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  user-select: none;
+  cursor: text;
+}
 /* The colour swatch: a square the size of the row's other controls, which
    Bootstrap's own colour input is not -- it is form-control sized, and a row of
    those is twice the height of the layer list. The padding goes with it, or the

@@ -128,6 +128,12 @@ function Shortcuts() {
         box and an array's own box are still there.
       </li>
       <li>
+        <span class="shortcut">Double-click</span> a layer or group name in the
+        list to rename it. <span class="shortcut">Enter</span> accepts the new
+        name, <span class="shortcut">Esc</span> puts the old one back, and
+        clicking away accepts.
+      </li>
+      <li>
         Drag <span class="shortcut">middle mouse button</span> to pan.
       </li>
       <li>
