@@ -120,9 +120,47 @@ function LayerRows({ layers, indented = false }) {
       locked={layer.locked}
       array={isArray(layer)}
       indented={indented}
+      mark={layerMark(layer)}
       editing={state.editingName("layer", layer.id)}
     />
   ));
+}
+
+/**
+ * **What is being worked on is a set of rows, not one row.** The radio names a
+ * layer or a group, and the other kind of row comes with it: a layer's group
+ * moves when the layer does, a group's layers are what the group is. So the
+ * marked row and its company are both drawn, at two strengths of the one colour
+ * -- the brighter one being the row the radio is actually on, which is how the
+ * pair says which of the two kinds is up. Wiki issue 0068.
+ *
+ * `null` for a row that is neither, which draws no mark at all.
+ */
+function layerMark(layer) {
+  if (state.activeLayer.value === layer.id) return "active";
+  if (inGroup(layer) && state.activeGroup.value === layer.group) {
+    return "related";
+  }
+  return null;
+}
+
+/** A group row is marked by its own radio, or by one of its layers'. */
+function groupMark(group, layers) {
+  if (state.activeGroup.value === group) return "active";
+  if (layers.some((layer) => layer.id === state.activeLayer.value)) {
+    return "related";
+  }
+  return null;
+}
+
+/** A row's classes: what it is, and how it stands to what is worked on. */
+function rowClass(...names) {
+  return names.filter(Boolean).join(" ");
+}
+
+/** A layer's `group` is absent on the layers of a file that had no groups. */
+function inGroup(layer) {
+  return layer.group !== null && layer.group !== undefined;
 }
 
 /**
@@ -148,6 +186,7 @@ function GroupRows({ entry }) {
           (total, layer) => total + doodadsIn(layer).length,
           0,
         )}
+        mark={groupMark(entry.group, entry.layers)}
         editing={state.editingName("group", entry.group)}
       />
       {collapsed ? null : <LayerRows layers={entry.layers} indented />}
@@ -177,10 +216,11 @@ function GroupRow({
   locked,
   lockable,
   count,
+  mark,
   editing,
 }) {
   return (
-    <li class="layer-row group-row">
+    <li class={rowClass("layer-row", "group-row", mark && `layer-row-${mark}`)}>
       <button
         type="button"
         class="btn btn-sm btn-link p-0 group-caret"
@@ -356,16 +396,16 @@ function layerTarget(layer, entries) {
   const members = document_().groupOf(layer.id);
   const index = entries.findIndex((entry) => entry.layers.includes(layer));
   const place = members.indexOf(layer);
-  const inGroup = layer.group !== null && layer.group !== undefined;
+  const grouped = inGroup(layer);
   return {
     what: "layer",
     layer,
     canMove: (offset) =>
-      inGroup
+      grouped
         ? at(place + offset, members) !== null
         : at(index + offset, entries) !== null,
     move: (offset) =>
-      inGroup ? moveInGroup(layer, offset) : moveEntry(index, offset),
+      grouped ? moveInGroup(layer, offset) : moveEntry(index, offset),
     canDuplicate: true,
     duplicate: () => duplicate(layer),
     canDelete: state.layers.value.length > 1,
@@ -437,10 +477,17 @@ function LayerRow({
   locked,
   array,
   indented,
+  mark,
   editing,
 }) {
   return (
-    <li class={indented ? "layer-row layer-row-grouped" : "layer-row"}>
+    <li
+      class={rowClass(
+        "layer-row",
+        indented && "layer-row-grouped",
+        mark && `layer-row-${mark}`,
+      )}
+    >
       <input
         type="radio"
         class="form-check-input"
