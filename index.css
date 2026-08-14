@@ -364,15 +364,12 @@ details[open] > summary::before {
    item that grows, so the strip's height comes off the list and the buttons
    below it do not move as it appears. */
 .layer-drop-out {
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
-  margin-bottom: 0.3rem;
+  text-align: center;
+  margin-bottom: 0.5rem;
   padding: 0.1rem 0.4rem;
   border: 1px dashed var(--bs-border-color);
   border-radius: 3px;
   color: var(--bs-secondary-color);
-  font-size: 0.875em;
 }
 
 /* A group's row, and its layers under it. The indent is what says the rows
