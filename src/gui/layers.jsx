@@ -120,6 +120,7 @@ function LayerRows({ layers, indented = false }) {
       locked={layer.locked}
       array={isArray(layer)}
       indented={indented}
+      editing={state.editingName("layer", layer.id)}
     />
   ));
 }
@@ -147,6 +148,7 @@ function GroupRows({ entry }) {
           (total, layer) => total + doodadsIn(layer).length,
           0,
         )}
+        editing={state.editingName("group", entry.group)}
       />
       {collapsed ? null : <LayerRows layers={entry.layers} indented />}
     </>
@@ -162,10 +164,10 @@ function GroupRows({ entry }) {
  * on obeying two booleans per layer, the way it did before groups existed. It is
  * the reason a group is a name and not an object, applied to the flags.
  *
- * The name is committed on `change` and not on `input`. A group is its name, so
- * every keystroke would be a group -- one that the members are moved into, that
- * a half-typed name may collide with, and that the fold state and the active
- * group both have to follow. Once, when the player has finished typing.
+ * The name is committed once, when the editor is closed, and not per keystroke.
+ * A group is its name, so every keystroke would be a group -- one that the
+ * members are moved into, that a half-typed name may collide with, and that the
+ * fold state and the active group both have to follow. See `Name`.
  */
 function GroupRow({
   group,
@@ -175,6 +177,7 @@ function GroupRow({
   locked,
   lockable,
   count,
+  editing,
 }) {
   return (
     <li class="layer-row group-row">
@@ -197,12 +200,12 @@ function GroupRow({
         onClick={() => activateGroup(group, layers)}
       />
       <i class="bi bi-collection text-secondary" title="A layer group"></i>
-      <input
-        type="text"
-        class="form-control form-control-sm"
-        value={group}
+      <Name
+        name={group}
+        editing={editing}
         title="The name of this group, which is what its layers carry"
-        onChange={(event) => renameGroup(group, event.currentTarget.value)}
+        edit={() => state.editName("group", group)}
+        commit={(typed) => renameGroup(group, typed)}
       />
       <span class="text-secondary layer-count">{count}</span>
       <Toggle
@@ -434,6 +437,7 @@ function LayerRow({
   locked,
   array,
   indented,
+  editing,
 }) {
   return (
     <li class={indented ? "layer-row layer-row-grouped" : "layer-row"}>
@@ -455,11 +459,12 @@ function LayerRow({
         value={color}
         onInput={(event) => recolor(layer, event.currentTarget.value)}
       />
-      <input
-        type="text"
-        class="form-control form-control-sm"
-        value={name}
-        onInput={(event) => rename(layer, event.currentTarget.value)}
+      <Name
+        name={name}
+        editing={editing}
+        title="The name of this layer"
+        edit={() => state.editName("layer", layer.id)}
+        commit={(typed) => rename(layer, typed)}
       />
       <GroupChoice layer={layer} group={group} groups={groups} />
       {array && <ArrayBadge />}
@@ -543,6 +548,94 @@ const NO_GROUP = "\u0000none";
 const NEW_GROUP = "\u0000new";
 
 /**
+ * A name in the list: text to read, and a field once it has been double-clicked.
+ *
+ * **A row's name is read far more often than it is written.** A column of live
+ * text boxes says every name is about to change, and it leaves no way to take
+ * typing back: with the layer written per keystroke, there is nothing for an
+ * Escape to put back. So the name is text, the double click is the way in, and
+ * the editor is a place where a name is being typed but is not yet the layer's.
+ *
+ * Enter commits and closes, Escape closes and leaves the old name, and clicking
+ * away commits -- losing a typed name to a stray click would be the worse
+ * mistake of the two. The keys are stopped here: Escape also clears the viewport
+ * selection and closes the help, and while a name is being typed it means this
+ * name.
+ *
+ * `editing` arrives as a prop for the reason every other value in a row does --
+ * see `LayerRow`.
+ */
+function Name({ name, editing, title, edit, commit }) {
+  if (!editing) {
+    return (
+      <span
+        class="form-control-plaintext form-control-sm layer-name"
+        title={`${title}. Double-click to rename it`}
+        onDblClick={edit}
+      >
+        {name}
+      </span>
+    );
+  }
+
+  return (
+    <input
+      type="text"
+      class="form-control form-control-sm"
+      value={name}
+      title={title}
+      ref={focusName}
+      onBlur={(event) => finishNameEdit(commit, event.currentTarget.value)}
+      onKeyDown={(event) => nameKey(event, commit, name)}
+    />
+  );
+}
+
+/**
+ * The editor takes the focus as it appears, and offers its text, so that typing
+ * replaces the name and an arrow key keeps it.
+ *
+ * A named function and not an inline one: a ref that changes identity is a ref
+ * Preact calls again on every redraw, which would take the focus back from
+ * wherever the player had put it. `autofocus` is not enough here -- the field is
+ * inserted long after the document loaded.
+ */
+function focusName(input) {
+  if (input === null) return;
+  input.focus();
+  input.select();
+}
+
+function nameKey(event, commit, name) {
+  if (event.key === "Enter") {
+    event.stopPropagation();
+    finishNameEdit(commit, event.currentTarget.value);
+    return;
+  }
+  if (event.key !== "Escape") return;
+
+  event.stopPropagation();
+  cancelNameEdit(event.currentTarget, name);
+}
+
+function finishNameEdit(commit, typed) {
+  state.endNameEdit();
+  commit(typed);
+}
+
+/**
+ * Escape: the field goes away and nothing is written.
+ *
+ * The typed text is put back first. Closing the editor removes the field, and a
+ * browser that answers that with a `blur` would otherwise commit what was just
+ * abandoned; with the old name in the box, that commit is not a change.
+ */
+function cancelNameEdit(input, name) {
+  input.value = name;
+  state.endNameEdit();
+}
+
+/**
  * The two flags, which differ only in which icon says which way round.
  *
  * `flag` is what is written and `enabled` is what is drawn, which reads like one
@@ -611,8 +704,17 @@ function doodadsIn(layer) {
   return document_().doodadsIn(layer.id);
 }
 
-function rename(layer, name) {
-  layer.name = name;
+/**
+ * A layer renamed, once -- when the editor closes and not per keystroke, which
+ * is what leaves an Escape something to put back. See `Name`.
+ *
+ * An empty name is no answer and is ignored, the way a group's is. The list is
+ * drawn again either way: the editor has just gone, and the row has to come back
+ * as text.
+ */
+function rename(layer, typed) {
+  const name = typed.trim();
+  if (name !== "") layer.name = name;
   state.layersChanged();
 }
 
