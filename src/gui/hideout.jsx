@@ -1,16 +1,18 @@
 /**
- * What the loaded file says about itself, and which outline to draw under it.
+ * What the loaded file says about itself, and what of that the player may
+ * change.
  *
  * The name shown is the game data's name for the file's `hideout_hash`, in the
  * document's language -- wiki issue 0021. The file's own `hideout_name` is what
- * is shown when no table names the hash, and it is what is saved either way:
- * the header is passed through verbatim, which is wiki issue 0009.
+ * is shown when no table names the hash.
  *
- * The hideout type is a viewport setting. Changing it changes the outline and
- * nothing else.
+ * The hideout type is the document's: choosing one writes `hideout_hash` and
+ * the name that follows it, and the outline the viewport draws follows the hash
+ * -- wiki issue 0061. Passing the header through verbatim, wiki issue 0009, is
+ * what a load and a save do; it never promised the type cannot be changed.
  *
- * The language is not: it is the document's, it is exported, and switching it
- * is how a player reads a hideout somebody else exported in their own words --
+ * The language is the document's too: it is exported, and switching it is how a
+ * player reads a hideout somebody else exported in their own words --
  * wiki issue 0053. What it changes is which tables are read; the names in the
  * document are left exactly as they arrived.
  */
@@ -69,7 +71,7 @@ export default function Hideout() {
         </div>
         <div class="text-secondary">Name:</div>
         <div>{displayName(header)}</div>
-        <div class="text-secondary">Outline:</div>
+        <div class="text-secondary">Type:</div>
         <div>
           <TypeSelect />
         </div>
@@ -116,22 +118,22 @@ function warningOf(count) {
 
 /**
  * Every hideout type the game has, and the file's own first where the data
- * knows nothing about its hash -- wiki issue 0007. The list comes from the
- * file's type and stays put while the player looks at other outlines, so
- * returning to the hideout they actually own is the same gesture as leaving it.
+ * knows nothing about its hash -- wiki issue 0007. The list comes from the type
+ * the file arrived as and stays put whatever is chosen, so returning to the
+ * hideout they actually own is the same gesture as leaving it.
  */
 function TypeSelect() {
-  const header = state.hideoutDocument.value.header;
+  const fileType = state.fileType.value;
   const options = hideouts.optionsFor(
     table.hideouts.value,
-    header.hideout_hash,
-    header.hideout_name,
+    fileType.hash,
+    fileType.name,
   );
   return (
     <select
       class="form-select form-select-sm"
       value={state.hideoutType.value}
-      onChange={select}
+      onChange={selectType}
     >
       {options.map((option) => (
         <option value={option.hash}>{label(option)}</option>
@@ -228,8 +230,14 @@ function Complaint({ error }) {
   return <p class="text-danger mt-2 mb-0">{`${error.message}`}</p>;
 }
 
-function select(event) {
-  state.hideoutType.value = event.currentTarget.value;
+function selectType(event) {
+  state.switchHideoutType(
+    hideouts.headerFor(
+      table.hideouts.value,
+      event.currentTarget.value,
+      state.fileType.value,
+    ),
+  );
   event.currentTarget.blur();
 }
 

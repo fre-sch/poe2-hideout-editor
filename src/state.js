@@ -21,8 +21,35 @@ export const fileName = signal("");
 /** What went wrong loading the last file. A malformed file must say so. */
 export const loadError = signal(null);
 
-/** `hideout_hash` of the outline to draw. Never written back to the file. */
+/**
+ * The document's `header.hideout_hash`, republished. `language`'s arrangement,
+ * applied to the type -- see there.
+ *
+ * It is also what the viewport draws the outline from, so the outline follows
+ * the type without being a second setting to keep in step.
+ */
 export const hideoutType = signal(null);
+
+/**
+ * The type the loaded file arrived as, `{ hash, name }`.
+ *
+ * The selector's list is built from this rather than from the header, so that a
+ * type the game data does not name is still offered after it has been left --
+ * an option that disappears when it stops being selected cannot be returned to,
+ * wiki issue 0007. It is also the name restored when the player does return.
+ */
+export const fileType = signal(null);
+
+/**
+ * Changes the document's hideout type: the hash, and the name that follows it.
+ *
+ * `switchLanguage`'s arrangement, applied to a pair of fields --
+ * `hideouts.headerFor` says what to write, wiki issue 0061.
+ */
+export function switchHideoutType(header) {
+  Object.assign(hideoutDocument.value.header, header);
+  hideoutType.value = header.hideout_hash;
+}
 
 /**
  * The document's `header.language`, republished.

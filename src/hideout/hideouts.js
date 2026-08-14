@@ -89,3 +89,27 @@ function own(hash, name, unknown) {
 export function nameFor(hideouts, hash, name) {
   return hideouts?.find(hash)?.name ?? name;
 }
+
+/**
+ * The header fields a chosen type writes -- wiki issue 0061.
+ *
+ * The name follows the hash: a player who changes the type has said their
+ * hideout is another one, and a file naming one hideout while hashing another
+ * misleads its next reader. This is not what wiki issue 0009 forbids, which is
+ * rewriting a name nobody asked to change.
+ *
+ * `fileType` is the type the file arrived as, `{ hash, name }`, and it is the
+ * fallback because the one hash the table cannot name is that one -- the
+ * options are the table's entries plus the file's own. So coming back to an
+ * unknown type restores the name it came with, which is what makes leaving it
+ * reversible.
+ *
+ * The hash is a number: it arrives from a `<select>` as a string, and the
+ * project file is JSON, which would remember the difference.
+ */
+export function headerFor(hideouts, hash, fileType) {
+  return {
+    hideout_hash: Number(hash),
+    hideout_name: nameFor(hideouts, hash, fileType.name),
+  };
+}
