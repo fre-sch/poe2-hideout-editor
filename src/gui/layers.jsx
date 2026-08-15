@@ -2,61 +2,44 @@
  * The layer panel: organise a layout into parts, and say which part is being
  * worked on.
  *
- * **The row is that saying, and it does all of it.** Picking one marks where new
- * doodads land, it selects the layer's doodads, and on an array it raises the
- * box and its handles. One gesture, because they are one intent -- "I am working
- * on this layer" -- and a separate button for the selection was a second way to
- * say a thing already said. It answers every click and not only the ones that
- * move the mark, so the way back to a selection just dismissed is the row it is
- * already on.
+ * Picking a row is the whole of that saying -- it marks where new doodads land,
+ * selects the layer's doodads, and on an array raises the box and its handles.
+ * It answers every click, not only the ones that move the mark, so the way back
+ * to a selection just dismissed is the row it is already on.
  *
- * **The row itself is the control**, and there is no radio button in it: the
- * mark on the row's background says which row is up -- wiki issues 0068 and
- * 0069 -- and a radio beside it said the same thing again, smaller. The controls
- * the row carries keep their own clicks; see `pickRow`.
+ * The row itself is the control, with no radio button in it: the mark on the
+ * row's background says which row is up. see issues/0068, issues/0069. The
+ * controls the row carries keep their own clicks, see `pickRow`.
  *
- * **The list is a tree, and a pick runs over both kinds of row.** A group is
- * a row of its own with its layers indented under it: pick a layer and that
- * layer is worked on, pick the group and every member comes up under one box.
- * A group answering for its members was a group its members could not answer
- * for themselves -- moving one layer of a group meant leaving it first, which is
- * three gestures to undo a feature. Wiki issues 0065 and 0066, and
- * wiki/decisions/layer-groups.md.
+ * The list is a tree and a pick runs over both kinds of row: pick a layer and
+ * that layer is worked on, pick the group and every member comes up under one
+ * box. see decisions/layer-groups, issues/0065, issues/0066.
  *
- * The tree is `HideoutDocument.layerOutline`, and a group's rows are adjacent
- * because its layers are: the document tidies them, joining a group being what
- * moves a layer to it. So the list still reads top to bottom as export order.
+ * The tree is `HideoutDocument.layerOutline`. A group's rows are adjacent
+ * because the document tidies its layers, so the list still reads top to bottom
+ * as export order.
  *
- * **Membership is written where it is read**: a layer row is dragged onto a
- * group row to join it, and onto the strip at the end of the list to leave the
- * group it is in. The select that used to do it said in 4.5rem of truncated
- * name what the row's place under a group row already says -- see `dropOn` and
- * wiki issue 0070. Dragging never reorders; the bar's arrows do that.
+ * Membership is written where it is read: a layer row is dragged onto a group
+ * row to join, and onto the strip in the actions bar to leave. see `dropOn`,
+ * issues/0070. Dragging never reorders; the bar's arrows do.
  *
- * **So the actions that act on a layer are drawn once, under the list.** A row
- * carries what it is and how it stands -- its name, its colour, its tally, its
- * two flags --
- * and those are a reading as much as a control, which belongs to the thing being
- * read. Moving, deleting and filling a layer are answered by the bar, which acts
- * on the layer the pick names. A copy of them in every row asks again, six
- * times over, what the pick has already answered once.
+ * A row carries what a layer is and how it stands -- name, colour, tally, two
+ * flags. Moving, deleting and filling it are the bar's, drawn once and acting
+ * on the layer the pick names. see `LayerActions`, issues/0045.
  *
- * The layers are the document's, and this is the only place they are edited. It
- * mutates them and then calls `state.layersChanged`, which is what the viewport
- * and this panel both listen to -- see `state.js` for why a mutation cannot be
- * subscribed to on its own.
+ * The layers are the document's and this is the only place they are edited: it
+ * mutates them and then calls `state.layersChanged`, which the viewport and
+ * this panel both listen to. see `state.js`.
  *
- * A layer's doodad count is read from the document, which the count signal is
- * the proxy for: deleting doodads publishes it, and reading it here is what
- * brings the panel back after a delete.
+ * A layer's doodad count is read from the document, the count signal being the
+ * proxy for it -- deleting doodads publishes it.
  *
- * The panel shows before a file is loaded, holding an empty list. It is what the
- * sidebar's leftover height goes to, and a panel that appears halfway down on
- * load moves everything under it.
+ * The panel shows before a file is loaded, holding an empty list. It takes the
+ * sidebar's leftover height, and carries no prose above the list: what the list
+ * means is in the help modal. see issues/0079.
  *
- * It is a tab rather than a section of its own, sharing the place with the
- * selection -- see `tabs.jsx` for what the two have in common and why the list
- * had to stop moving.
+ * A tab rather than a section of its own, sharing the place with the selection.
+ * see `tabs.jsx`, issues/0048.
  */
 
 import * as state from "../state.js";
@@ -69,12 +52,6 @@ export default function Layers() {
   const selected = state.selection.value.length;
   return (
     <>
-      <p class="text-secondary mb-1">
-        Exported in this order, first at the top. A hidden layer is left out of
-        the export; a locked one exports like any other. Layers in a group move
-        together: drag a layer onto a group to join it, and joining moves the
-        layer to that group.
-      </p>
       <ul class="list-unstyled mb-2 layer-list">
         {outline().map((entry) =>
           entry.group === null ? (
@@ -83,7 +60,6 @@ export default function Layers() {
             <GroupRows entry={entry} />
           ),
         )}
-        <LeaveGroup />
       </ul>
       <LayerActions />
       <div class="d-flex gap-1 flex-nowrap">
@@ -94,7 +70,7 @@ export default function Layers() {
           title={addLayerTitle(selected)}
           onClick={addLayer}
         >
-          <i class="bi bi-plus-lg"></i> Add layer
+          <i class="bi bi-layers"></i> Add layer
           <SelectionBadge count={selected} />
         </button>
         <AddArrayButton />
@@ -140,14 +116,11 @@ function LayerRows({ layers, indented = false }) {
 }
 
 /**
- * **What is being worked on is a set of rows, not one row.** A pick names a
- * layer or a group, and the other kind of row comes with it: a layer's group
- * moves when the layer does, a group's layers are what the group is. So the
- * marked row and its company are both drawn, at two strengths of the one colour
- * -- the brighter one being the row that was picked, which is how the pair says
- * which of the two kinds is up. Wiki issue 0068.
+ * What is being worked on is a set of rows, not one row: a pick names a layer
+ * or a group and the other kind comes with it. Both are drawn, at two strengths
+ * of one colour, the brighter being the row that was picked. see issues/0068.
  *
- * `null` for a row that is neither, which draws no mark at all.
+ * `null` for a row that is neither, which draws no mark.
  */
 function layerMark(layer) {
   if (state.activeLayer.value === layer.id) return "active";
@@ -185,7 +158,8 @@ function pickRow(event, pick) {
 }
 
 /**
- * A row picked up, to be dropped on a group row or on the strip that leaves one.
+ * A row picked up, to be dropped on a group row or on the strip in the actions
+ * bar that leaves one.
  *
  * The drag carries the layer's name as text although nothing reads it: a drag
  * with no data on it is a drag Firefox refuses to start, and a name is the
@@ -227,7 +201,7 @@ function leaveDrop(event, group) {
 
 /**
  * The drop, which is the write: the layer's group becomes this row's -- a name,
- * or `null` for the strip at the end of the list.
+ * or `null` for the strip that leaves a group.
  *
  * The document tidies the group into a run, so the layer moves in the list. What
  * is being worked on is taken up again afterwards, and it is not necessarily
@@ -250,20 +224,22 @@ function dropOn(event, group) {
 }
 
 /**
- * The way out of a group: a strip under the last row, there only while a layer
+ * The way out of a group: a strip in the actions bar, there only while a layer
  * that is in one is being dragged.
  *
- * It is a row of the list rather than the space beside it, so that it is still
- * reachable at the bottom of a list too long to fit. And it is there only for
- * the drag it answers -- a layer in no group has no group to leave, and a target
- * standing empty is a thing to wonder about.
+ * Under the list rather than in it: the bar does not scroll, so the target is
+ * in the same place for every drag. see issues/0078.
+ *
+ * The strip's height comes off the list, so nothing under it moves as it comes
+ * and goes. There only for the drag it answers -- a layer in no group has no
+ * group to leave.
  */
 function LeaveGroup() {
   const dragged = state.draggedLayer.value;
   if (dragged === null || dragged.group === null) return null;
 
   return (
-    <li
+    <div
       class={rowClass(
         "layer-drop-out",
         state.overDropTarget(null) && "layer-drop-over",
@@ -273,7 +249,7 @@ function LeaveGroup() {
       onDrop={(event) => dropOn(event, null)}
     >
       <i class="bi bi-box-arrow-left"></i> Drop here to leave the group
-    </li>
+    </div>
   );
 }
 
@@ -283,9 +259,7 @@ function LeaveGroup() {
  * group to make and nothing to make it out of but a layer.
  *
  * The name is the next free `Group N`, the way a new layer is the next
- * `Layer N`, and it is renamed by double-clicking the group row. A prompt asks
- * for a name before there is a group to see, which is one answer more than the
- * gesture needs.
+ * `Layer N`, and is renamed by double-clicking the group row. see issues/0067.
  */
 function AddGroupButton() {
   const layer = activeLayer();
@@ -396,7 +370,7 @@ function GroupRow({
           class={`bi ${collapsed ? "bi-caret-right-fill" : "bi-caret-down-fill"}`}
         ></i>
       </button>
-      <i class="bi bi-collection text-secondary" title="A layer group"></i>
+      <i class="bi bi-collection" title="A layer group"></i>
       <Name
         name={group}
         editing={editing}
@@ -404,7 +378,7 @@ function GroupRow({
         edit={() => state.editName("group", group)}
         commit={(typed) => renameGroup(group, typed)}
       />
-      <span class="text-secondary layer-count">{count}</span>
+      <span class="layer-count">{count}</span>
       <Toggle
         layers={layers}
         flag="visible"
@@ -432,62 +406,61 @@ function GroupRow({
  *
  * A group answers the same four slots as a layer, meaning them of the whole
  * group: moving steps the run over its neighbour, duplicating copies every
- * member into a group of its own, deleting takes them all after saying so. They
- * are the same four things a player wants of the thing they have picked, and a
- * second bar for groups would be the same bar drawn twice.
+ * member into a group of its own, deleting takes them all after saying so.
  *
- * The array half stays a layer's. An array is one member of a group, and the
+ * The array half stays a layer's: an array is one member of a group, and the
  * settings and the detach are about that one array.
  *
- * A slot that does not apply is disabled and not hidden. A hidden slot takes its
- * width with it and the rest slide over, so the delete button would sit
- * somewhere else depending on which layer is active -- and a delete button that
- * moves is a delete button pressed by accident. Disabled, the places stay
- * learnable and the `title` says why the slot is off.
+ * A slot that does not apply is disabled and not hidden -- a hidden slot takes
+ * its width with it and the rest slide over, and a delete button that moves is
+ * a delete button pressed by accident. The `title` says why a slot is off.
  *
- * **The slots are grouped by what they act on**, in two `btn-group`s: the four
- * any layer answers, and the two only an array answers. Seven buttons at one
- * spacing read as seven unrelated buttons; grouped, the gap falls where the
- * meaning divides and the halves are read before any icon is. That gap is also
- * why there is no rule between them any more -- two groups say what a rule
- * between two runs of buttons was there to say.
+ * The slots are grouped by what they act on, in two `btn-group`s: the four any
+ * layer answers, and the two only an array answers. see issues/0047.
  *
- * Add doodad stays outside both. It places a doodad in the layer rather than
- * acting on the layer, and it is the palette's.
+ * Add doodad stays outside both, placing a doodad in the layer rather than
+ * acting on the layer. It is the palette's.
+ *
+ * The bar also holds the way out of a group, above the buttons and only while a
+ * grouped layer is being dragged -- this is the part of the panel that does not
+ * scroll. see `LeaveGroup`, issues/0078.
  */
 function LayerActions() {
   const target = activeTarget();
   return (
-    <div class="d-flex gap-1 flex-nowrap align-items-center mb-2 layer-actions">
-      <AddDoodadButton />
-      <div class="btn-group" role="group" aria-label="This layer">
-        <ActionButton
-          icon="bi-arrow-up"
-          title={`Move this ${target.what} up`}
-          disabled={!target.canMove(-1)}
-          onClick={() => target.move(-1)}
-        />
-        <ActionButton
-          icon="bi-arrow-down"
-          title={`Move this ${target.what} down`}
-          disabled={!target.canMove(1)}
-          onClick={() => target.move(1)}
-        />
-        <ActionButton
-          icon="bi-copy"
-          title={`Duplicate this ${target.what}`}
-          disabled={!target.canDuplicate}
-          onClick={target.duplicate}
-        />
-        <ActionButton
-          icon="bi-trash"
-          extra="text-danger"
-          title={target.deleteTitle}
-          disabled={!target.canDelete}
-          onClick={target.remove}
-        />
+    <div class="mb-2 layer-actions">
+      <LeaveGroup />
+      <div class="d-flex gap-1 flex-nowrap align-items-center">
+        <AddDoodadButton />
+        <div class="btn-group" role="group" aria-label="This layer">
+          <ActionButton
+            icon="bi-arrow-up-square-fill"
+            title={`Move this ${target.what} up`}
+            disabled={!target.canMove(-1)}
+            onClick={() => target.move(-1)}
+          />
+          <ActionButton
+            icon="bi-arrow-down-square-fill"
+            title={`Move this ${target.what} down`}
+            disabled={!target.canMove(1)}
+            onClick={() => target.move(1)}
+          />
+          <ActionButton
+            icon="bi-copy"
+            title={`Duplicate this ${target.what}`}
+            disabled={!target.canDuplicate}
+            onClick={target.duplicate}
+          />
+          <ActionButton
+            icon="bi-trash"
+            extra="text-danger"
+            title={target.deleteTitle}
+            disabled={!target.canDelete}
+            onClick={target.remove}
+          />
+        </div>
+        <ArrayButtons layer={arrayOf(target.layer)} />
       </div>
-      <ArrayButtons layer={arrayOf(target.layer)} />
     </div>
   );
 }
@@ -603,30 +576,21 @@ function arrayOf(layer) {
  * colour its doodads are drawn in, its tally, and its two flags. What is done to
  * it is the bar's, below.
  *
- * The swatch leads the row and does not sit by the name, because it is read
- * against the canvas rather than against the row: a column of swatches down the
- * left is the same list the doodads make out there.
+ * The swatch leads the row rather than sitting by the name: it is read against
+ * the canvas, and a column of swatches down the left is the same list the
+ * doodads make out there.
  *
- * An array's row differs in one place, and it is the fact that its doodads are
- * generated: it carries the badge and no lock, an array's doodads being
- * unselectable in the first place, so a toggle saying they cannot be selected
- * says nothing.
+ * An array's row carries the badge and no lock, its doodads being unselectable
+ * already. It can still be the active layer, and the palette refuses to place
+ * there and says why.
  *
- * It can still be the active layer, and the palette refuses to place there and
- * says why. Making it unpickable would have made the one gesture mean two
- * things.
+ * Everything the row draws is passed as well as the layer it came off, and has
+ * to be: `@preact/signals` skips a render when no prop changed by reference and
+ * no signal read has changed, and a flag is written into the layer object the
+ * row already holds. see issues/0050, issues/0042. Whether the layer is an
+ * array is passed for the same reason.
  *
- * **Everything the row draws is passed as well as the layer it came off**, and
- * it has to be. A component that reads a signal gets a
- * `shouldComponentUpdate` from `@preact/signals` which skips the render when no
- * prop changed by reference and no signal it read has changed -- and this one
- * reads three. Toggling a flag changes neither of those things: it is written
- * into the layer object the row already holds, so the eye stayed open on a
- * hidden layer until something else redrew the row. Wiki issues 0050 and, for
- * the same lesson on the selection row, 0042. Whether the layer is an array is
- * passed for the same reason: detaching one leaves the layer object alone.
- *
- * So a row is a function of the values it draws. The layer is what the controls
+ * So a row is a function of the values it draws: the layer is what the controls
  * edit, the rest is what they show.
  */
 function LayerRow({
@@ -669,7 +633,7 @@ function LayerRow({
         commit={(typed) => rename(layer, typed)}
       />
       {array && <ArrayBadge />}
-      <span class="text-secondary layer-count">{doodadsIn(layer).length}</span>
+      <span class="layer-count">{doodadsIn(layer).length}</span>
       <Toggle
         layers={[layer]}
         flag="visible"
@@ -706,20 +670,17 @@ function activateTitle(array, group) {
 /**
  * A name in the list: text to read, and a field once it has been double-clicked.
  *
- * **A row's name is read far more often than it is written.** A column of live
- * text boxes says every name is about to change, and it leaves no way to take
- * typing back: with the layer written per keystroke, there is nothing for an
- * Escape to put back. So the name is text, the double click is the way in, and
- * the editor is a place where a name is being typed but is not yet the layer's.
+ * A name is read far more often than written, and a layer written per keystroke
+ * leaves nothing for an Escape to put back. So the name is text, the double
+ * click is the way in, and the editor holds a name not yet the layer's. see
+ * issues/0067.
  *
- * Enter commits and closes, Escape closes and leaves the old name, and clicking
- * away commits -- losing a typed name to a stray click would be the worse
- * mistake of the two. The keys are stopped here: Escape also clears the viewport
- * selection and closes the help, and while a name is being typed it means this
- * name.
+ * Enter commits and closes, Escape closes and keeps the old name, clicking away
+ * commits -- losing a typed name to a stray click is the worse mistake. The
+ * keys are stopped here: Escape also clears the selection and closes the help.
  *
- * `editing` arrives as a prop for the reason every other value in a row does --
- * see `LayerRow`.
+ * `editing` arrives as a prop for the reason every other value does, see
+ * `LayerRow`.
  */
 function Name({ name, editing, title, edit, commit }) {
   if (!editing) {
@@ -819,16 +780,13 @@ function Toggle({ layers, flag, enabled, on, off, title }) {
  * Writes a flag on some layers, and asks again what is being worked on when
  * they are part of it.
  *
- * **What is up on the canvas was derived from the flags once, when the row was
- * picked.** A hidden layer's doodads are not selected and a hidden array does
- * not ride with its group, so hiding one afterwards left a box standing over
- * nothing -- the doodads go, `showLayers` discards them, but an array rides on a
- * proxy the box holds and no flag reaches that. Showing one again was the same
- * omission the other way round: nothing had asked for its proxy.
+ * What is up on the canvas was derived from the flags when the row was picked:
+ * a hidden layer's doodads are not selected and a hidden array does not ride
+ * with its group. So a flag is something the answer depends on, and changing
+ * one asks again.
  *
- * So the flags are a thing the answer depends on, and changing one asks again.
- * Only when these layers are part of what is up: toggling an eye elsewhere in
- * the list would otherwise throw away a selection the player banded by hand.
+ * Only when these layers are part of what is up -- toggling an eye elsewhere
+ * would otherwise throw away a selection the player banded by hand.
  */
 function toggle(layers, flag, enabled) {
   for (const layer of layers) {
@@ -896,10 +854,9 @@ function addGroup(layer) {
 /**
  * The next free `Group N`, the way a new layer is the next `Layer N`.
  *
- * Free rather than simply next: two groups cannot share a name -- sharing one
- * *is* being one group, see wiki/decisions/layer-groups.md -- so a `Group 2`
- * that a player renamed something else and a `Group 2` typed onto another group
- * both have to be stepped over, or "add group" would silently join one.
+ * Free rather than simply next: two groups cannot share a name, sharing one
+ * *being* one group (see decisions/layer-groups), so a taken `Group 2` has to
+ * be stepped over or "add group" would silently join it.
  */
 function newGroupName() {
   const taken = groupNames();
@@ -1019,15 +976,13 @@ function duplicateGroup(group) {
  * front of the player.
  *
  * For an ordinary layer that is its doodads, selected -- the viewport skips the
- * hidden and the locked, so a locked layer answers with an empty selection,
- * which is the truthful answer to "show me what I can move here". For an array
- * it is the box and its handles, its doodads being nothing to select; the
- * previous selection is dismissed either way, one layer at a time being the
- * point of the control.
+ * hidden and the locked, so a locked layer answers with an empty selection. For
+ * an array it is the box and its handles. The previous selection is dismissed
+ * either way, one layer at a time being the point of the control.
  *
- * **A layer in a group answers for itself.** It is one layer of several that
- * move together, and picking it says which one -- the group is picked by its own
- * row. See `activateGroup` and wiki/decisions/layer-groups.md.
+ * A layer in a group answers for itself: picking it says which of several
+ * layers that move together, the group being picked by its own row. see
+ * `activateGroup`, decisions/layer-groups.
  */
 function activate(layer) {
   state.workOnLayer(layer.id);

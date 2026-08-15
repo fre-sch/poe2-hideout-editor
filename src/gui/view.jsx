@@ -1,16 +1,15 @@
 /**
  * What the viewport draws besides the doodads.
  *
- * It was the edit mode section until wiki issue 0038 took the modes away: there
- * is nothing to switch between any more, because the selection always carries
- * its box and its handles. What is left is the two toggles.
+ * Two toggles. There is nothing to switch between, the selection always
+ * carrying its box and handles. see issues/0038.
  */
 
 import * as state from "../state.js";
 
 export default function View() {
   return (
-    <details class="sidebar-item d-flex gap-2" open>
+    <details class="sidebar-item view-flags" open>
       <summary>View</summary>
       <Flag id="show-labels" flag={state.showLabels} label="Show labels" />
       <Flag id="show-grid" flag={state.showGrid} label="Show grid" />

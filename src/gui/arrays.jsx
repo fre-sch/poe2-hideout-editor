@@ -2,22 +2,17 @@
  * Arrays, as the sidebar sees them: the button that makes one, the two slots
  * they add to the layer actions bar, and the column that configures it.
  *
- * **A second sidebar on the right, not a floating panel.** The palette's
- * reasoning, which it arrived at the hard way -- see the head of `palette.jsx`.
- * A generator has a dozen parameters and wants the room, and a column beside the
- * viewport is never in the way. See wiki/decisions/array-placement.md.
+ * A second sidebar on the right rather than a floating panel, the palette's
+ * reasoning: a generator has a dozen parameters and wants the room. see
+ * `palette.jsx`, decisions/array-placement.
  *
- * **Editing is live, and that is the whole of it.** Every control writes the
- * parameters and asks the viewport to regenerate, because aligning an array
- * against doodads that are already there is done by eye. There is no Apply: it
- * was a rollback point, and a button that commits what is already committed
- * reads as a button that has not been pressed yet. Closing closes.
+ * Editing is live. Every control writes the parameters and asks the viewport to
+ * regenerate, aligning an array against doodads already there being done by
+ * eye. There is no Apply; closing closes.
  *
- * **Every control takes the value it draws as a prop.** A component that reads a
- * signal is given a `shouldComponentUpdate` by `@preact/signals` which skips the
- * render when no prop changed by reference and no signal it read has changed --
- * and editing a parameter changes neither, the parameters being mutated inside
- * the document. The Selection section paid for this lesson in wiki issue 0042.
+ * Every control takes the value it draws as a prop: `@preact/signals` skips a
+ * render when no prop changed by reference and no signal read has changed, and
+ * a parameter is mutated inside the document. see issues/0042.
  */
 
 import { useEffect, useRef } from "preact/hooks";
@@ -74,21 +69,16 @@ export function ArrayBadge() {
 }
 
 /**
- * The array half of the layer actions bar: the two slots that only an array
- * answers. The lock is not one of them and never was -- an array's doodads
- * cannot be selected in the first place, so a toggle saying they cannot be
- * selected says nothing.
+ * The array half of the layer actions bar: the two slots only an array answers.
+ * No lock among them -- an array's doodads cannot be selected in the first
+ * place.
  *
- * `layer` is null when the layer being worked on is not an array, and then both
- * slots are drawn disabled rather than dropped. They hold their places in the
- * bar; see `LayerActions` in `layers.jsx` for why the places matter, and why
- * they are a group of their own -- they are the half of the bar that only an
- * array answers, which is a thing the bar can show rather than explain.
+ * `layer` is null when the layer being worked on is not an array, and both
+ * slots are then disabled rather than dropped, holding their places. see
+ * `LayerActions` in `layers.jsx`.
  *
- * The settings are the granular half of working on an array. The other half is
- * the layer's own row, picking which raises the box and its handles -- most of
- * what a player wants is to drag that box, and a dozen numbers is what they ask
- * for afterwards.
+ * The settings are the granular half of working on an array; the other half is
+ * picking the layer's row, which raises the box and its handles.
  */
 export function ArrayButtons({ layer = null }) {
   const open =
@@ -159,7 +149,7 @@ export function ArraySidebar() {
   const parameters = layer === null ? null : document_?.findGenerator(layer);
   if (!parameters) return null;
   return (
-    <div id="array-sidebar">
+    <div class="sidebar" id="array-sidebar">
       <div class="d-flex justify-content-between align-items-center">
         <h2>Array settings</h2>
         <button
@@ -455,7 +445,7 @@ function Randomness({ parameters }) {
         onChange={(rotation) => updateJitter({ rotation })}
       />
       <div class="d-flex justify-content-between align-items-center gap-1">
-        <span class="text-secondary">Seed {random.seed}</span>
+        <span class="field-label">Seed {random.seed}</span>
         <button
           type="button"
           class="btn btn-secondary btn-sm text-nowrap"
@@ -476,8 +466,7 @@ function Randomness({ parameters }) {
  * never the table -- it is framework-free, and the table is fetched.
  */
 function Variations({ index, chosen, count }) {
-  if (count < 2)
-    return <p class="text-secondary small mb-0">{noVariations(count)}</p>;
+  if (count < 2) return <p class="list-empty">{noVariations(count)}</p>;
   return (
     <div class="d-flex flex-wrap gap-1">
       {range(count).map((at) => (
@@ -553,7 +542,7 @@ function Source({ source, pick }) {
         title="Which of a doodad's chosen variations it is drawn as"
         onChange={(variation) => updatePick({ variation })}
       />
-      <p class="text-secondary mb-0">
+      <p class="usage-text">
         Double-click one in <strong>Set array doodad</strong> to change this,
         and hold <span class="shortcut">Shift</span> there to add another.
       </p>
@@ -572,7 +561,7 @@ function Source({ source, pick }) {
 function PickSwitch({ label, value, title, onChange }) {
   return (
     <div class="d-flex justify-content-between align-items-center mb-1">
-      <span class="text-secondary" title={title}>
+      <span class="field-label" title={title}>
         {label}
       </span>
       <div class="btn-group" role="group" aria-label={title}>
@@ -613,14 +602,12 @@ function PickButton({ label, mode, value, onChange }) {
  *
  * The variations are the row's because they are the doodad's -- a torch and a
  * brazier have their own art and their own count of it, and one list for the
- * array meant the indices of whichever doodad had the fewest. It also meant an
- * array could place a variation a doodad does not have, which the game rejects:
- * wiki issue 0051.
+ * array meant the indices of whichever doodad had the fewest, and an array
+ * could place a variation a doodad does not have. see issues/0051.
  */
 function SourceRow({ entry, index, only, chosen }) {
-  // The table's name for the hash, or the one the source was stored with --
-  // wiki issue 0059, marked where no table names the hash, wiki issue 0060. The
-  // stored name is what the doodads are written with.
+  // The table's name for the hash, or the one the source was stored with, which
+  // is what the doodads are written with. see issues/0059, issues/0060.
   const name = nameOf(entry);
   return (
     <li class="mb-1">

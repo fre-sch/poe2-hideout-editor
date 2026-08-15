@@ -1,18 +1,16 @@
 /**
  * What is selected, and the two things about it that only the sidebar can show.
  *
- * There was a Selection section before and it was deleted, as a list of names
- * the viewport already showed in the place the player was looking -- wiki issue
- * 0023. This one is not a list of names: a variation and a mirror are invisible
- * in the viewport, because every doodad draws as the same gizmo, so a row here is
- * the only place either can be read or changed. Wiki issue 0042.
+ * Not a list of names, which the viewport already shows where the player is
+ * looking (see issues/0023): a variation and a mirror are invisible out there,
+ * every doodad drawing as the same gizmo, so a row here is the only place
+ * either can be read or changed. see issues/0042.
  *
- * Twenty rows at most. A band across a hideout selects hundreds, and the
- * twenty-first row is not what the player is looking at; the count on the tab is
- * what says how many there really are.
+ * Twenty rows at most -- a band across a hideout selects hundreds, and the
+ * count on the tab says how many there really are.
  *
- * It is drawn only when something is selected, its tab being disabled otherwise
- * -- see `tabs.jsx`.
+ * Drawn only when something is selected, its tab disabled otherwise. see
+ * `tabs.jsx`.
  */
 
 import { useEffect } from "preact/hooks";
@@ -53,7 +51,7 @@ export default function Selection() {
         ))}
       </ul>
       {selected.length > LIMIT && (
-        <p class="text-secondary mb-0">
+        <p class="selection-more">
           plus {selected.length - LIMIT} more doodads
         </p>
       )}
@@ -91,9 +89,9 @@ function Row({ doodad, fv }) {
 
 /**
  * The table's name for the doodad, or the file's until the table arrives and
- * for a hash it does not know -- wiki issue 0059, marked as such where it is
- * the second of those, wiki issue 0060. Its own component so that both follow
- * the table without the row's buttons being redrawn with them.
+ * for a hash it does not know, marked where it is the second. see issues/0059,
+ * issues/0060. Its own component so both follow the table without the row's
+ * buttons being redrawn with them.
  */
 function Name({ doodad }) {
   const name = nameOf(doodad);

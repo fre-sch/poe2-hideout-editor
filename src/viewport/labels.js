@@ -1,21 +1,16 @@
 /**
  * Doodad names, as DOM elements over the canvas.
  *
- * Where each one goes, and which doodad it is for. What it is *called* is not
- * decided here: a name is the table's answer where the table knows the hash and
- * the file's where it does not -- wiki issue 0059 -- and the table arrives after
- * the file and changes with the document's language. So a label carries its
- * doodad and the overlay that renders it asks, which is one subscription rather
+ * Where each one goes, and which doodad it is for. What it is *called* is
+ * `palette.nameFor`'s (see issues/0059), and the table arrives after the file,
+ * so a label carries its doodad and the overlay asks -- one subscription rather
  * than a rebuild of every label whenever a table lands.
  *
- * The projection is the 3D editor's, minus the camera: a node's absolute
- * position already is a pixel offset into the stage, so there is no normalized
- * device coordinate step left to do.
+ * No projection to do: a node's absolute position already is a pixel offset
+ * into the stage.
  *
- * What does not port is *when* it ran. The old viewport rebuilt every label on
- * every `render()`, which included every mouse move of a rubber-band drag --
- * wiki issue 0010. Here a rebuild is asked for only when the view moved or the
- * doodads did, and several such asks in one frame collapse into one.
+ * A rebuild is asked for only when the view or the doodads moved, and several
+ * asks in one frame collapse into one. see issues/0010.
  */
 
 /** Dispatches nothing; it calls `publish` with the list to render. */

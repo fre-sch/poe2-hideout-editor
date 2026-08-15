@@ -1,19 +1,14 @@
 /**
  * The layers and the selection, in one section, one at a time.
  *
- * They were two stacked sections and the selection one came and went with the
- * selection -- so the layer list moved down the sidebar the moment anything was
- * picked, and clicking layer after layer down the list was clicking a moving
- * target. Both panels answer "what am I working on", which is why they can take
- * turns in one place instead of both asking for room.
+ * Both panels answer "what am I working on", so they take turns in one place
+ * rather than both asking for room. see issues/0048.
  *
- * **The Selection tab is drawn whether or not there is a selection.** A tab that
- * came and went would move the Layers tab, which is the same complaint one level
- * up. Disabled, the two places stay learnable and the `title` says why the tab is
- * off -- the actions bar's reasoning, in `layers.jsx`.
+ * The Selection tab is drawn whether or not there is a selection: a tab that
+ * came and went would move the Layers tab. Disabled, the places stay learnable
+ * and the `title` says why -- the actions bar's reasoning, in `layers.jsx`.
  *
- * The section is what the sidebar's leftover height goes to, which the layer list
- * took on its own before.
+ * The section is what the sidebar's leftover height goes to.
  */
 
 import { effect, signal } from "@preact/signals";
