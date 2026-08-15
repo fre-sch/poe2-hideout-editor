@@ -5,11 +5,10 @@
  *
  * Reading a signal in the component body subscribes the component to it, so the
  * effects below run exactly when their value changes. That is the whole bridge
- * between state and canvas -- the 3D viewport needed a standing
- * `effect()` in `index.html` and a `saveHideoutFile` `CustomEvent` hop besides.
+ * between state and canvas.
  *
- * The container is focusable because the shortcuts are bound to it and not to
- * the window, which is the last part of wiki issue 0010.
+ * The container is focusable because the shortcuts are bound to it rather than
+ * to the window. see issues/0010.
  */
 
 import { useEffect, useRef } from "preact/hooks";

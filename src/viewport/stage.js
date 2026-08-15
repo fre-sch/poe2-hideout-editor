@@ -1,35 +1,27 @@
 /**
  * The Konva stage, its three layers, and the view controls.
  *
- * Replaces the 3D editor's map controls, which remapped the mouse buttons so
- * that the left one was free for box selection; the same shape holds here --
- * left drags a selection, middle pans, right turns the view, and the wheel
- * zooms about the pointer.
+ * Left drags a selection, middle pans, right turns the view, the wheel zooms
+ * about the pointer.
  *
- * There are exactly three layers because each one is a real `<canvas>`, see
- * wiki/decisions/2d-rendering-with-konva.md. User layers, when they arrive,
- * are `Konva.Group` nodes inside `doodads`.
+ * Exactly three layers, each being a real `<canvas>`. User layers are
+ * `Konva.Group` nodes inside `doodads`. see decisions/2d-rendering-with-konva.
  */
 
 import Konva from "konva";
 
 /**
- * The whole view is turned so that it reads the way the game's camera shows a
- * hideout. The game looks along a diagonal of the floor grid, so a hideout
- * drawn straight onto its own axes arrives at 225 degrees to what a player
- * recognises.
+ * The view is turned to read the way the game's camera shows a hideout: the
+ * game looks along a diagonal of the floor grid.
  *
- * It sits on the stage, which is the one place it can sit without meaning
- * anything: the doodads, the outline and the grid are all under it and rotate
- * together, so the coordinate mapping in `units.toStage` stays what it says it
- * is and a hideout still lands on its own outline. Nothing below this line
- * knows the view is turned -- the rubber band and the labels work in screen
- * coordinates, and the zoom and fit maths below go through the stage's own
- * transform rather than assuming it is a scale and an offset.
+ * On the stage, which is the one place it means nothing -- the doodads, the
+ * outline and the grid turn together, so `units.toStage` stays what it says it
+ * is. Nothing below knows the view is turned: the band and the labels work in
+ * screen coordinates, and the zoom and fit go through the stage's transform.
  *
- * This is where the view starts and what `alignToGame` returns it to, not a
- * constant: the right mouse button turns it freely, which is how a player lines
- * an upright rubber band up with a row of doodads that runs diagonally.
+ * Where the view starts and what `alignToGame` returns it to, not a constant:
+ * the right button turns it freely, which is how a player lines an upright band
+ * up with a diagonal row of doodads.
  */
 const VIEW_ROTATION = 225;
 
@@ -46,10 +38,9 @@ const GRID_MAJOR_COLOR = "#407090";
  * numbers rather than as words, and in the major line's own colour because they
  * are that line, written down.
  *
- * The gap and the size are screen pixels: a label is counter-turned and
- * counter-scaled, so its own space is the screen's -- see `alignGridLabels`.
- * Below `GRID_LABEL_SPACING` pixels between major lines there is no room to read
- * one, and forty-two of them at once is a smear rather than a grid.
+ * The gap and size are screen pixels, a label being counter-turned and
+ * counter-scaled. see `alignGridLabels`. Below `GRID_LABEL_SPACING` between
+ * major lines there is no room to read one.
  */
 const GRID_LABEL_FONT = "monospace";
 const GRID_LABEL_SIZE = 11;
@@ -96,11 +87,9 @@ export class Stage extends EventTarget {
     this.grid.add(this.gridLabels);
     this.static.add(this.grid);
 
-    // The view starts on the world origin rather than on the stage's own top
-    // left corner. The origin is the corner the grid and every hideout grow away
-    // from, and a turn of VIEW_ROTATION about the corner of the viewport puts all
-    // of that off the screen -- an editor that has just opened would show empty
-    // space and no way to know which way to pan.
+    // On the world origin rather than the stage's own top left corner: the grid
+    // and every hideout grow away from the origin, and a turn of VIEW_ROTATION
+    // about the viewport corner puts all of it off the screen.
     this.centreOn({ x: 500, y: 500 });
 
     this.konva.on("wheel", this.onWheel);
@@ -135,17 +124,14 @@ export class Stage extends EventTarget {
    * Keeps the coordinate labels upright and one size, whatever the view is
    * doing.
    *
-   * They are anchored in the world, so that a label stays on the line it names,
-   * but a label is read on the screen: turned with the view it would be upside
-   * down for most of a turn, and scaled with it, unreadable at one end of the
-   * zoom range and enormous at the other. Turning and scaling each one back is
-   * what makes its own space the screen's, which is what lets `corner` be a
-   * number of pixels.
+   * Anchored in the world so a label stays on the line it names, but read on
+   * the screen -- turned with the view it would be upside down for most of a
+   * turn. Turning and scaling each back makes its own space the screen's, which
+   * is what lets `corner` be a number of pixels.
    *
-   * Which way those pixels point is the world's business rather than the
-   * screen's, so the corner is turned with the view. A label says "this side of
-   * my line", and a screen-fixed offset would put it on the other side of that
-   * line as soon as the view came round far enough.
+   * Which way those pixels point is the world's business, so the corner is
+   * turned with the view: a label says "this side of my line", and a
+   * screen-fixed offset would cross the line as the view came round.
    */
   alignGridLabels() {
     const zoom = this.konva.scaleX();
@@ -209,8 +195,7 @@ export class Stage extends EventTarget {
 
   /**
    * Turns the view back to the game's perspective, about the middle of the
-   * view, so that a player who has turned it to line up a selection has one way
-   * back rather than a steady hand.
+   * view, so a player who turned it to line up a selection has a way back.
    */
   alignToGame() {
     const middle = this.middleOfView();
@@ -228,10 +213,9 @@ export class Stage extends EventTarget {
   /**
    * Pans so that a point in doodad units lands back under a point on screen.
    *
-   * This is what makes zooming and turning feel anchored, and it is written
-   * once because the stage's transform answers "where did it go" for both. Only
-   * the panning is worked out by hand, and panning is the one part a rotation
-   * cannot disturb: position is applied outside it.
+   * What makes zooming and turning feel anchored, written once because the
+   * stage's transform answers "where did it go" for both. Only the panning is
+   * worked out by hand, and position is applied outside the rotation.
    */
   keepUnder(anchor, pointer) {
     const landed = this.konva.getAbsoluteTransform().point(anchor);
@@ -264,12 +248,11 @@ export class Stage extends EventTarget {
   };
 
   /**
-   * Middle drags the view about, right turns it. Which of the two it is gets
-   * decided once, here, and the gesture then runs as the function it left in
-   * `moveView`.
+   * Middle drags the view about, right turns it. Decided once here, and the
+   * gesture then runs as the function left in `moveView`.
    *
-   * Both listen on the window rather than the canvas, so that a drag leaving
-   * the viewport keeps working and, more importantly, still ends.
+   * Both listen on the window rather than the canvas, so a drag leaving the
+   * viewport keeps working and still ends.
    */
   onViewDragStart = (event) => {
     const gesture = this.gestureFor(event);
@@ -318,11 +301,8 @@ export class Stage extends EventTarget {
    * Turning is driven sideways, about the point the drag started on, so that
    * the doodad a player is looking at stays where they are looking.
    *
-   * The 3D editor had this on the same button, where it orbited a camera.
-   * There is no camera, and there is only one axis left to turn about, so what
-   * survives is the gesture rather than the mechanism -- and it earns its place:
-   * an upright rubber band cannot pick out a row of doodads that runs diagonally
-   * until the view is turned to meet it.
+   * It earns its button: an upright rubber band cannot pick out a diagonal row
+   * of doodads until the view is turned to meet it.
    */
   turning(event) {
     this.konva.setPointersPositions(event);
@@ -363,15 +343,13 @@ function grid() {
  * lie on the line where `x` is zero, and the `x` labels on the line where `y`
  * is zero.
  *
- * Each label names its axis, and the axis it names is the file's. `toStage`
- * swaps them -- the line drawn at stage `x = 300` is where a doodad's `y` is 300
- * -- so a bare number on a view turned 225 degrees is one a player has no way
- * to attribute.
+ * Each label names its axis, and the axis it names is the file's -- `toStage`
+ * swaps them, so a bare number on a view turned 225 degrees is one a player
+ * cannot attribute.
  *
- * The two families read off opposite sides of their lines, which is what keeps
- * `x 0` and `y 0` off each other at the origin. Where exactly was measured by
- * eye against the game's own orientation, which is what `corner` is in pixels
- * of.
+ * The two families read off opposite sides of their lines, which keeps `x 0`
+ * and `y 0` off each other at the origin. Which side was measured by eye
+ * against the game's orientation, and is what `corner` holds.
  */
 function gridLabels() {
   const group = new Konva.Group({ listening: false });
@@ -394,10 +372,8 @@ function gridLabels() {
 
 /**
  * `corner` says where the label's top left goes from the point it names, in
- * pixels of the default view, given how wide the label came out. It is carried
- * on the node the way `viewport/doodads.js` carries a doodad on one:
- * `alignGridLabels` needs it every time the view turns, and measuring a string
- * once is enough.
+ * pixels of the default view. Carried on the node, the way a doodad is:
+ * `alignGridLabels` needs it every time the view turns.
  */
 function gridLabel(text, at, corner) {
   const label = new Konva.Text({

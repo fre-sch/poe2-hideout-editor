@@ -1,18 +1,16 @@
 /**
  * User layers, as `Konva.Group` nodes inside the one doodad layer.
  *
- * Not `Konva.Layer` nodes. Each of those is a real `<canvas>` and the stage
- * keeps exactly three, see wiki/decisions/2d-rendering-with-konva.md -- a
- * mistake that costs nothing until the tenth layer and then costs everything.
+ * Not `Konva.Layer` nodes: each of those is a real `<canvas>` and the stage
+ * keeps exactly three. see decisions/2d-rendering-with-konva.
  *
- * A group carries the two flags a layer has, and both are one property on one
- * node, which is what a scene graph is for: `visible` hides the whole group in
- * one draw, `listening` takes it out of hit testing.
+ * A group carries the two flags a layer has, one property each: `visible` hides
+ * the whole group in one draw, `listening` takes it out of hit testing.
  *
  * Which group a node sits in is derived from `doodad.layer` and nowhere else.
- * That is not the re-parenting of wiki issues 0001 and 0005: the document's
- * array still holds every doodad exactly once, and a group is a drawing
- * detail read off it, not a second place a doodad can live.
+ * Not the re-parenting of decisions/transform-control-reparenting: the
+ * document's array still holds every doodad exactly once, and a group is a
+ * drawing detail read off it.
  */
 
 import Konva from "konva";
@@ -35,9 +33,9 @@ export function sync(parent, existing, layers, nodes, generated = new Set()) {
     current.set(layer.id, existing.get(layer.id) ?? added(parent, layer.id));
   }
 
-  // Every doodad names a layer that exists -- `removeLayer` hands them on, it
-  // does not orphan them -- so a node with no group is a broken document and
-  // says so rather than being quietly destroyed with the group it sat in.
+  // Every doodad names a layer that exists, `removeLayer` handing them on
+  // rather than orphaning them, so a node with no group is a broken document
+  // and says so rather than being destroyed with the group it sat in.
   for (const node of nodes) {
     const group = current.get(node.doodad.layer);
     if (!group) throw new Error(`No layer '${node.doodad.layer}' to draw in`);
@@ -65,10 +63,9 @@ export function sync(parent, existing, layers, nodes, generated = new Set()) {
  * band that deletes what a player cannot see.
  *
  * An array's are refused for a third reason: they are derived, and the array
- * writes them again from its parameters whenever one of them changes. A doodad
- * that can be moved and then moves back by itself is worse than one that cannot
- * be moved -- wiki/decisions/array-placement.md. **Detach** is how a player says
- * they want these ones by hand.
+ * writes them again whenever a parameter changes. A doodad that moves back by
+ * itself is worse than one that cannot be moved. Detach is how a player asks
+ * for them by hand. see decisions/array-placement.
  */
 export function selectable(layer, generated = false) {
   return Boolean(layer) && layer.visible && !layer.locked && !generated;

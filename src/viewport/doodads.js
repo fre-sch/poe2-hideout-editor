@@ -2,26 +2,21 @@
  * Domain doodads to Konva nodes, and back.
  *
  * A node holds a reference to its domain doodad and nothing else; the array in
- * `HideoutDocument` stays the source of truth. Nothing ever re-parents a node,
- * so a doodad cannot be in two collections at once -- which is the whole of
- * wiki issues 0001 and 0005, see wiki/decisions/transform-control-reparenting.
+ * `HideoutDocument` stays the source of truth. Nothing re-parents a node, so a
+ * doodad cannot be in two collections at once. see
+ * decisions/transform-control-reparenting.
  *
  * Every doodad draws as the same gizmo, `src/gizmos/doodad.svg`, turned to face
- * the way the doodad does. That is not a downgrade from the 3D editor: there it
- * was one shared, textureless box in one of two colours, and no doodad geometry
- * is reachable -- see wiki/decisions/2d-rendering-with-konva.md.
+ * the way the doodad does -- no doodad geometry is reachable. see
+ * decisions/2d-rendering-with-konva.
  *
- * The gizmo is drawn art rather than code, so changing how a doodad looks means
- * editing an SVG and not this module. It is imported rather than fetched
- * because it *is* source: it lives under `src/`, and the dev server reloads on
- * a save in the drawing program.
+ * The gizmo is drawn art rather than code, so how a doodad looks is an SVG
+ * edit. Imported rather than fetched because it is source under `src/`.
  *
- * Two things the drawing decides, and this module obeys. **The middle of the
- * page is where the doodad is** -- the art is placed against its own viewBox,
- * not against its bounding box, so moving the art around the page is how the
- * anchor is chosen and the tip of a pointer may hang off one side. And the way
- * the art points, turned by `GIZMO_ROTATION`, is the way a doodad at `r = 0`
- * points.
+ * Two things the drawing decides. The middle of the page is where the doodad is
+ * -- the art is placed against its own viewBox, so moving it around the page
+ * chooses the anchor and a pointer's tip may hang off one side. And the way the
+ * art points, turned by `GIZMO_ROTATION`, is the way a doodad at `r = 0` points.
  */
 
 import Konva from "konva";
@@ -35,37 +30,24 @@ import * as units from "../hideout/units.js";
 const SIZE = 6;
 
 /**
- * How far the drawing has to be turned to face the way the game faces a doodad
- * at `r = 0`. Measured against the game, which is the only place the answer
- * exists -- the gizmo read a quarter turn clockwise of where the game showed
- * the same doodad.
+ * How far the drawing is turned to face the way the game faces a doodad at
+ * `r = 0`. Measured against the game, the only place the answer exists.
  *
- * It is a fact about the drawing, so it lives beside the drawing and not in
- * `units.js`: the file's units are unaffected, and `apply` takes it back off
- * again so that a rotation the player never touched is saved exactly as it was
- * read. Redrawing the art pointing another way changes this number and nothing
- * else.
+ * A fact about the drawing, so it lives here and not in `units.js`. `apply`
+ * takes it back off, so a rotation the player never touched is saved as it was
+ * read. Redrawing the art pointing another way changes this number alone.
  */
 const GIZMO_ROTATION = -90;
 
 /**
- * The gizmo's own fill and stroke are ignored: a doodad has to change colour
- * when it is selected, so the colours belong to the editor. Everything else
- * about the drawing comes from the file.
+ * doodad gizmo svg fill and stroke are ignored, only shape is used.
+ * doodad gizmos change colors when selected or highlighted
  *
- * **A doodad at rest wears its layer's colour**, which is what makes the layers
- * readable off the canvas -- `setColor`, and `hideout/colors.js` for where the
- * colours come from. The other two states are the editor's own and are the same
- * whatever layer they happen in: they say what the player is doing right now,
- * and a state that a layer colour could out-shout is a state that cannot be
- * seen. `COLOR_NORMAL` is what a node wears until it is told, which is the
- * moment between being built and being put in its group.
+ * doodad gizmos in normal state use colors from layers.
+ * see `setColor`, `hideout/colors.js`.
  *
- * The highlighted colours are for the one doodad the sidebar is pointing at, and
- * they are the loudest of the three. It is looked for in a field of selected
- * doodads that all draw as the same gizmo, so the difference has to carry across
- * a whole hideout at a glance -- which is also why it is the one state that
- * thickens the outline.
+ * `*_HIGHLIGHTED` are used when user hovers selection in sidebar. also thickens
+ * the outline.
  */
 const COLOR_NORMAL = "#008080";
 const COLOR_SELECTED = "#C0C000";
@@ -113,15 +95,13 @@ export function create(doodad) {
 /**
  * How far the gizmo reaches on its own page.
  *
- * `Konva.Path` works this out by walking the path data and sampling every curve
- * at a hundred points, and it does not keep the answer. Everything that measures
- * a node asks for it: the box measures every selected doodad on every frame of a
- * pan, and the rubber band measures every doodad in the hideout on every frame
- * of a sweep -- see wiki issue 0041.
+ * `Konva.Path` walks the path data and samples every curve at a hundred points,
+ * and keeps no answer -- while the box measures every selected doodad on every
+ * frame of a pan and the rubber band every doodad on every frame of a sweep.
+ * see issues/0041.
  *
- * Every doodad is the same drawing, so there is one answer and it is measured
- * once, at import. What is left for `getClientRect` to do is the transform,
- * which is the part that differs per doodad.
+ * Every doodad is the same drawing, so it is measured once at import and
+ * `getClientRect` is left with the transform, which differs per doodad.
  */
 function gizmoSelfRect() {
   return GIZMO.rect;
@@ -130,10 +110,9 @@ function gizmoSelfRect() {
 /**
  * Node back to doodad, then doodad back to node.
  *
- * The second half is what snaps a drag to the grid: the file's coordinates are
- * integers and its rotations are 1/65536 of a turn, so writing the recorded
- * value back is both the snap and the guarantee that what is drawn is what will
- * be saved.
+ * The second half snaps a drag to the grid: the file's coordinates are integers
+ * and its rotations 1/65536 of a turn, so writing the recorded value back is
+ * both the snap and the guarantee that what is drawn is what is saved.
  */
 export function apply(node) {
   const position = units.fromStage(node.position());
@@ -160,11 +139,10 @@ export function place(node) {
  * The scale and the shear off a node, keeping where it is and which way it
  * faces.
  *
- * `Konva.Transformer` writes a resize onto a node by decomposing a matrix, and
- * a matrix that scales a turned node unevenly is a shear -- so `decompose`
- * hands back `skewX` and `setAttrs` puts it on. A doodad has no shear any more
- * than it has a scale, and left on, it compounds: the next step decomposes a
- * matrix that already carries it.
+ * `Konva.Transformer` writes a resize by decomposing a matrix, and a matrix
+ * that scales a turned node unevenly is a shear, so `decompose` hands back
+ * `skewX`. A doodad has no shear, and left on it compounds -- the next step
+ * decomposes a matrix already carrying it.
  */
 export function undistort(node) {
   node.scale({ x: GIZMO.scale, y: GIZMO.scale });
@@ -179,11 +157,10 @@ function facing(doodad) {
 /**
  * Everything a resize did to a node except where it put it.
  *
- * Stretching a selection is a way of moving doodads apart and nothing else --
- * wiki issue 0038 -- so the scale and the shear come off and the rotation goes
- * back to the doodad's. The rotation is in here because the same decomposition
- * that produces the shear also turns the node a little to fit what is left;
- * turning is the rotate handle's job and not a side effect of spacing.
+ * Stretching a selection moves doodads apart and nothing else (see
+ * issues/0038), so the scale and shear come off and the rotation goes back to
+ * the doodad's. The rotation is in here because the decomposition producing the
+ * shear also turns the node a little; turning is the rotate handle's job.
  */
 export function unscale(node) {
   undistort(node);
@@ -194,13 +171,11 @@ export function unscale(node) {
  * The colour a node wears at rest, which is its layer's -- see `scene.js`, which
  * reads it off the document.
  *
- * The outline is worked out here and kept, rather than at every paint: a paint
- * happens per node on every selection change, and the colour changes when a
- * player moves a slider.
+ * The outline is worked out here and kept rather than at every paint: a paint
+ * happens per node on every selection change.
  *
  * A node already wearing the colour is left alone, so telling every node its
- * layer's colour after any layer edit costs nothing for the layers that did not
- * change.
+ * layer's colour costs nothing for the layers that did not change.
  */
 export function setColor(node, color) {
   if (node.color === color) return;
@@ -222,13 +197,11 @@ export function setHighlighted(node, highlighted) {
 }
 
 /**
- * A node is in one of three states and the two flags are kept on it, rather than
- * each setter writing the colour it knows about: they overlap -- every
- * highlighted doodad is a selected one -- and two setters writing the same
- * attribute means whichever ran last wins, which is not a rule anybody can read
- * off the code.
+ * A node is in one of three states, and the two flags are kept on it rather
+ * than each setter writing the colour it knows about: the states overlap, and
+ * two setters writing one attribute means whichever ran last wins.
  *
- * Highlighted wins, because a highlight that lost would never be seen.
+ * Highlighted wins, a highlight that lost never being seen.
  */
 function paint(node) {
   if (node.highlighted) {
@@ -269,16 +242,13 @@ export function boundingRectangle(nodes) {
  * `SIZE` doodad units, and the offset that puts the middle of that page on the
  * node's origin.
  *
- * Several paths are joined into one rather than becoming several nodes. Path
- * data concatenates -- an `M` starts a new subpath -- and one node per doodad
- * is one node to colour, to hit test and to hand the transformer.
+ * Several paths are joined into one rather than becoming several nodes: path
+ * data concatenates, and one node per doodad is one node to colour, hit test
+ * and hand the transformer.
  *
- * Only path data and the page are read. A `transform` on a path or on the group
- * around it would be quietly left out, and the drawing would arrive somewhere
- * other than where it was drawn -- which is worth refusing to do, since a
- * drawing program will happily write one when the art is moved or turned. The
- * fix is to flatten the transform into the path, which every such program can
- * do.
+ * Only path data and the page are read, so a `transform` is refused rather than
+ * quietly dropped -- a drawing program writes one whenever the art is moved.
+ * Flatten it into the path.
  */
 function readGizmo(source) {
   const viewBox = source.match(/\bviewBox="([^"]+)"/);

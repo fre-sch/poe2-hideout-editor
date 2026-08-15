@@ -3,34 +3,24 @@
  * rotate and scale it -- and, for the arrays that are only coming along, the
  * proxies that let a selection's box carry them (`Movers`, below).
  *
- * **The outline is the generator's own polyline, converted.** `generator.outline`
- * hands back the points a walk consumes -- the box for a grid -- and every one of
- * them goes through `units.toStage`. So the drawing cannot disagree with the
- * placement, and the axis swap happens in one place rather than being reasoned
- * about twice. Nothing here draws an ellipse as a `Konva.Ellipse` with a
- * rotation, which would be a second opinion about where the doodads went.
+ * The outline is the generator's own polyline through `units.toStage`, so the
+ * drawing cannot disagree with the placement and the axis swap is reasoned
+ * about once. Nothing here draws an ellipse as a rotated `Konva.Ellipse`, which
+ * would be a second opinion about where the doodads went.
  *
- * **The parameters are the truth and the nodes are the drawing.** Every gesture
- * ends in the same three steps: write the box or the ends, redraw the gizmo from
- * them, and dispatch `changed` so the scene regenerates. There is no state in
- * between for the two to drift apart in.
+ * The parameters are the truth and the nodes are the drawing. Every gesture
+ * writes the box or the ends, redraws the gizmo from them, and dispatches
+ * `changed` -- no state in between for the two to drift apart in.
  *
- * **The box is `transform.Box` and not a plain `Konva.Transformer`.** It measures
- * itself once a frame, refuses to flip, and snaps its rotation the way the
- * selection's box does -- see there, and wiki issue 0041 for what the plain one
- * costs on a pan.
+ * The box is `transform.Box` rather than a plain `Konva.Transformer`: it
+ * measures itself once a frame, refuses to flip, and snaps its rotation. see
+ * `transform.js`, and issues/0041 for what the plain one costs on a pan.
  *
- * Three shapes carry a box. A line and a Bézier carry ends instead and get a
- * handle on each point they hold -- two, or four with the curve's controls: a
- * rotate-and-scale box around two points is a way of asking for the same two
- * points less directly.
+ * A line and a Bézier carry ends instead of a box, and get a handle per point
+ * they hold. Which handles are up is read off the parameters rather than the
+ * type, said once in `POINTS`.
  *
- * Which handles are up is read off the parameters and not off the type. A handle
- * exists for a point the parameters carry, so a line has two and a curve four by
- * saying so once, in `POINTS`.
- *
- * A gizmo is never serialized. What is drawn here exists while the generator
- * sidebar is open and nowhere else.
+ * A gizmo is never serialized: it exists while the generator sidebar is open.
  */
 
 import Konva from "konva";
@@ -67,10 +57,9 @@ const LEASHES = [
 /**
  * The endpoint handles and the outline's grab area, in screen pixels.
  *
- * Screen pixels, so they are divided by the zoom before they reach a node --
- * unlike the transformer's anchors, which draw themselves in screen pixels
- * already. A handle that grows as the view zooms out is a handle covering the
- * hideout it belongs to.
+ * Divided by the zoom before they reach a node, unlike the transformer's
+ * anchors, which draw themselves in screen pixels already. A handle that grows
+ * as the view zooms out covers the hideout it belongs to.
  */
 const HANDLE_RADIUS = 6;
 const CONTROL_RADIUS = 4;
@@ -79,9 +68,9 @@ const GRAB_WIDTH = 14;
 /**
  * The outline and its handles, for one array at a time.
  *
- * Dispatches `changed` whenever a gesture has written new parameters -- on every
- * step of a drag, not at its end, because editing an array is live
- * (wiki/decisions/array-placement.md).
+ * Dispatches `changed` whenever a gesture has written new parameters, on every
+ * step of a drag rather than at its end: editing an array is live. see
+ * decisions/array-placement.
  */
 export class Gizmo extends EventTarget {
   constructor(layer) {
@@ -330,27 +319,22 @@ export class Gizmo extends EventTarget {
  * The arrays riding with a moving selection, one proxy node each.
  *
  * A layer group moves several layers at once, and an array's doodads cannot be
- * selected -- so an array has nothing in the selection's box for the box to
- * hold. The proxy is that something: a rectangle standing where the array
- * stands, handed to the transformer with the doodads, moved and turned by it
- * like everything else, and read afterwards to say what the array's geometry
- * now is. See wiki/decisions/layer-groups.md.
+ * selected, so an array has nothing in the selection's box. The proxy is that
+ * something: a rectangle standing where the array stands, handed to the
+ * transformer with the doodads and read afterwards for the array's geometry.
+ * see decisions/layer-groups.
  *
- * It is drawn, faintly, and that is not decoration: an array in the set is
- * otherwise invisible until the drag has already moved it. The rectangle is the
- * shape's upright extent rather than its outline -- the outline belongs to the
- * one array being worked on, and a hint that a rectangle can give is enough to
- * say "this comes too".
+ * Drawn faintly, an array in the set being otherwise invisible until the drag
+ * has already moved it. A rectangle of the shape's upright extent, the outline
+ * belonging to the one array being worked on.
  *
- * **The motion is read from where the gesture started, not from the last
- * step.** `begin` keeps the parameters as they were, so a drag of a thousand
- * steps applies one rigid motion rather than a thousand of them; the arithmetic
- * is `arrays.moved`.
+ * The motion is read from where the gesture started: `begin` keeps the
+ * parameters as they were, so a drag of a thousand steps applies one rigid
+ * motion. The arithmetic is `arrays.moved`.
  *
- * **A mover names its layer and asks for the parameters.** `editedArray`'s
- * reasoning, and it is not hypothetical here: aligning a group replaces every
- * generator it touches with a new object, so a mover holding the old one would
- * be drawing a shape nothing reads and writing into a shape nothing draws.
+ * A mover names its layer and asks for the parameters, `editedArray`'s
+ * reasoning -- aligning a group replaces every generator it touches, so a mover
+ * holding the old object would draw a shape nothing reads.
  */
 export class Movers {
   /** `find(layer)` answers with the generator that layer carries, or nothing. */
