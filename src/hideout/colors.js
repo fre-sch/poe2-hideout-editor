@@ -1,41 +1,23 @@
 /**
  * The colours a layer's doodads are drawn in: how a new one is generated, and
- * the lighter shade the outline takes.
+ * the lighter shade the outline takes. see issues/0063.
  *
- * **Generated in OKLCh, so that hue is the only thing that differs.** A colour
- * here says "these doodads belong together" and nothing else, so no layer may
- * read as brighter, louder or more important than another. sRGB cannot state
- * that -- `#00FF00` and `#0000FF` are the same three numbers rearranged and
- * nowhere near the same brightness -- while OKLCh's lightness is perceived
- * lightness, which is the whole reason to convert rather than to pick hues out
- * of a hat. See (Oklab)[https://bottosson.github.io/posts/oklab/].
+ * Generated in OKLCh at one lightness, so hue is the only thing that differs
+ * and no layer reads as more important than another. sRGB cannot state that.
+ * See (Oklab)[https://bottosson.github.io/posts/oklab/].
  *
  * Answers are `#rrggbb`, which is what Konva and `<input type="color">` both
- * speak. `oklch()` is a CSS colour a canvas would accept, and it is converted
- * here anyway: the swatch in the layer row cannot show one, and a document that
- * holds two spellings of a colour is a document that has to compare them.
+ * speak, so a document holds one spelling of a colour.
  */
 
-/**
- * The lightness every generated colour shares, and the chroma it asks for.
- *
- * Lightness is measured against the viewport's black background: dark enough
- * that the white outline and the selection colours stay louder, light enough
- * that a doodad is visible at a zoom showing a whole hideout.
- *
- * The chroma is what a hue asks for and not what it gets -- see `atHue`.
- */
+// Lightness against the viewport's black background: dark enough that the
+// outline and selection colours stay louder, light enough to see at a zoom
+// showing a whole hideout. The chroma is what a hue asks for, see `atHue`.
 const LIGHTNESS = 0.72;
 const CHROMA = 0.15;
 
-/**
- * Where the sequence starts, and how far each step turns.
- *
- * The golden angle is the arrangement that spreads *every* prefix of a sequence
- * rather than only the finished set: three layers are as far apart as three
- * layers can be, and so are the next three. Dividing the circle by a layer count
- * would have to renumber every colour whenever a layer is added.
- */
+// The golden angle spreads every prefix of the sequence, not only the finished
+// set, so adding a layer never renumbers the colours before it.
 const FIRST_HUE = 200;
 const GOLDEN_ANGLE = 137.508;
 
@@ -48,13 +30,12 @@ const CHROMA_STEP = 0.005;
 /**
  * A colour none of `taken` carries, from the hue sequence.
  *
- * A hue whose colour is already in use is stepped past rather than nudged, so
- * that the colours in a document are always members of one evenly spread set.
+ * A taken hue is stepped past rather than nudged, so every colour in a document
+ * is a member of the one evenly spread set.
  *
- * The search is bounded by the number of colours taken, because that many steps
- * cannot all collide -- and a bound is what keeps a document of many layers from
- * turning a colour into a hang. The last candidate is the answer if they somehow
- * do: a repeated colour is worth less than a working editor.
+ * Bounded by the number taken -- that many steps cannot all collide -- and the
+ * last candidate answers if they somehow do. A repeated colour is worth less
+ * than a working editor.
  */
 export function generate(taken = []) {
   const used = new Set(taken);
@@ -69,11 +50,10 @@ export function generate(taken = []) {
 /**
  * The colour a doodad is outlined in: its own, mixed toward white.
  *
- * Derived rather than fixed, because a fixed outline is a ring every doodad
- * wears in the same colour -- and at the zoom where a hideout fits on screen the
- * ring is most of what is seen, which would take back most of what the fill
- * says. Mixing toward white keeps the hue and leaves the outline the lighter of
- * the two, which is what an outline against a black background has to be.
+ * Derived rather than fixed. At the zoom where a hideout fits on screen the
+ * outline is most of what is seen, so a fixed one would take back what the
+ * fill says. Mixing toward white keeps the hue and stays the lighter of the
+ * two, which an outline on black has to be.
  */
 export function outline(color) {
   const [red, green, blue] = readHex(color);
@@ -88,11 +68,9 @@ function mixToWhite(channel) {
  * The colour of a hue at the shared lightness, at as much chroma as sRGB can
  * show it at.
  *
- * Most hues cannot be shown at one chroma -- the sRGB gamut is a lopsided solid
- * and a saturated blue reaches much further than a saturated yellow. Something
- * has to give, and it is the chroma: lightness is what these colours are being
- * kept equal in, and a hue changed to fit is a different colour rather than a
- * duller one.
+ * The sRGB gamut is lopsided, so one chroma does not serve every hue. Chroma is
+ * what gives: lightness is what the colours are kept equal in, and a hue
+ * changed to fit would be a different colour rather than a duller one.
  */
 function atHue(hue) {
   for (let chroma = CHROMA; chroma > 0; chroma -= CHROMA_STEP) {
@@ -108,11 +86,8 @@ function shows(channel) {
 }
 
 /**
- * OKLCh to linear sRGB, by the published matrices: polar to Oklab, Oklab to the
- * cone responses it is defined against, and those to linear sRGB.
- *
- * The numbers are the constants of the colour space and are not derived from
- * anything here; changing one is changing which colour space this is.
+ * OKLCh to linear sRGB by the published matrices: polar to Oklab, Oklab to cone
+ * responses, those to linear sRGB. The constants are the colour space's own.
  */
 function toLinearRgb(lightness, chroma, hue) {
   const radians = (hue * Math.PI) / 180;
@@ -147,8 +122,8 @@ function toHex(channels) {
 
 /**
  * `#rrggbb` as three channels of 0 to 1. Anything else is refused: a colour
- * arrives either from `generate` or from a colour input, and both write that
- * form, so a third form is a bug rather than a colour to guess at.
+ * comes from `generate` or from a colour input, so a third form is a bug rather
+ * than a colour to guess at.
  */
 function readHex(color) {
   const digits = /^#([0-9a-f]{6})$/i.exec(color);

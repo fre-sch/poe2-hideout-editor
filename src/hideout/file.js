@@ -3,9 +3,9 @@
  *
  * The format looks like JSON but its `doodads` object has repeating keys, so
  * `JSON.parse` would keep only the last entry per display name -- 22 of
- * Limestone's 687 doodads. See wiki/specifications/hideout-file-format.md.
- * Hence the hand-written recursive descent parser: it is the only reason this
- * module exists.
+ * Limestone's 687 doodads. see specifications/hideout-file-format. Hence the
+ * hand-written recursive descent parser, which is the only reason this module
+ * exists.
  *
  * `doodads` parses to an ordered array of `[name, fields]` pairs; everything
  * else parses as ordinary JSON would.
@@ -57,8 +57,7 @@ const KEYWORDS = [
  * Recursive descent over the whole text, with `offset` as the read cursor.
  *
  * Every scanning loop tests for end of input. Without that a truncated string
- * spins forever comparing `undefined` to its terminator, which froze the
- * browser tab -- wiki issue 0002.
+ * spins forever comparing `undefined` to its terminator. see issues/0002.
  */
 class Parser {
   constructor(text) {
@@ -172,8 +171,8 @@ class Parser {
   }
 
   /**
-   * Unsigned decimal only. Signs and exponents appear in no observed file, see
-   * wiki issue 0003.
+   * Unsigned decimal only. Signs and exponents appear in no observed file.
+   * see issues/0003.
    */
   parseNumber() {
     const start = this.offset;
@@ -192,8 +191,8 @@ class Parser {
 
   /**
    * Escape sequences appear in no observed file and are rejected rather than
-   * silently mangled, see wiki issue 0003. A backslash read as a literal would
-   * be written back out doubled.
+   * silently mangled -- a backslash read as a literal would be written back
+   * doubled. see issues/0003.
    */
   parseString() {
     const start = this.offset;
