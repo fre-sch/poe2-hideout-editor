@@ -1,19 +1,15 @@
 /**
- * The outline file for a hideout type, where somebody has traced one.
+ * The outline file for a hideout type, keyed by `hideout_hash`.
  *
- * A hideout type is identified by the `hideout_hash` a `.hideout` file carries.
- * The outline is the placeable area, measured in game and written as an SVG in
- * doodad coordinates -- see `units.toStage` for why that is the same space the
- * stage draws in, and `src/viewport/bounds.js` for where the files come from.
+ * An outline is the placeable area, measured in game and written as an SVG in
+ * doodad coordinates. see `units.toStage`, `src/viewport/bounds.js`.
  *
- * This table decides what the editor *draws*, and nothing else. It carried
- * display names too until wiki issue 0021, and that was two tables in one:
- * which hideouts exist and what they are called is game data in ten languages,
- * generated into `public/hideouts/{language}.json` and read by `hideouts.js`;
- * which of them somebody has measured is this, and only this belongs in source.
+ * Which hideouts exist and what they are called is game data, and is
+ * `hideouts.js`. This table is only which of them somebody has measured, and
+ * only that belongs in source. see issues/0021.
  *
- * Seven of the game's 83 hideout types have an outline. The rest load, edit and
- * save like any other; they just have nothing to draw underneath.
+ * A hideout type without an outline is the ordinary case: it loads, edits and
+ * saves, and draws nothing underneath.
  */
 
 const OUTLINES = {
@@ -32,8 +28,8 @@ const OUTLINES = {
 /**
  * The outline file for a `hideout_hash`, or `undefined`.
  *
- * Keyed as a string because a hash arrives as a number from a parsed file and
- * as a string from a `<select>`, and the editor has no business caring which.
+ * Keyed as a string: a hash arrives as a number from a parsed file and as a
+ * string from a `<select>`.
  */
 export function outlineFor(hash) {
   return OUTLINES[`${hash}`];

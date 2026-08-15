@@ -2,11 +2,9 @@
  * Array placement: parameters in, `Doodad` objects out.
  *
  * Pure arithmetic -- no Konva, no signals, no fetch. A project file stores the
- * parameters and not the doodads, so this module *is* part of the file format
- * (wiki/decisions/array-placement.md) and is pinned by golden tests: changing
- * the math fails a test instead of a hideout.
- *
- * ## The parameters
+ * parameters and not the doodads, so this module is part of the file format and
+ * is pinned by golden tests: changing the math fails a test instead of a
+ * hideout. see decisions/array-placement.
  *
  *     layer       the layer id the doodads are written into
  *     type        "grid" | "ellipse" | "polygon" | "line" | "bezier"
@@ -21,41 +19,27 @@
  *     rotation    {base, increment, align}
  *     random      {seed, jitter: {x, y, rotation}}
  *
- * ## Which doodad, and which of its variations
- *
- * Two lists are walked per placement and `pick` says how each is walked.
- * `CYCLE` takes them in turn -- the source by placement index, a variation by
- * how many times that doodad has been placed already, so one doodad with two
- * variations alternates them. `RANDOM` is the seeded hash below, the same one
+ * `pick` says how the source and variation lists are walked. `CYCLE` takes them
+ * in turn -- the source by placement index, a variation by how many times that
+ * doodad has been placed -- and `RANDOM` is the seeded hash below, the same one
  * the jitter uses, so an array is reproducible and rolling the seed reshuffles
- * it.
+ * it. A source doodad with no variations chosen keeps its own `fv`: an empty
+ * list is "leave it alone", not "none".
  *
- * A source doodad with no variations chosen keeps its own `fv`, mirror and all.
- * An empty list is "leave it alone" and not "none", which is what an array does
- * until a player says otherwise.
+ * Positions are doodad units and angles are stage degrees, so the axis swap and
+ * the rotation sense are reasoned about in `units.js` alone.
  *
- * ## Frames
- *
- * Positions are in doodad units -- the space `Doodad.x` and `Doodad.y` live in
- * -- and angles are degrees the stage would read, which is what `units.js`
- * converts and what the sidebar shows. So there is exactly one place where the
- * axis swap and the rotation sense are reasoned about, and it is `units.js`.
- *
- * A shape is built in its own frame first: x across the box, y *up* it, the way
- * a player sees it. That frame is fixed by the polygon phase below -- a
- * triangle points up -- and the grid uses the same one, so its row `j = 0` is
- * the bottom row of the box.
- *
- * ## Where the points go
+ * A shape is built in its own frame first -- x across the box, y *up* it, the
+ * way a player sees it. The polygon phase fixes that frame, a triangle pointing
+ * up, and the grid shares it, so its row `j = 0` is the bottom row.
  *
  * The grid is a lattice at cell centres. A line, an ellipse and a Bézier are
- * polylines walked at equal arc length, which is why the curves come out evenly
- * spaced rather than crowded where they turn. A polygon is dealt to its edges
- * instead, so that a doodad lands *on* a corner rather than near one -- see
- * `alongEdges`.
+ * polylines walked at equal arc length, so a curve comes out evenly spaced
+ * rather than crowded where it turns. A polygon is dealt to its edges so a
+ * doodad lands *on* a corner, see `alongEdges`.
  *
- * `outline` hands the same polyline to the gizmo, so what a player sees and what
- * the doodads sit on cannot disagree.
+ * `outline` hands the same polyline to the gizmo, so what a player sees and
+ * what the doodads sit on cannot disagree.
  */
 
 import { Doodad } from "./model.js";
@@ -84,9 +68,9 @@ export const CYCLE = "cycle";
 export const RANDOM = "random";
 
 /**
- * How an array walks its two lists, said in full: the defaults are stated here
- * and nowhere else, so the sidebar's switches and the arithmetic cannot disagree
- * about what a generator with no `pick` does.
+ * How an array walks its two lists, said in full. The defaults are stated here
+ * and nowhere else, so the sidebar's switches and the arithmetic cannot
+ * disagree about a generator with no `pick`.
  */
 export function pickOf(parameters) {
   return {
@@ -101,9 +85,9 @@ const DEGREE = Math.PI / 180;
  * The doodads a generator evaluates to, in index order.
  *
  * A source of nothing is refused rather than evaluated to nothing: `source` is
- * cycled by index, so an empty one is a division by zero wearing a modulo, and
- * an array that quietly places nothing is a layout a player has to work out for
- * themselves. The sidebar keeps the last source doodad for the same reason.
+ * cycled by index, so an empty one is a modulo by zero, and an array that
+ * quietly places nothing is a layout a player has to work out. The sidebar
+ * keeps the last source doodad for the same reason.
  */
 export function generate(generator) {
   if (!generator.source?.length) {
@@ -170,9 +154,9 @@ export function randomSeed() {
  * The two ends of a box's own x axis: what a shape becomes when its type is
  * changed to `line`.
  *
- * The pair with the reverse below is here rather than in the sidebar that asks
- * for it, because both are the frame change of `fromLocal` read in one direction
- * or the other -- and the frames are reasoned about in this module only.
+ * Here rather than in the sidebar that asks for it: this and its reverse below
+ * are `fromLocal`'s frame change read one way or the other, and the frames are
+ * reasoned about in this module only.
  */
 export function endsOfBox(box) {
   const half = box.width / 2;
@@ -215,22 +199,18 @@ function placements(generator) {
  * A polygon's doodads, dealt to its edges rather than walked around its
  * perimeter.
  *
- * The walk is right for the shapes that have nothing to land on: equal arc
- * length is even spacing, and an ellipse has no corners to miss. A polygon is
- * chosen *for* its corners, and a walk lands a doodad a hair off one whenever
- * the arithmetic does not come out exactly -- which reads as a mistake at every
- * corner of a sharp shape. So the count is shared out edge by edge, and each
- * edge lays its share out from one end: a doodad is on a corner or it is not.
+ * A polygon is chosen *for* its corners, and an arc-length walk lands a doodad a
+ * hair off one whenever the arithmetic does not come out exactly. So the count
+ * is shared out edge by edge and each edge lays its share out from one end: a
+ * doodad is on a corner or it is not.
  *
  * The two distributions are one half-step apart. `ON_CORNERS` starts each edge
- * at its own start corner and follows at `step / share`. `ON_EDGES` sits at
- * `(step + 0.5) / share`, which is the edge's midpoint for a share of one and
- * stays centred on it for more.
+ * at its own start corner, at `step / share`; `ON_EDGES` at `(step + 0.5) /
+ * share`, the edge's midpoint for a share of one.
  *
- * The cost lands on a box that is not square: a stretched polygon has edges of
- * different lengths, and equal shares on unequal edges are not equal spacing.
- * That is the trade a shape with corners is asking for -- a corner every time,
- * against a gap that varies -- and the ellipse is there for the other answer.
+ * The cost is a box that is not square: equal shares on unequal edges are not
+ * equal spacing. That is the trade a shape with corners asks for, and the
+ * ellipse is the other answer.
  */
 function alongEdges(generator) {
   const corners = polygonCorners(generator.box, generator.corners);
@@ -261,11 +241,9 @@ function shareOf(count, edges, index) {
 /**
  * A point a fraction along an edge, and which way the shape runs there.
  *
- * A doodad on the corner is the one case the edge cannot answer: it belongs to
- * the edge arriving and the edge leaving equally, so neither direction is its.
- * The box's centre is what can say -- the corner faces along the circle through
- * it, which is where the two edges average to, and which is the same answer at
- * every corner of a regular shape.
+ * A doodad on a corner is the case an edge cannot answer -- it belongs to the
+ * arriving and the leaving edge equally. The box's centre can: the corner faces
+ * along the circle through it, where the two edges average to.
  */
 function pointAlong(from, to, fraction, center) {
   const span = { x: to.x - from.x, y: to.y - from.y };
@@ -349,13 +327,10 @@ function boxCorners(box) {
  * A cubic Bézier as a polyline, open, both ends included.
  *
  * Cubic and not quadratic: one control point per end is what draws an S, and a
- * path along a hideout wall bends twice as often as it bends once. It is
- * sampled and then walked like every other polyline, so the doodads come out
- * evenly spaced along the curve rather than crowded where it turns -- the
- * ellipse's reasoning, and the same ruler.
+ * path along a hideout wall bends twice as often as once. Sampled and then
+ * walked like any other polyline, so the doodads come out evenly spaced.
  *
- * The samples are the drawing as well, `outline` handing them to the gizmo, so a
- * curve a player sees is the curve the doodads sit on.
+ * The samples are the drawing as well, `outline` handing them to the gizmo.
  */
 function bezierPoints(ends, controls) {
   return range(CURVE_SEGMENTS + 1).map((step) =>
@@ -438,12 +413,10 @@ function segmentsOf(points, closed) {
  * carrying it.
  *
  * A step landing on a joint belongs to the edge it *starts*, so a walk reads the
- * direction it is about to travel in rather than the one it has finished with.
- * The last edge takes whatever is left over, so the end of an open walk lands on
- * the final point rather than falling off it.
+ * direction it is about to travel in. The last edge takes what is left over, so
+ * an open walk ends on the final point rather than past it.
  *
- * Only the line and the ellipse are walked. A polygon's corners are worth
- * landing on exactly, which arc length cannot promise -- see `alongEdges`.
+ * Only the line and the ellipse are walked, see `alongEdges`.
  */
 function pointAt(segments, distance) {
   let remaining = distance;
@@ -557,10 +530,9 @@ const CHANNEL = { x: 1, y: 2, rotation: 3, variation: 4, source: 5 };
 /**
  * A hash of `(seed, index, channel)`, not a stream.
  *
- * A sequence would mean that changing the resolution from forty to forty-one
- * reshuffles all forty. A hash means doodad 12 keeps what it had, whatever else
- * changed. The mixing is the murmur3 finaliser, inline because one hash is not
- * a dependency.
+ * A sequence would reshuffle all forty doodads when the resolution goes to
+ * forty-one; a hash lets doodad 12 keep what it had. The mixing is the murmur3
+ * finaliser, inline because one hash is not a dependency.
  */
 function hash(seed, index, channel) {
   let value = (seed ?? 0) >>> 0;
@@ -588,9 +560,9 @@ function fromLocal({ x, y }, box) {
 /**
  * A vector in doodad units, turned by an angle the stage would read.
  *
- * Exported because moving a whole array rigidly is the same turn applied to
- * every point it carries -- see `arrays.moved` -- and the sense of a rotation
- * is reasoned about in this module and `units.js` and nowhere else.
+ * Exported for `arrays.moved`: a rigid move is this turn applied to every point
+ * the array carries. The sense of a rotation is reasoned about here and in
+ * `units.js`, nowhere else.
  */
 export function turned({ x, y }, degrees) {
   const angle = degrees * DEGREE;
@@ -617,8 +589,7 @@ function scale({ x, y }, factor) {
   return { x: x * factor, y: y * factor };
 }
 
-// The `+ 0` is `units.js`'s: rounding a small negative gives -0, which equals
-// zero under every comparison but `Object.is` and prints as "-0".
+// `+ 0` keeps -0 from surfacing, the same as `units.toDegrees`.
 function round(value) {
   return Math.round(value) + 0;
 }

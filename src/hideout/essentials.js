@@ -1,18 +1,14 @@
 /**
  * The doodads the game places itself, which the Doodad Limit does not count.
+ * see specifications/game-facts, "Essential doodads".
  *
- * The limit is 750 *placed* doodads. Essentials sit outside it -- measured in
- * game, not inferred: with 750 probes and 18 essentials present the game
- * refuses the next placement and names 750, see
- * wiki/discussions/bounds-by-probe-grid.md. Counting them against the limit
- * would warn a player about a file the game accepts.
+ * A snapshot, not a truth: the set changes between patches, and this is what
+ * the game injected into an empty-doodad import of Shrine Hideout on
+ * 2026-08-07. see issues/0014.
  *
- * The set changes between patches, so this table is a snapshot and not a truth:
- * it is what the game injected into an empty-doodad import of Shrine Hideout on
- * 2026-08-07, which is how such a list is derived (wiki issue 0014). An
- * essential the table has forgotten is counted against the limit, so a stale
- * table warns too early rather than too late. That is the safe direction, and
- * it is why the warning states the count rather than blocking the export.
+ * A forgotten essential is counted, so a stale table warns too early rather
+ * than too late -- which is why the warning states the count rather than
+ * blocking the export.
  */
 
 const ESSENTIAL_HASHES = new Set([

@@ -1,17 +1,12 @@
 /**
  * Rubber-band selection: the rectangle maths, and the set semantics on top.
  *
- * The semantics are the 3D editor's and survive unchanged -- a committed
- * primary set, a transient set while the band is down, Shift adds, Ctrl
- * removes, merged when the drag ends. The plumbing underneath does not: in 3D
- * this needed a six-plane frustum and two modified copies of library addons,
- * 393 lines that also carried wiki issue 0004. In 2D it is
- * `intersects(one, other)`.
+ * A committed primary set, a transient set while the band is down, Shift adds,
+ * Ctrl removes, merged when the drag ends.
  *
- * The rectangles are screen pixels. That is not an implementation detail: the
- * view is turned -- see `stage.js` -- so an upright band and an upright node
- * box only exist on screen, and it is on screen that they may be compared as
- * plain overlapping rectangles.
+ * The rectangles are screen pixels, which is not an implementation detail: the
+ * view is turned (see `stage.js`), so an upright band and an upright node box
+ * exist only on screen, where they compare as plain overlapping rectangles.
  *
  * Nothing here imports Konva or touches the DOM, which is what makes it
  * testable. A node is anything `boundsOf` can measure.

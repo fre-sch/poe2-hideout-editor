@@ -1,9 +1,8 @@
 /**
  * What the viewport draws besides the doodads.
  *
- * It was the edit mode section until wiki issue 0038 took the modes away: there
- * is nothing to switch between any more, because the selection always carries
- * its box and its handles. What is left is the two toggles.
+ * Two toggles. There is nothing to switch between, the selection always
+ * carrying its box and handles. see issues/0038.
  */
 
 import * as state from "../state.js";

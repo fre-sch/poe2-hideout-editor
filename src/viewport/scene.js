@@ -68,9 +68,8 @@ export class Scene {
     this.arrays.addEventListener("changed", this.onArrayChanged);
 
     // The arrays a layer group carries along with the selection, drawn in the
-    // overlay beside the gizmo they are the plainer version of. They name their
-    // layers and read the parameters through this, which is what keeps them
-    // pointing at the array rather than at a copy of it -- see there.
+    // overlay. They name their layers and read the parameters through this, so
+    // they point at the array rather than at a copy of it. see `arrays.Movers`.
     this.movers = new arrays.Movers(this.stage.overlay, (layer) =>
       state.hideoutDocument.value?.findGenerator(layer),
     );
@@ -148,13 +147,11 @@ export class Scene {
   /**
    * Every node in the colour of the layer its doodad is in.
    *
-   * Every node and not the ones that moved, because a layer edit is one signal
-   * whatever it changed -- a colour picked, a doodad handed to another layer,
-   * a layer deleted. A node already wearing its colour is left alone, so the
-   * walk costs a comparison per doodad; see `doodads.setColor`.
+   * Every node and not the ones that moved, a layer edit being one signal
+   * whatever it changed. A node already wearing its colour is left alone, so
+   * the walk costs a comparison per doodad. see `doodads.setColor`.
    *
-   * After `groups.sync`, which refuses a node whose layer is gone -- so every
-   * node here has a layer to take a colour from.
+   * After `groups.sync`, which refuses a node whose layer is gone.
    */
   colorNodes() {
     for (const node of this.nodes) {
@@ -167,12 +164,10 @@ export class Scene {
    * has moved: the ones that have left destroyed, the ones that have arrived
    * drawn.
    *
-   * Neither direction is a gesture the viewport performed. The sidebar takes
-   * doodads out -- deleting an array layer, which takes its own with it, and
-   * making an array, which takes the ones it was made from -- and puts them in,
-   * duplicating a layer. So this is where the drawing hears about them, and
-   * afterwards every node has a doodad in a layer, which is what `groups.sync`
-   * insists on.
+   * Neither direction is a gesture the viewport performed -- the sidebar takes
+   * doodads out and puts them in -- so this is where the drawing hears about
+   * them. Afterwards every node has a doodad in a layer, which is what
+   * `groups.sync` insists on.
    */
   syncNodes() {
     const held = state.hideoutDocument.value?.doodads ?? [];
@@ -259,10 +254,9 @@ export class Scene {
    * Colours the doodad the sidebar is pointing at, and puts back the one it was
    * pointing at before.
    *
-   * The previous node is only put back if it is still drawn: a doodad can be
-   * deleted while its row is under the pointer, and a destroyed node is not the
-   * scene's to colour any more. It is also why the highlight is looked up afresh
-   * every time rather than remembered as a doodad.
+   * The previous node is put back only if it is still drawn -- a doodad can be
+   * deleted while its row is under the pointer -- which is also why the
+   * highlight is looked up afresh rather than remembered.
    */
   highlightDoodad(doodad) {
     const node = this.nodes.find((drawn) => drawn.doodad === doodad) ?? null;
@@ -278,13 +272,12 @@ export class Scene {
   /**
    * Places a doodad the palette named, and selects it.
    *
-   * The document's array gets the doodad and the scene gets a node for it, in
-   * that order and nowhere else -- a new doodad is one object in one array, the
-   * same as a loaded one. `showLayers` is what puts the node in the group of the
-   * layer it names, so nothing here knows how a layer is drawn.
+   * The document's array gets the doodad and the scene gets a node for it: a
+   * new doodad is one object in one array, the same as a loaded one.
+   * `showLayers` puts the node in the group of the layer it names.
    *
-   * It becomes the selection because placing and then moving is meant to be one
-   * gesture; a doodad that has to be found again is a doodad placed twice.
+   * It becomes the selection because placing and then moving is one gesture; a
+   * doodad that has to be found again is a doodad placed twice.
    */
   placeDoodad({ hash, name }) {
     const hideout = state.hideoutDocument.value;
@@ -314,10 +307,9 @@ export class Scene {
    * the last one when the view has not moved since.
    *
    * Eight double-clicks at one coordinate is a stack nobody can pull apart, and
-   * the middle of the view is the only place the first one can go -- the palette
-   * is a list of names and says nothing about where. Moving the view is how a
-   * player says "that run is over", which is the same gesture they would make
-   * anyway to place somewhere else.
+   * the middle of the view is the only place the first can go -- the palette
+   * says nothing about where. Moving the view is how a player says the run is
+   * over, which is the gesture they would make anyway.
    */
   nextPlacement() {
     const centre = units.fromStage(
@@ -359,10 +351,9 @@ export class Scene {
    * The arrays that move with the selection, as layer ids: a layer group's, or
    * none.
    *
-   * Their proxies join the selection in the box, which is the whole mechanism --
-   * see `arrays.Movers`. An id naming no array is skipped rather than refused:
-   * the sidebar names a group's layers, and which of them carry a generator is
-   * this side's question.
+   * Their proxies join the selection in the box, see `arrays.Movers`. An id
+   * naming no array is skipped rather than refused: the sidebar names a group's
+   * layers, and which carry a generator is this side's question.
    */
   moveArrays(layers) {
     this.movers.show(layers);
@@ -382,9 +373,8 @@ export class Scene {
    * A step of a move: the labels follow the doodads, and every riding array is
    * regenerated where the gesture has now put it.
    *
-   * Live, the way an array's own handles are live -- there is nothing else for
-   * a player to judge a drag by, an array being its doodads. Regenerating moves
-   * nodes rather than rebuilding them; see `regenerateArray`.
+   * Live, the way an array's own handles are: an array is its doodads, so there
+   * is nothing else to judge a drag by. see `regenerateArray`.
    */
   onMoving = () => {
     this.refreshLabels();
@@ -402,12 +392,10 @@ export class Scene {
   /**
    * An array's doodads brought back into step with its parameters, live.
    *
-   * **Nodes are moved, not replaced.** Destroying and building a few hundred
-   * `Konva.Path` nodes on every frame of a drag is the shape of the cost wiki
-   * issue 0041 was about, and none of it is necessary: a regenerated doodad is
-   * the same kind of thing in a slightly different place, which is what
-   * `doodads.place` is for. Only a change in the *count* adds or destroys any,
-   * and only then does the drawing have to be told about layers again.
+   * Nodes are moved, not replaced: a regenerated doodad is the same kind of
+   * thing in a slightly different place, which is `doodads.place`. Building a
+   * few hundred `Konva.Path` nodes per frame of a drag is the cost issues/0041
+   * was about. Only a change in the *count* adds or destroys any.
    */
   onArrayChanged = (event) => {
     this.regenerateArray(event.detail.layer);
@@ -421,10 +409,9 @@ export class Scene {
    * a type builds new ones, see `model.replaceGenerator`.
    *
    * The gizmo is drawn for whatever the state now says is being worked on
-   * rather than for a layer named here, which is what keeps an edit that lands
-   * beside a change of layer from raising handles over the wrong array. The
-   * proxies are redrawn for the same reason and by the same argument: aligning a
-   * group moves arrays that are standing in the box.
+   * rather than for a layer named here, so an edit landing beside a change of
+   * layer cannot raise handles over the wrong array. The proxies are redrawn
+   * for the same reason: aligning a group moves arrays standing in the box.
    */
   refreshArrays(layers) {
     this.showArray(state.editedArray.value);
@@ -479,8 +466,8 @@ export class Scene {
     if (event.evt.button !== SELECT_BUTTON) return;
     if (this.grabbedSelection(event)) return;
 
-    // Keyboard shortcuts are bound to the container, not to the window, so the
-    // container has to take focus for them to arrive -- wiki issue 0010.
+    // Keyboard shortcuts are bound to the container, not to the window, so it
+    // has to take focus for them to arrive. see issues/0010.
     this.container.focus();
     this.bandOrigin = this.stage.konva.getPointerPosition();
     // Settled once for the gesture: a layer cannot be locked or hidden while
@@ -498,17 +485,14 @@ export class Scene {
   /**
    * Whether the left button belongs to the selection rather than to the band,
    * and starts the move if it does. There are no modes, so where the gesture
-   * started is the whole of the answer -- wiki issue 0038.
+   * started is the whole of the answer. see issues/0038.
    *
-   * A handle always belongs to it, and so does anywhere inside the box, which
-   * is a rectangle of empty floor as often as not: a selection is moved by
-   * grabbing it, not by finding one of its doodads to grab. Konva offers that
-   * as `shouldOverdrawWholeArea`, and it is refused -- the area it claims is a
-   * shape above the doodads, and it would swallow the click that takes one of
-   * them back out of the selection.
+   * A handle always belongs to it, and so does anywhere inside the box: a
+   * selection is moved by grabbing it, not by finding one of its doodads.
+   * Konva's `shouldOverdrawWholeArea` is refused, see `transform.js`.
    *
-   * Shift and Ctrl say "I am selecting", which is what keeps that click
-   * working, and what leaves a band startable inside the box.
+   * Shift and Ctrl say "I am selecting", which keeps the click that deselects
+   * working and leaves a band startable inside the box.
    */
   grabbedSelection(event) {
     if (this.transform.grips(event.target)) return true;
@@ -545,13 +529,11 @@ export class Scene {
    * with no size, which is a click -- only the doodad actually under the
    * pointer.
    *
-   * The two gestures ask different questions. A sweep asks what is under the
-   * region, and answering it with the upright box around each doodad is the
-   * generous side to err on. A click asks which doodad is being pointed at, and
-   * the box is the wrong answer to that: a turned gizmo's box is much bigger
-   * than the drawing, and in a dense hideout several of them cover any given
-   * pixel. So a click is put to the gizmos themselves, and a player who wants
-   * the generous answer has it a few pixels of sweep away.
+   * The two ask different questions. A sweep asks what is under the region, and
+   * the upright box around each doodad is the generous side to err on. A click
+   * asks which doodad is pointed at, and a turned gizmo's box is much bigger
+   * than the drawing -- in a dense hideout several cover any given pixel. So a
+   * click is put to the gizmos themselves.
    */
   candidatesIn(area) {
     if (area.width > CLICK_SLOP || area.height > CLICK_SLOP) {
@@ -621,9 +603,9 @@ export class Scene {
   };
 
   /**
-   * Deletion removes doodads from the one array that holds them. There is no
-   * second collection for them to survive in, which is wiki issue 0001, and no
-   * mode change is involved, which is wiki issue 0005.
+   * Deletion removes doodads from the one array that holds them: no second
+   * collection to survive in, no mode change. see
+   * decisions/transform-control-reparenting.
    */
   deleteSelection() {
     const nodes = this.selection.nodes;

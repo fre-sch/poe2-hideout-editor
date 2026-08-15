@@ -2,24 +2,21 @@
  * The help, as a modal and as the button that raises it: the gestures, and what
  * the layer list means.
  *
- * **It is where the editor is explained**, and a panel that explains itself over
- * its own control pays for it on every load. So prose that is read once and read
- * past thereafter belongs here, under a heading of its own -- see `Layers` and
- * wiki issue 0079.
+ * Where the editor is explained: prose read once and read past thereafter
+ * belongs here rather than over the control it describes, under a heading of
+ * its own. see `Layers`, issues/0079.
  *
- * It opens by itself the first time, because the editor is its mouse gestures
- * and nothing on screen spells them out. Everything after that is one keypress
- * away, which is worth more than the sidebar height a permanent list costs --
- * and the checkbox decides whether "after that" includes the next load. The
- * preference is `state.showHelpOnLoad`, written when the modal closes.
+ * It opens by itself the first time, the editor being its mouse gestures and
+ * nothing on screen spelling them out. After that it is one keypress away, and
+ * the checkbox decides whether "after that" includes the next load. see
+ * `state.showHelpOnLoad`.
  *
  * A native `<dialog>`: Bootstrap's modal needs Bootstrap's JavaScript, which
- * index.html deliberately does not load, and the element already does the
- * backdrop, the focus trap and Escape on its own.
+ * index.html does not load, and the element already does the backdrop, the
+ * focus trap and Escape.
  *
  * The shortcuts work while the viewport has focus, so clicking it comes first.
- * They are bound to the viewport rather than the window on purpose -- wiki
- * issue 0010 -- and this is where a player finds that out.
+ * see issues/0010.
  */
 
 import { useEffect, useRef } from "preact/hooks";

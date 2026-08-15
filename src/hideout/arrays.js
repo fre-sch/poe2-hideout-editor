@@ -3,10 +3,9 @@
  * rather than typing: changing its type, and moving the whole shape.
  *
  * `generator.js` reads parameters and `model.js` stores them; this is where a
- * set of them comes from. It is here and not in the sidebar because none of it
- * is a matter of buttons: fitting a shape to a selection, turning a box into a
- * line and carrying an array along with a layer group are arithmetic, and
- * arithmetic is testable.
+ * set of them comes from. Here and not in the sidebar because fitting a shape
+ * to a selection, turning a box into a line and carrying an array with a layer
+ * group are arithmetic, and arithmetic is testable.
  */
 
 import * as generator from "./generator.js";
@@ -14,9 +13,8 @@ import * as model from "./model.js";
 
 /**
  * Room for a shape fitted to something with no size of its own -- one doodad,
- * or a row of them. In doodad units, where a hideout is a few hundred across
- * and doodads sit some ten apart, so a new array arrives big enough to see and
- * small enough to be somewhere.
+ * or a row of them. Doodad units, where a hideout is a few hundred across, so a
+ * new array arrives big enough to see and small enough to be somewhere.
  */
 const MINIMUM_SIZE = 30;
 
@@ -78,8 +76,8 @@ function sourceOf(doodad) {
  * An unturned box holding the given doodads.
  *
  * The axes cross over: a box's own x runs across its width and reaches the
- * doodads' `y`, which is `fromLocal`'s doing -- see `generator.js`. So a wide
- * box is wide on the screen, which is the only place a player reads it.
+ * doodads' `y`, which is `generator.fromLocal`'s doing. So a wide box is wide
+ * on the screen, which is where a player reads it.
  */
 export function boxAround(doodads) {
   const across = spanOf(doodads.map((doodad) => doodad.y));
@@ -105,18 +103,17 @@ function spanOf(values) {
 
 // -- moving a whole array ----------------------------------------------------
 //
-// A layer group moves several layers at once, and an array in one of them moves
-// by having its geometry rewritten -- there is nothing else to move, its doodads
-// being computed. See wiki/decisions/layer-groups.md.
+// A layer group moves several layers at once, and an array in one moves by
+// having its geometry rewritten: its doodads are computed, so there is nothing
+// else to move. see decisions/layer-groups.
 
 /**
  * Where an array is, as one point: the centre of its box, or the middle of its
  * ends for the two shapes drawn end to end.
  *
- * The midpoint and not the middle of the drawn curve. It is the point a player
- * aligns *by*, so what it has to be is predictable and the same one every time
- * -- and it is where a curve's box would be centred if it had one, `boxOfEnds`
- * saying so.
+ * The midpoint, not the middle of the drawn curve: it is the point a player
+ * aligns *by*, so it has to be predictable, and it is where a curve's box would
+ * be centred. see `generator.boxOfEnds`.
  */
 export function centerOf(parameters) {
   if (model.carriesBox(parameters.type)) return parameters.box.center;
@@ -129,16 +126,12 @@ export function centerOf(parameters) {
  * The same array moved rigidly: turned by `degrees` about `from`, which lands
  * at `to`.
  *
- * A rigid motion and not a sequence of edits, because a gesture is one motion:
- * a drag is read against where the array was when the gesture started, so a long
- * drag does not accumulate what each of its steps rounded.
+ * One motion and not a sequence of edits: a drag is read against where the array
+ * was when the gesture started, so a long drag accumulates no rounding.
  *
- * Every point the shape carries goes through the same turn, controls included --
- * a curve carried along is the same curve somewhere else, and a control left
- * behind would flatten it as it went. A box carries its own angle as well, and
- * the two agree by construction: a corner is its centre plus a local point
- * turned by the box angle, so turning the centre about the pivot and adding the
- * same amount to the angle turns every corner about the pivot.
+ * Every point goes through the same turn, controls included -- a control left
+ * behind would flatten a curve as it went. A box turns by its centre and its
+ * angle together, which turns every corner about the pivot.
  */
 export function moved(parameters, { from, to, degrees = 0 }) {
   const carry = (point) =>
@@ -189,11 +182,9 @@ function displaced(point, by) {
  * The same array as another type: its geometry converted, and the fields the
  * new type needs and the old one had no use for filled in.
  *
- * The count is what carries over rather than the resolution itself, a grid
- * counting in two directions and everything else in one. Changing type twice is
- * therefore not quite a round trip -- three by three comes back as nine by one
- * -- and it says what it does: the doodads stay put and the shape changes under
- * them.
+ * The count carries over rather than the resolution itself, a grid counting in
+ * two directions and everything else in one. So changing type twice is not
+ * quite a round trip: three by three comes back as nine by one.
  */
 export function withType(parameters, type) {
   if (type === parameters.type) return parameters;
@@ -208,13 +199,13 @@ export function withType(parameters, type) {
 }
 
 /**
- * A `Generator` carries the geometry of its own type and no other -- see
- * `model.js` -- so the shape being left is the shape there is to convert. There
- * are two of them: a box, and a pair of ends.
+ * A `Generator` carries the geometry of its own type and no other (see
+ * `model.js`), so the shape being left is the shape to convert: a box, or a
+ * pair of ends.
  *
- * A curve arrives straight. Its controls sit a third and two thirds of the way
- * along the line between its ends, which is the Bézier that *is* that line, so a
- * shape becoming a curve does not move a doodad until the player bends it.
+ * A curve arrives straight, its controls a third and two thirds along the line
+ * between its ends -- the Bézier that *is* that line -- so becoming a curve
+ * moves no doodad until the player bends it.
  */
 function geometryFor(parameters, type) {
   if (model.carriesBox(type)) {

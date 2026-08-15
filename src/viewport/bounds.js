@@ -1,20 +1,14 @@
 /**
  * The placeable-area outline, drawn under a hideout.
  *
- * The outlines are SVG in doodad coordinates -- SVG x from doodad y, SVG y from
- * doodad x, which is exactly what `units.toStage` does. So the path data goes
- * onto the stage unscaled and untranslated, and a hideout that lands on its own
- * outline is the proof that the coordinate mapping is right.
+ * The outlines are SVG in doodad coordinates, which is what `units.toStage`
+ * does, so the path data goes onto the stage unscaled and untranslated. A
+ * hideout landing on its own outline is the proof the mapping is right.
  *
- * The ones in `public/bounds/` were traced by hand, walking each perimeter in
- * game placing one doodad at a time. `scripts/probe_grid.py` derives them from
- * the game instead and writes the same convention; its outlines agree with the
- * hand traces to within a few units, but have not replaced them.
- *
- * The 3D editor took the same files through an SVG loader, a shape geometry, an
- * edge geometry and line segments, and then rotated the result onto the XZ
- * plane, to draw an outline that started life as a 2D path. `Konva.Path` eats
- * the path data directly.
+ * The ones in `public/bounds/` were traced by hand in game.
+ * `scripts/probe_grid.py` derives them instead and writes the same convention;
+ * it agrees to within a few units and has not replaced them. see
+ * discussions/bounds-by-probe-grid.
  */
 
 import Konva from "konva";
@@ -26,10 +20,9 @@ const CACHE = new Map();
 
 /**
  * The outline for a `hideout_hash` as a `Konva.Group`, or `null` for a hideout
- * type nobody has traced -- 76 of the game's 83, wiki issue 0021.
+ * type nobody has traced. see issues/0021.
  *
- * Asynchronous because the outlines are static assets rather than source: they
- * come from the game by way of `scripts/`, and no edit to them belongs here.
+ * Asynchronous because the outlines are static assets rather than source.
  */
 export async function load(hash) {
   const file = bounds.outlineFor(hash);
@@ -60,9 +53,8 @@ async function pathData(file) {
 /**
  * The `d` attributes of an outline file.
  *
- * Read with a regular expression rather than `DOMParser` because these files
- * are written by one script in one shape, and every one of their paths is
- * wanted. A parser would be answering a question nobody asked.
+ * Read with a regular expression rather than `DOMParser`: these files are
+ * written by one script in one shape, and every path is wanted.
  */
 async function fetchPathData(file) {
   const url = `${import.meta.env.BASE_URL}bounds/${file}`;
