@@ -3,13 +3,13 @@
  *
  * The signals are the wiring between the two, not a second copy of the
  * document: `hideoutDocument` holds the one `HideoutDocument` there is, and the
- * viewport's Konva nodes point at the doodads inside it.
+ * viewport's Konva nodes point at the doodads inside it. Every signal, its
+ * writer and its readers: see specifications/signal-wiring.
  *
- * `doodadCount` is the one exception, and it earns it. Deleting a doodad
- * removes it from `document.doodads` in place, which nothing can subscribe to,
- * and replacing the document instead would rebuild every node in the viewport
- * to update a number in the sidebar. So the count is published separately, by
- * whoever changed the array.
+ * `doodadCount` is the exception and earns it. Deleting a doodad mutates
+ * `document.doodads`, which nothing can subscribe to, and replacing the
+ * document would rebuild every node in the viewport to update one number. So
+ * the count is published separately, by whoever changed the array.
  */
 
 import { effect, signal } from "@preact/signals";
@@ -33,18 +33,17 @@ export const hideoutType = signal(null);
 /**
  * The type the loaded file arrived as, `{ hash, name }`.
  *
- * The selector's list is built from this rather than from the header, so that a
- * type the game data does not name is still offered after it has been left --
- * an option that disappears when it stops being selected cannot be returned to,
- * wiki issue 0007. It is also the name restored when the player does return.
+ * The selector's list is built from this rather than from the header, so a type
+ * the game data does not name is still offered after it has been left. see
+ * issues/0007. Also the name restored when the player returns to it.
  */
 export const fileType = signal(null);
 
 /**
  * Changes the document's hideout type: the hash, and the name that follows it.
  *
- * `switchLanguage`'s arrangement, applied to a pair of fields --
- * `hideouts.headerFor` says what to write, wiki issue 0061.
+ * `switchLanguage`'s arrangement applied to a pair of fields.
+ * `hideouts.headerFor` says what to write. see issues/0061.
  */
 export function switchHideoutType(header) {
   Object.assign(hideoutDocument.value.header, header);
@@ -54,20 +53,18 @@ export function switchHideoutType(header) {
 /**
  * The document's `header.language`, republished.
  *
- * `doodadCount`'s reasoning, applied to a field: the header is part of the
- * document, switching the language writes it there, and nothing can subscribe
- * to a field being written. The header stays the truth -- it is what the export
- * carries -- and this is what the tables and the sidebar watch.
+ * `doodadCount`'s reasoning applied to a field. The header stays the truth,
+ * being what the export carries; this is what the tables and sidebar watch.
  */
 export const language = signal(null);
 
 /**
  * Switches the document's language: the header, and everyone reading it.
  *
- * Nothing else in the document moves. Positions, rotations, variations, layers
- * and generators are language-free, and so are the names, which a switch does
- * not touch -- what a doodad is *shown* as is looked up per language, wiki
- * issues 0053 and 0059.
+ * Nothing else in the document moves: positions, rotations, variations, layers
+ * and generators are language-free, and so are the stored names -- what a
+ * doodad is *shown* as is looked up per language. see issues/0053,
+ * issues/0059.
  */
 export function switchLanguage(chosen) {
   hideoutDocument.value.header.language = chosen;
@@ -79,10 +76,8 @@ export const doodadCount = signal(0);
 /**
  * The document's layers, republished for whoever draws them.
  *
- * `doodadCount`'s reasoning, applied to a list: the layers live in the
- * document, editing them mutates that document in place, and nothing can
- * subscribe to a mutation. Every layer edit therefore goes through
- * `layersChanged`, which is also the one place the array is copied -- signals
+ * `doodadCount`'s reasoning applied to a list. Every layer edit goes through
+ * `layersChanged`, which is the one place the array is copied -- signals
  * compare by reference, so a mutated layer needs a new array to be noticed.
  */
 export const layers = signal([]);
@@ -93,10 +88,9 @@ export const activeLayer = signal(null);
 /**
  * The group being worked on, by name, or `null`.
  *
- * The other kind of row the layer list is picked over. Exactly one of these
- * two is set: a group is not a layer doodads can land in, so while one is up
- * there is no active layer and the palette says so. See
- * wiki/decisions/layer-groups.md.
+ * The other kind of row the layer list is picked over. Exactly one of the two
+ * is set: a group is not a layer doodads can land in, so while one is up there
+ * is no active layer and the palette says so. see decisions/layer-groups.
  */
 export const activeGroup = signal(null);
 
@@ -134,7 +128,7 @@ export function toggleCollapsed(name) {
  * One signal, so opening a second editor closes the first: a name is edited by
  * double-clicking it, and the row that was open is not necessarily near the row
  * that just opened. Not stored and not saved, the way `collapsedGroups` is not:
- * it is a gesture in progress. See wiki issue 0067.
+ * it is a gesture in progress. see issues/0067.
  */
 export const editedName = signal(null);
 
@@ -199,10 +193,9 @@ export const selection = signal([]);
 /**
  * Republishes the selection after a doodad in it was edited in place.
  *
- * `layersChanged`'s reasoning, applied to the selection: editing a doodad's `fv`
- * mutates the document, which nothing can subscribe to, and signals compare by
- * reference. The viewport is not told, and needs no telling -- every doodad draws
- * as the same gizmo whatever its variation says, wiki issue 0042.
+ * `layersChanged`'s reasoning applied to the selection. The viewport is not
+ * told and needs no telling: every doodad draws as the same gizmo whatever its
+ * variation says. see issues/0042.
  */
 export function selectionChanged() {
   selection.value = [...selection.value];
@@ -247,10 +240,9 @@ export const showPalette = signal(false);
  * viewport can ask it for them, and an id survives a regeneration the way an
  * object reference does not.
  *
- * The settings panel is a second signal rather than this one, because making an
- * array the active layer raises the handles and nothing else: a box to drag is
- * most of what a player wants, and a dozen numbers is what they ask for
- * afterwards.
+ * The settings panel is a second signal: making an array the active layer
+ * raises the handles and nothing else, a box to drag being most of what a
+ * player wants.
  */
 export const editedArray = signal(null);
 
@@ -259,8 +251,7 @@ export const showArraySettings = signal(false);
 /**
  * The layer ids of the arrays that move with the selection, which is how a
  * layer group carries its arrays -- their doodads cannot be selected, so there
- * is nothing else of theirs for a box to hold. See
- * wiki/decisions/layer-groups.md.
+ * is nothing else of theirs for a box to hold. see decisions/layer-groups.
  *
  * Ids rather than generators, for `editedArray`'s reason: an id survives a
  * regeneration the way an object reference does not.
@@ -272,10 +263,9 @@ export const movingArrays = signal([]);
  * are one array's, so there is nothing for them to describe once no array is
  * being worked on.
  *
- * Taking one array up puts a group down. Two boxes over the same array is two
- * answers to what a drag would move, and the one being asked for is the one just
- * named -- the granular half of working on an array, which is what the settings
- * are. The group comes back when the layer is activated again.
+ * Taking one array up puts a group down: two boxes over the same array is two
+ * answers to what a drag would move. The group comes back when the layer is
+ * activated again.
  */
 export function editArray(layer) {
   editedArray.value = layer;
@@ -397,11 +387,9 @@ export const showGrid = storedFlag("show-grid", true);
  * They live here rather than in `gui/help.jsx` so that the viewport can raise
  * the modal from the `H` shortcut without importing the sidebar.
  *
- * Not a `storedFlag`, because the stored value has three states where a flag
- * has two: absent is a first visit, which is greeted. So a player who reads the
- * modal once and closes it is not greeted again, and a player who wants the
- * reminder ticks the box for it. A flag that wrote itself back on load would
- * spend that third state before the player had answered.
+ * Not a `storedFlag`: the stored value has three states where a flag has two,
+ * absent being a first visit, which is greeted. A flag that wrote itself back
+ * on load would spend that third state before the player had answered.
  */
 const HELP_KEY = "show-help-on-load";
 const storedHelp = readStored(HELP_KEY);

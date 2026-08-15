@@ -2,29 +2,21 @@
  * The generated tables for the document's language: fetched once each, and
  * shared by everything that asks the data a question.
  *
- * Two of them, and they are loaded separately because they are wanted at
- * different moments. The doodad table is 400 kilobytes and is asked for by
- * whoever needs it -- the labels, the palette, the selection, an array -- so a
- * player who wants none of them fetches nothing; the hideout table is three, and
- * the sidebar names the loaded file from it the moment the file arrives.
+ * Two of them, loaded separately because they are wanted at different moments.
+ * The doodad table is 400 kilobytes and is asked for by whoever needs it, so a
+ * player who wants none of them fetches nothing; the hideout table is three,
+ * and the sidebar names the loaded file the moment it arrives.
  *
- * It began inside `gui/palette.jsx`, which is still its main reader. What moved
- * it out is the Selection section: how many variations a doodad has is the
- * table's answer, and a player editing a selection may never have opened the
- * palette at all -- wiki issue 0042. Two readers is what a module is for.
+ * Beside `state.js` rather than in `gui/`: the labels over the canvas name
+ * doodads too, and the selection asks how many variations a doodad has without
+ * the palette ever being opened. see issues/0042, issues/0059.
  *
- * It sits beside `state.js` and no longer in `gui/` for the same reason applied
- * once more: the labels over the canvas name doodads too, and the viewport is
- * not a part of the sidebar -- wiki issue 0059.
- *
- * The generated files are static assets rather than source, the same as the
- * bounds outlines, so they are fetched and not imported -- one file per
- * language, and a player opens one of them. Fetching is why this is not in
- * `hideout/`, which is framework-free by rule, wiki issue 0011.
+ * The generated files are static assets rather than source, so they are fetched
+ * and not imported -- one file per language. Fetching is why this is not in
+ * `hideout/`, which is framework-free. see issues/0011.
  *
  * A table that has not arrived is not an error and stops nothing: every reader
- * has an answer without it -- the file's own names, and a variation count of
- * none. Wiki issue 0059.
+ * has an answer without it. see issues/0059.
  */
 
 import { signal } from "@preact/signals";
@@ -46,8 +38,8 @@ export const hideoutsError = signal(null);
 
 /**
  * The manifest of languages there are tables for, or `null`, and what went
- * wrong fetching it. It is the selector's list -- wiki issue 0053 -- and it is
- * one file for the whole session rather than one per document.
+ * wrong fetching it. The selector's list (see issues/0053), one file for the
+ * whole session rather than one per document.
  */
 export const languages = signal(null);
 export const languagesError = signal(null);
@@ -115,7 +107,7 @@ export function entryOf(doodad) {
  * What to call a doodad, wherever one is named: the sidebar's selection rows,
  * an array's source list, the labels over the canvas. Reading the signal is
  * what puts the table's word in place of the file's when the table arrives, and
- * what follows a switch of language -- wiki issues 0059 and 0053.
+ * what follows a switch of language. see issues/0059, issues/0053.
  */
 export function nameOf(doodad) {
   return palette.nameFor(table.value?.palette, doodad);
@@ -123,7 +115,7 @@ export function nameOf(doodad) {
 
 /**
  * Whether that name came from the file for want of a table entry, which is what
- * the mark beside it says -- wiki issue 0060. It follows the table and not the
+ * the mark beside it says. see issues/0060. It follows the table and not the
  * document: a hash named by a regenerated table loses its mark and changes
  * nothing else.
  */

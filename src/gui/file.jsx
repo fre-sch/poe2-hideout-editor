@@ -1,21 +1,18 @@
 /**
  * Loading a file, and the two ways of saving one.
  *
- * The two are the cost of having a format of the editor's own: a project keeps
- * layers and, later, generators, and a `.hideout` is what the game reads and
- * can carry neither. Which file to hand the game is the one thing a player must
- * not get wrong, so the two buttons are told apart by their labels and their
- * colours, and each says what it writes. They no longer sit apart: the sidebar
- * is short and its height belongs to the layer list.
+ * The two are the cost of a format of the editor's own: a project keeps layers
+ * and generators, and a `.hideout` can carry neither. see
+ * discussions/project-format-and-user-layers. Which file to hand the game is
+ * the one thing a player must not get wrong, so the buttons differ in label and
+ * colour and each says what it writes.
  *
- * Loading takes both, told apart by their content rather than their name. One
- * button, because a player who has picked the file has already said which one
- * it is.
+ * Loading takes both, told apart by content rather than name -- a player who
+ * picked the file has already said which it is.
  *
- * Saving serializes the document and goes nowhere near the viewport -- no
- * `CustomEvent` hop, and, since wiki issue 0038, no mode left to force. That is
- * wiki issue 0005 gone twice over: what is on the canvas and what is in the
- * file are the same doodads.
+ * Saving serializes the document and goes nowhere near the viewport: what is on
+ * the canvas and what is in the file are the same doodads. see
+ * decisions/transform-control-reparenting.
  */
 
 import * as state from "../state.js";
@@ -68,9 +65,8 @@ export default function File() {
 }
 
 /**
- * A file the parser rejects says so, and says where. Silence was the rest of
- * wiki issue 0002: the parser stopped hanging the tab, but nothing told the
- * player why nothing had loaded.
+ * A file the parser rejects says so, and says where -- a tab that no longer
+ * hangs still tells the player nothing. see issues/0002.
  */
 function LoadError() {
   if (state.loadError.value === null) return null;

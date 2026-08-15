@@ -50,16 +50,14 @@ export const UNKNOWN_HASH_TITLE =
 
 /**
  * What a name that came from the file rather than from the table is marked
- * with, wherever the sidebar names a doodad -- wiki issue 0060.
+ * with, wherever the sidebar names a doodad. see issues/0060.
  *
- * The hash, because it is the only other identity the doodad has and the one
- * thing a player can look it up or report it by; the wording is the hideout
- * type selector's, which marks the same gap in the header's one name. Muted and
- * never a warning: nothing is wrong with the doodad, and nothing about it is
- * refused.
+ * The hash, being the only other identity the doodad has and the one thing a
+ * player can look it up by; the wording is the hideout type selector's. Muted
+ * and never a warning -- nothing is wrong with the doodad.
  *
- * It does not shrink, the name beside it does. A mark cut off by an ellipsis is
- * a mark that is read as part of the name.
+ * It does not shrink, the name beside it does: a mark cut off by an ellipsis is
+ * read as part of the name.
  */
 export function UnknownHashMark({ doodad }) {
   if (!unknownHash(doodad)) return null;

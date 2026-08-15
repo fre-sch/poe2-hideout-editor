@@ -466,8 +466,8 @@ export class Scene {
     if (event.evt.button !== SELECT_BUTTON) return;
     if (this.grabbedSelection(event)) return;
 
-    // Keyboard shortcuts are bound to the container, not to the window, so the
-    // container has to take focus for them to arrive -- wiki issue 0010.
+    // Keyboard shortcuts are bound to the container, not to the window, so it
+    // has to take focus for them to arrive. see issues/0010.
     this.container.focus();
     this.bandOrigin = this.stage.konva.getPointerPosition();
     // Settled once for the gesture: a layer cannot be locked or hidden while
@@ -485,7 +485,7 @@ export class Scene {
   /**
    * Whether the left button belongs to the selection rather than to the band,
    * and starts the move if it does. There are no modes, so where the gesture
-   * started is the whole of the answer -- wiki issue 0038.
+   * started is the whole of the answer. see issues/0038.
    *
    * A handle always belongs to it, and so does anywhere inside the box: a
    * selection is moved by grabbing it, not by finding one of its doodads.

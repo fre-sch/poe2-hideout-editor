@@ -145,7 +145,7 @@ function Overlay() {
   const document_ = state.hideoutDocument.value;
   const showLabels = state.showLabels.value;
   // A switch of language asks for another table without changing the document,
-  // so it is a dependency of its own -- wiki issue 0053.
+  // so it is a dependency of its own. see issues/0053.
   const language = state.language.value;
 
   useEffect(() => {

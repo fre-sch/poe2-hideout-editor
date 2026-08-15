@@ -2,30 +2,24 @@
  * The doodad palette: everything that can be placed, and the button that opens
  * it.
  *
- * It is the first thing in the editor that adds a doodad rather than moving one
- * the player already had -- see wiki/decisions/doodad-palette.md.
+ * The first thing in the editor that adds a doodad rather than moving one the
+ * player already had. see decisions/doodad-palette.
  *
- * **It is a sidebar on the right, not a floating panel.** It was a draggable
- * panel first, and dragging it was the part nobody wanted: a panel is in the
- * way or it is somewhere else, and either way the player is moving it instead
- * of placing doodads. A column beside the viewport is never in the way, and the
- * viewport it places into is the space that is left.
+ * A sidebar on the right rather than a floating panel: a panel is in the way or
+ * it is somewhere else, and either way the player is moving it instead of
+ * placing doodads.
  *
- * **It lives outside the viewport container.** The editor's shortcuts are bound
- * to that container, not to the window -- wiki issue 0010 -- so typing `g` into
- * the search input here cannot align the view to the game. Keeping the palette
- * out of that element is what guarantees it, and `app.jsx` is where that is
- * decided.
+ * Outside the viewport container, so that typing `g` into the search input
+ * cannot align the view to the game -- the shortcuts are bound to that
+ * container. see issues/0010, `app.jsx`.
  *
- * **Loading a file closes it.** A new document may be in another language, which
- * invalidates the table it was loaded with; a palette that survived a load would
- * be describing the previous document. `gui/file.jsx` puts it away.
+ * Loading a file closes it: a new document may be in another language, which
+ * invalidates the table it was loaded with. see `gui/file.jsx`.
  *
- * **With an array as the active layer it sets that array's doodad instead of
- * placing one.** An array's doodads are computed, so there is nothing to place
- * into it -- but "which doodad" is exactly the question this list answers, and
- * answering it twice, once here and once from a selection, was two ways to say
- * one thing. So the palette is where a doodad is chosen, whoever is asking.
+ * With an array as the active layer it sets that array's doodad instead of
+ * placing one. An array's doodads are computed, but "which doodad" is the
+ * question this list answers, so the palette is where a doodad is chosen
+ * whoever is asking.
  *
  * The table itself is `table.js`, which the Selection section reads too.
  */
@@ -356,16 +350,13 @@ function Entry({ entry }) {
 /**
  * Why nothing can be chosen right now, or `null`.
  *
- * Two layer checks and nothing else. A third stood here and refused the whole
- * palette when the document's names disagreed with the table, on the reading
- * that placing one would write a name the game rejects -- it rejects nothing,
- * wiki issues 0057 and 0059, and a German player reading an English file is
- * exactly the case it used to shut down.
+ * Two layer checks and nothing else. Names disagreeing with the table are not
+ * among them: the game rejects no name, and a German player reading an English
+ * file is the ordinary case. see issues/0057, issues/0059.
  *
- * The layer checks are here rather than at the placement because a doodad
- * placed into a hidden layer appears nowhere. They do not apply to an array,
- * which is being told what it is made of rather than handed a doodad -- and a
- * hidden array is a fair thing to work on.
+ * The checks are here rather than at the placement because a doodad placed into
+ * a hidden layer appears nowhere. They do not apply to an array, which is being
+ * told what it is made of rather than handed a doodad.
  */
 function refusal() {
   // A group first: with one up there is no active layer at all, so the two

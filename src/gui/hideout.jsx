@@ -2,19 +2,19 @@
  * What the loaded file says about itself, and what of that the player may
  * change.
  *
- * The name shown is the game data's name for the file's `hideout_hash`, in the
- * document's language -- wiki issue 0021. The file's own `hideout_name` is what
- * is shown when no table names the hash.
+ * The name shown is the game data's name for the file's `hideout_hash` in the
+ * document's language, and the file's own `hideout_name` where no table names
+ * the hash. see issues/0021.
  *
  * The hideout type is the document's: choosing one writes `hideout_hash` and
- * the name that follows it, and the outline the viewport draws follows the hash
- * -- wiki issue 0061. Passing the header through verbatim, wiki issue 0009, is
- * what a load and a save do; it never promised the type cannot be changed.
+ * the name that follows it, and the viewport's outline follows the hash. see
+ * issues/0061. Passing the header through verbatim (see issues/0009) is what a
+ * load and a save do, and never promised the type cannot be changed.
  *
  * The language is the document's too: it is exported, and switching it is how a
- * player reads a hideout somebody else exported in their own words --
- * wiki issue 0053. What it changes is which tables are read; the names in the
- * document are left exactly as they arrived.
+ * player reads a hideout somebody else exported in their own words. see
+ * issues/0053. It changes which tables are read; the names in the document are
+ * left as they arrived.
  */
 
 import { useEffect } from "preact/hooks";
@@ -86,12 +86,11 @@ export default function Hideout() {
 
 /**
  * The table's name for the document's type, or the file's own where no table
- * names the hash -- wiki issue 0059.
+ * names the hash. see issues/0059.
  *
- * It names the type the selector below is showing, so it reads
- * `state.hideoutType` and not the header: the signal is `hideout_hash` in the
- * form that can be subscribed to, and a name rendered from the field itself
- * goes stale the moment the type is changed -- wiki issue 0062.
+ * Reads `state.hideoutType` and not the header: the signal is `hideout_hash` in
+ * a form that can be subscribed to, and a name rendered from the field goes
+ * stale the moment the type is changed. see issues/0062.
  */
 function HideoutName() {
   const header = state.hideoutDocument.value.header;
@@ -126,7 +125,7 @@ function warningOf(count) {
 
 /**
  * Every hideout type the game has, and the file's own first where the data
- * knows nothing about its hash -- wiki issue 0007. The list comes from the type
+ * knows nothing about its hash. see issues/0007. The list comes from the type
  * the file arrived as and stays put whatever is chosen, so returning to the
  * hideout they actually own is the same gesture as leaving it.
  */

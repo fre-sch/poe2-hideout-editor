@@ -7,9 +7,8 @@
  * configuring an array with the palette open is asking for both, and the
  * palette keeps the place it already had.
  *
- * Both are siblings of the viewport and not children of it, which is what keeps
- * their inputs out of the viewport's keyboard shortcuts -- those are bound to
- * the viewport's own container, wiki issue 0010.
+ * Both are siblings of the viewport rather than children, which keeps their
+ * inputs out of the viewport's keyboard shortcuts. see issues/0010.
  */
 
 import Sidebar from "./gui/sidebar.jsx";
